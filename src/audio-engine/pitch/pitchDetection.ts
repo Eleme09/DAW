@@ -95,12 +95,14 @@ export function trackPitch(
   channelData: Float32Array,
   sampleRate: number,
   frameSize = FRAME_SIZE,
-  hopSize = HOP_SIZE
+  hopSize = HOP_SIZE,
+  minHz = 70,
+  maxHz = 1000
 ): PitchFrame[] {
   const frames: PitchFrame[] = [];
   for (let start = 0; start + frameSize <= channelData.length; start += hopSize) {
     const frame = channelData.subarray(start, start + frameSize);
-    const { frequencyHz, confidence } = detectPitchYin(frame, sampleRate);
+    const { frequencyHz, confidence } = detectPitchYin(frame, sampleRate, minHz, maxHz);
     frames.push({ timeSec: start / sampleRate, frequencyHz, confidence });
   }
   return frames;

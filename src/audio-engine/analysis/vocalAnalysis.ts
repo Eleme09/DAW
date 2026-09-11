@@ -1,5 +1,6 @@
 import { analyzeDynamics } from "./dynamicsAnalysis";
 import { computeAveragePowerSpectrum, computeBandEnergies } from "./spectralAnalysis";
+import { mixToMono } from "../audioBufferUtils";
 import type { Severity, VocalAnalysisResult } from "@/types/analysis";
 
 /**
@@ -70,14 +71,4 @@ export function analyzeVocalChannel(channelData: Float32Array, sampleRate: numbe
 export function analyzeVocalRecording(buffer: AudioBuffer): VocalAnalysisResult {
   const channelData = mixToMono(buffer);
   return analyzeVocalChannel(channelData, buffer.sampleRate);
-}
-
-function mixToMono(buffer: AudioBuffer): Float32Array {
-  if (buffer.numberOfChannels === 1) return buffer.getChannelData(0);
-  const mixed = new Float32Array(buffer.length);
-  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
-    const data = buffer.getChannelData(ch);
-    for (let i = 0; i < data.length; i++) mixed[i] += data[i] / buffer.numberOfChannels;
-  }
-  return mixed;
 }

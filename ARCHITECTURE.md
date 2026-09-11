@@ -56,6 +56,20 @@ src/
                      end. See AUDIO_ENGINE.md "Pitch detection & correction"
                      for why this renders a new sample instead of being a
                      live effect-chain insert.
+    beat/             Beat analysis: tempo, key (reuses pitch/keyDetection.ts
+                     against a chromagram), bass line, chords, drum-hit
+                     classification, section boundaries (onsetDetection.ts,
+                     tempoDetection.ts, chromagram.ts, bassTracking.ts,
+                     chordDetection.ts, drumClassification.ts,
+                     sectionDetection.ts, filters.ts, beatAnalysis.ts).
+                     Same offline/pure-math/unit-tested pattern as the two
+                     directories above. See AUDIO_ENGINE.md "Beat analysis"
+                     — several real failure modes (tempo octave error,
+                     chord relative-major/minor confusion) were caught by
+                     testing during this phase and are documented there,
+                     not papered over.
+    audioBufferUtils.ts  Shared AudioBuffer helpers (mixToMono) used by
+                     analysis/, pitch/, and beat/ alike.
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
@@ -63,6 +77,9 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
     project.ts       Shared data model: Project / Track / AudioClip / etc.
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
+    beat.ts           TempoResult, OnsetEvent, DrumHit, BassNote,
+                      ChordSegment, SectionBoundary, BeatAnalysisResult —
+                      the beat pipeline's shared shapes.
     analysis.ts       VocalAnalysisResult: the categorical read
                       (Noise/Mud/Harshness/... severities) analysis.ts
                       produces and the UI/autoChain consume.

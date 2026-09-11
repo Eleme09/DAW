@@ -350,6 +350,87 @@ whole pipeline on a detuned tone and confirms the output, re-analyzed,
 actually lands near the target pitch. That's a meaningfully stronger bar
 than "it doesn't throw."
 
+## Beat analysis (Phase 6)
+
+`src/audio-engine/beat/` and `src/types/beat.ts`. Same offline,
+no-AudioContext, unit-tested-in-Node pattern as `analysis/` and `pitch/` —
+`analyzeBeat(channelData, sampleRate)` runs once on a full buffer and
+returns `BeatAnalysisResult`. Reuses Phase 4/5 infrastructure directly
+rather than reimplementing it: the FFT from `analysis/fft.ts`, and
+`pitch/keyDetection.ts`'s `detectKeyFromChroma` (built for a monophonic
+vocal pitch track in Phase 5, it turns out to be exactly the right function
+for a polyphonic chromagram too — the chroma-vector-in, key-out contract
+doesn't care how the chroma was built).
+
+- **`onsetDetection.ts`** — spectral-flux onset detection (Dixon
+  2006-style): half-wave-rectified frame-to-frame magnitude difference,
+  peak-picked against a local adaptive threshold. Feeds tempo, section
+  boundaries, and drum-hit classification.
+- **`tempoDetection.ts`** — BPM via autocorrelation of the onset envelope
+  (a "tempogram"), not inter-onset-interval histogramming — more robust
+  since it doesn't depend on every onset being peak-picked correctly.
+  **Known limitation, hit and partially fixed during development**: naive
+  autocorrelation scores a tempo's octave (half/double time) almost as
+  strongly as the "true" tempo, and a kick-snare backbeat where the kick
+  hits harder than the snare made a synthesized 120 BPM test beat read as
+  60 — the amplitude alternation makes the 2-beat cycle the strongest raw
+  periodicity, not a bug, just where the energy actually repeats most
+  strongly. A soft Gaussian prior centered on a typical tempo (120 BPM,
+  wide sigma) now nudges the pick toward the more common octave when raw
+  scores are close (see the regression test in `tempoDetection.test.ts`
+  that reproduces the exact failure). This does **not** fully solve
+  half/double-time ambiguity — it's a genuinely hard, actively-researched
+  MIR problem (full solutions track downbeats/meter, not just onset
+  periodicity) — it's a partial mitigation, and the reported `confidence`
+  reflects the raw correlation strength at whatever lag was picked, not
+  certainty about which tempo octave a human would call "the" tempo.
+- **`chromagram.ts`** — full-spectrum chroma extraction: every FFT bin's
+  energy folds into one of 12 pitch classes regardless of octave, unlike
+  `pitch/pitchDetection.ts`'s single-dominant-pitch-per-frame approach
+  (which only works for monophonic material). This is what makes key
+  detection work on a full beat instead of just a solo vocal line.
+- **`bassTracking.ts`** — lowpass-isolate the low end
+  (`filters.ts`'s RBJ-cookbook biquad, offline/pure-math, not a
+  BiquadFilterNode), then run the same YIN tracker Phase 5 built for
+  vocals, tuned to bass range (30-260Hz) with a coarser hop than vocal
+  tracking (YIN's difference-function cost scales with buffer length, and
+  a beat can run minutes where a vocal take runs seconds — see the hop
+  comment in the file). Monophonic pitch tracking on a filtered signal,
+  not source separation: a loud kick/808-sub will still dominate and can
+  pull the tracked note off the actual bassline in busy sections.
+- **`chordDetection.ts`** — chroma template matching (24 templates: major/
+  minor triads on each of 12 roots), cosine-similarity scored, per
+  fixed-length (not beat-synced) segment, no smoothing across segments.
+  **Known limitation, observed on a real test beat**: relative major/minor
+  pairs (e.g. F major vs. D minor — they share 2 of 3 notes) are easy to
+  confuse this way; a synthesized F-major segment came back as Dm during
+  testing. Each segment carries a `confidence`, and the docs/UI call this
+  "estimated" rather than implying professional-grade chord recognition —
+  that's a real gap, not smoothed over.
+- **`drumClassification.ts`** — onset → kick/snare/hihat-ish, from
+  spectral shape alone (low-band energy ratio, high-band energy ratio,
+  spectral centroid). An explainable heuristic, not a trained
+  drum-transcription model — real transcription (especially separating
+  layered/sampled kits) needs ML to do well. Good enough to sketch a rough
+  pattern for visualization, explicitly not good enough to trust as a
+  transcription (the UI says so next to the hit count).
+- **`sectionDetection.ts`** — energy-novelty boundary detection: finds
+  *when* the loudness profile changes abruptly and how loud the new part
+  is *relative to this track*. It cannot know, from energy alone, whether
+  that's a verse, chorus, drop, or bridge — `energyLevel` is a relative-
+  loudness read, not a semantic label, and is presented as exactly that.
+
+**Explicitly not attempted, on purpose:**
+- **Melody extraction** from the full polyphonic mix. Bass tracking works
+  because lowpass filtering cleanly isolates that register; there's no
+  equivalent trick for a lead melody buried in a full mix — that needs
+  real source separation, a substantially harder problem.
+- **Instrument recognition.** Needs a trained classifier; a hand-written
+  heuristic (like the drum classifier gets away with, for 3 broad
+  categories) doesn't generalize to "what instrument is this."
+Both are real gaps against the original brief's wishlist, named here
+rather than faked with a heuristic that would mostly be wrong.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch
@@ -377,3 +458,8 @@ than "it doesn't throw."
 - No MIDI/instrument tracks — `Track.type` is `"audio"` only for now; the
   type is already a union-of-one so adding `"midi"` later doesn't require
   restructuring existing tracks.
+- No melody extraction from a full beat mix, no instrument recognition —
+  see "Beat analysis" above for why these specifically weren't attempted.
+- No fully-solved tempo octave ambiguity or beat/downbeat tracking, no
+  chord-sequence smoothing across segments — see "Beat analysis" above;
+  both are partial/heuristic by design, not silently broken.

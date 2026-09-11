@@ -96,6 +96,28 @@ playback path.
 - **Manual note editing**: not built. The pitch track is visible but not
   yet draggable/editable — a real gap, not hidden.
 
+## Built (Phase 6)
+
+- **Beat Analyzer** (`src/audio-engine/beat/`): BPM (autocorrelation of an
+  onset-strength envelope, with a soft tempo prior to reduce — not
+  eliminate — half/double-time octave errors), key/scale (reusing Phase
+  5's `keyDetection.ts` against a full-spectrum chromagram instead of a
+  monophonic pitch track), a tracked bassline (lowpass + the same YIN
+  tracker Phase 5 built for vocals), a per-segment chord estimate (chroma
+  template matching), a heuristic kick/snare/hihat classification of
+  detected onsets, and energy-based section boundaries. All confidence-
+  scored, all with real, sometimes-wrong-in-predictable-ways behavior
+  caught during testing and documented rather than hidden — see
+  AUDIO_ENGINE.md's "Beat analysis" section for the specific failure modes
+  (a kick/snare backbeat reading as half-time; relative major/minor chord
+  confusion) and how each was handled.
+- **Explicitly not attempted**: melody extraction from a full mix
+  (needs source separation), instrument recognition (needs a trained
+  classifier), and true structural labeling (verse/chorus/etc. — energy
+  boundaries are detected, semantic labels are not, because loudness alone
+  can't tell you that). Named here so nobody mistakes their absence for an
+  oversight.
+
 ## Planned surfaces (not built)
 
 - **Auto Vocal Engineer** (Phase 9): broader than Phase 4's rule-based
@@ -111,16 +133,11 @@ playback path.
   of the offline one. See AUDIO_ENGINE.md.
 - **Formant preservation** in pitch correction (Phase 5's `psola.ts` — see
   AUDIO_ENGINE.md for why this was left out of the first pass).
-- **Manual note editing** on the detected pitch track (Phase 5's Pitch
-  Studio shows it, doesn't yet let you drag individual notes).
-- **Beat Analyzer / Key-Scale detection** (Phase 6-7): BPM, key, scale,
-  section structure, confidence-scored. Note: Phase 5 already built a
-  general-purpose key detector (`keyDetection.ts`) for vocal pitch tracks —
-  Phase 6/7 should reuse it against a beat's detected notes/bassline rather
-  than reimplementing key-finding from scratch.
-- **Vocal + Beat Match** (Phase 8): compares detected vocal center to beat
-  key, reports compatibility plainly (no music-theory essay, per the
-  brief).
+- **Vocal + Beat Match** (Phase 8): compares detected vocal center (Phase
+  5's pitch/key detection) to a beat's detected key (Phase 6's beat
+  analyzer) and reports compatibility plainly (no music-theory essay, per
+  the brief). Both pieces it needs already exist — this is now just
+  wiring the comparison and the UI, not new detection work.
 - **AI Mix/Mastering Assistant** (Phase 10/18): clipping/masking/mud
   detection across the session, moderate correction suggestions, LUFS
   targets per platform.

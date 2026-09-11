@@ -150,17 +150,59 @@ yet" and AI_FEATURES.md): real-time/live pitch correction, formant
 preservation, manual note editing (the pitch track is visible, not yet
 draggable).
 
-## Phase 6 — Beat Analyzer ⬜
+## Phase 6 — Beat Analyzer ✅
 
-BPM/key/scale/structure/instrument detection from an imported beat.
+- ✅ BPM detection: autocorrelation of an onset-strength envelope (a
+  "tempogram"), with a soft tempo prior to reduce half/double-time octave
+  errors — a real failure mode this actually hit during development on a
+  synthesized 120 BPM beat with a kick/snare backbeat (came back 60 before
+  the fix), now a regression test
+- ✅ Key/scale detection: reuses Phase 5's `keyDetection.ts` against a new
+  full-spectrum chromagram (`chromagram.ts`) instead of reimplementing
+  key-finding — exactly the reuse Phase 5's docs called for
+- ✅ Bass/808 line tracking: lowpass isolation + the same YIN tracker
+  Phase 5 built for vocals, retuned to bass range
+- ✅ Per-segment chord estimation: chroma template matching (24 major/
+  minor triads), confidence-scored — known limitation observed on a real
+  test (relative major/minor confusion, e.g. F major read as Dm), named in
+  AUDIO_ENGINE.md rather than hidden
+- ✅ Onset-based kick/snare/hihat classification — explicitly a heuristic
+  (spectral shape only), not a transcription; the UI says so
+- ✅ Section boundary detection from energy novelty — relative loudness
+  labels, not verse/chorus semantics (can't get those from energy alone)
+- ✅ "Beat" button per sample (Audio browser tab) opens a panel showing
+  BPM/key, a bass pitch-track canvas, a drum-hit timeline, chord chips, and
+  section markers
+- ✅ Verified in-browser on a synthesized 120 BPM / C-F-G-Am beat with a
+  kick-snare-hihat pattern: correct BPM (post-fix), correct key (C major,
+  87% confidence), correctly tracked bassline, plausible drum-hit spread,
+  3 of 4 chords correct (the fourth is the documented Dm/F confusion)
+- ✅ 32 new unit tests (126 total project-wide), including two regression
+  tests for real failures caught during this phase (tempo octave error,
+  and the underlying chord-confusion behavior is covered by the existing
+  chord-matching tests)
 
-## Phase 7 — Key/Scale Detection ⬜
+Explicitly not attempted (see AUDIO_ENGINE.md/AI_FEATURES.md): melody
+extraction from a full mix, instrument recognition, true structural
+(verse/chorus) labeling, chord-sequence smoothing, full downbeat/meter
+tracking. All real gaps against the original wishlist, named rather than
+faked.
 
-Surfaced as its own confidence-scored result, reusable by Phase 6 and 8.
+## Phase 7 — Key/Scale Detection ✅ (absorbed into Phases 5 and 6)
+
+The original plan was a standalone, reusable, confidence-scored key/scale
+detector. That's exactly what happened, just earlier than planned: Phase 5
+built `keyDetection.ts` for vocal pitch tracks, and Phase 6 reused it
+as-is against a beat's chromagram. No separate Phase 7 work was needed —
+this entry stays only so the roadmap's phase numbering isn't confusing to
+whoever reads it next.
 
 ## Phase 8 — Vocal + Beat Matching ⬜
 
 Compares vocal pitch center to detected beat key, reports compatibility.
+Unblocked now — both detectors it needs (Phase 5's vocal key/pitch, Phase
+6's beat key) already exist. What's left is the comparison logic and a UI
+surface for it, not new detection work.
 
 ## Phase 9 — AI Vocal Engineer ⬜
 
@@ -189,8 +231,9 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 6 (Beat Analyzer) — BPM/key/scale/structure detection
-from an imported beat. Reuse Phase 5's `keyDetection.ts` rather than
-reimplementing key-finding. This unblocks Phase 8 (Vocal + Beat Matching),
-which needs both a detected beat key and the vocal pitch-center work
-Phase 5 already built.
+**Next up:** Phase 8 (Vocal + Beat Matching) is the cheapest next win —
+both detectors it needs already exist, it's comparison logic and a UI
+surface, not new DSP. Phase 9 (AI Vocal Engineer) is the other reasonable
+option and more central to the project's #1 priority (vocal quality) — it
+builds on Phase 4's rule-based Phone Mic Enhance the same way Phase 6
+built on Phase 5's key detection: extend, don't reimplement.
