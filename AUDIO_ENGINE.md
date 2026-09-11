@@ -686,6 +686,60 @@ isn't exposed for editing, only the rendered clips), no genres beyond the
 four listed, no time signatures other than 4/4 (every pattern/progression
 assumes it).
 
+## Beat Reconstruction (Phase 12)
+
+`src/audio-engine/generate/reconstructBeat.ts`. The inverse of Phase 11:
+instead of generating a fresh rule-based sketch, this maps Phase 6's
+*detected* `BeatAnalysisResult` (from an uploaded beat) into the exact
+same `DrumHitEvent`/`BassNoteEvent`/`ChordEvent` shapes Phase 11 defined,
+so the identical synthesis code (`synthesizeBeat.ts`'s `synthDrums`/
+`synthBass`/`synthChords`, now exported for this reuse) renders it —
+`synthesizeReconstruction()` is a thin 3-stem wrapper around the same
+`renderStem`/`OfflineAudioContext` machinery, no melody stem (see below
+for why). Pure mapping logic, fully unit-tested with synthetic
+`BeatAnalysisResult` fragments; the synthesis half is the usual
+OfflineAudioContext-dependent exception, verified via Playwright.
+
+**Drum hits** map almost directly — `DrumHit.confidence` becomes the
+synthesized hit's velocity (floored at 0.3, never fully silent), so a
+hit the detector was unsure about plays back quieter rather than
+presenting uncertain detections as equally confident ones. Hits typed
+`"other"` (Phase 6's drum classifier only distinguishes kick/snare/hihat
+confidently — see AUDIO_ENGINE.md "Beat analysis") are dropped rather
+than guessed into one of the three real types.
+
+**Bass line** needed real new logic, not just a field rename: Phase 6's
+`bassLine` is a continuous per-frame pitch track (one entry per analysis
+hop, `null` where unvoiced), not discrete notes. `reconstructBassEvents`
+groups consecutive frames holding roughly the same pitch (within 0.7
+semitones) into one held note, ending a note on a gap longer than 150ms
+(a brief tracking dropout doesn't end it) — the same "voiced run" idea
+Phase 5's pitch pipeline uses for vocals, applied here to a bass line
+instead.
+
+**Chords** map directly: `ChordSegment` already carries `root` (pitch
+class) and `quality` (major/minor — Phase 6's chord matcher only ever
+produces those two), so `reconstructChordEvents` just stacks a triad at a
+fixed octave and converts `startSec`/`endSec` to beats via the *detected*
+tempo.
+
+**No melody reconstruction** — not an oversight, a direct consequence of
+Phase 6 never attempting melody extraction from a full polyphonic mix
+(needs real source separation, a substantially harder problem this
+project doesn't attempt; see "Beat analysis" above). Reconstruction can
+only ever be as good as what was actually detected, and melody was never
+detected, so it's not reconstructed either — the UI says so.
+
+**UI**: a "Reconstruct as Tracks" button added to the existing Beat
+Analyzer panel, next to the analysis it already displays — no separate
+upload/analyze step, since the `BeatAnalysisResult` it needs is already
+computed for the panel above it. Creates 3 new tracks (Drums/Bass/Chords)
+through the same sample-storage pipeline Phase 11 and recorded takes use.
+Verified in-browser: analyzed a synthesized test beat, reconstructed it,
+confirmed 3 non-silent tracks with waveforms reflecting the actual
+detected hit/note/chord counts, played back cleanly with live meters,
+zero console errors.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch

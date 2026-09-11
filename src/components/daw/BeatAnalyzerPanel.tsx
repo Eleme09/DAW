@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { analyzeBeat } from "@/audio-engine/beat/beatAnalysis";
 import { mixToMono } from "@/audio-engine/audioBufferUtils";
+import { audioBufferToChannelArrays } from "@/audio-engine/bounce";
 import { frequencyToMidi } from "@/audio-engine/pitch/noteUtils";
+import { reconstructBassEvents, reconstructChordEvents, reconstructDrumEvents } from "@/audio-engine/generate/reconstructBeat";
+import { synthesizeReconstruction } from "@/audio-engine/generate/synthesizeBeat";
+import { encodeWav } from "@/audio-engine/wavEncoder";
+import { addSampleAsset } from "@/lib/storage/sampleIndex";
+import { putSample } from "@/lib/storage/sampleStore";
+import { useProjectStore } from "@/state/projectStore";
 import { NOTE_NAMES } from "@/types/pitch";
 import type { BeatAnalysisResult, DrumHitType } from "@/types/beat";
-import type { SampleAsset } from "@/types/project";
+import type { AudioClip, SampleAsset } from "@/types/project";
 
 interface BeatAnalyzerPanelProps {
   sample: SampleAsset;
@@ -23,6 +31,12 @@ const DRUM_COLOR: Record<DrumHitType, string> = {
 export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
   const [analyzing, setAnalyzing] = useState(true);
   const [result, setResult] = useState<BeatAnalysisResult | null>(null);
+  const [reconstructing, setReconstructing] = useState(false);
+  const [reconstructError, setReconstructError] = useState<string | null>(null);
+  const [reconstructSummary, setReconstructSummary] = useState<string | null>(null);
+
+  const addTrack = useProjectStore((s) => s.addTrack);
+  const addClip = useProjectStore((s) => s.addClip);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +51,66 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
       cancelled = true;
     };
   }, [sample.id]);
+
+  async function reconstructAsTracks() {
+    if (!result) return;
+    setReconstructing(true);
+    setReconstructError(null);
+    try {
+      const bpm = result.tempo.bpm;
+      const drums = reconstructDrumEvents(result.drumHits, bpm);
+      const bass = reconstructBassEvents(result.bassLine, bpm);
+      const chords = reconstructChordEvents(result.chords, bpm);
+      const synth = await synthesizeReconstruction(bpm, drums, bass, chords, result.durationSec);
+      const engine = getAudioEngine();
+
+      const stems: Array<{ name: string; buffer: AudioBuffer }> = [
+        { name: "Drums", buffer: synth.drums },
+        { name: "Bass", buffer: synth.bass },
+        { name: "Chords", buffer: synth.chords },
+      ];
+
+      for (const stem of stems) {
+        const sampleId = crypto.randomUUID();
+        const blob = encodeWav(audioBufferToChannelArrays(stem.buffer), stem.buffer.sampleRate);
+        await engine.decodeAndCache(sampleId, await blob.arrayBuffer());
+        await putSample(sampleId, `Reconstructed ${stem.name}`, blob);
+        const asset: SampleAsset = {
+          id: sampleId,
+          name: `Reconstructed ${stem.name} (from ${sample.name})`,
+          durationSec: stem.buffer.duration,
+          sampleRate: stem.buffer.sampleRate,
+          channels: stem.buffer.numberOfChannels,
+          createdAt: new Date().toISOString(),
+        };
+        addSampleAsset(asset);
+
+        const track = addTrack(stem.name);
+        const clip: AudioClip = {
+          id: crypto.randomUUID(),
+          trackId: track.id,
+          sampleId,
+          name: asset.name,
+          startTime: 0,
+          duration: stem.buffer.duration,
+          sourceOffset: 0,
+          gainDb: 0,
+          fadeInSec: 0,
+          fadeOutSec: 0,
+          color: track.color,
+        };
+        addClip(clip);
+      }
+
+      setReconstructSummary(
+        `Reconstructed ${drums.length} drum hits, ${bass.length} bass notes, and ${chords.length} chords as 3 new tracks.`
+      );
+    } catch (err) {
+      setReconstructError(err instanceof Error ? err.message : "Reconstruction failed");
+    } finally {
+      setReconstructing(false);
+    }
+  }
 
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
@@ -110,6 +184,23 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
                 </span>
               ))}
             </div>
+          </div>
+
+          <div className="mt-2 border-t border-neutral-800 pt-2">
+            <p className="mb-1.5 text-neutral-600">
+              Reconstructs the detected drums/bass/chords as 3 new synthesized tracks — a best-effort
+              approximation from the analysis above, not a lossless transcription. No melody (this
+              project doesn&apos;t attempt melody extraction from a full mix).
+            </p>
+            {reconstructError && <p className="mb-1.5 text-red-400">{reconstructError}</p>}
+            {reconstructSummary && <p className="mb-1.5 text-neutral-500">{reconstructSummary}</p>}
+            <button
+              onClick={reconstructAsTracks}
+              disabled={reconstructing}
+              className="w-full rounded bg-orange-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+            >
+              {reconstructing ? "Reconstructing…" : "Reconstruct as Tracks"}
+            </button>
           </div>
         </>
       )}

@@ -358,10 +358,40 @@ shipped with, and editing the generated note events themselves (the
 output is rendered audio immediately, not an editable MIDI-like
 representation in the UI).
 
-## Phase 12 — Beat Reconstruction ⬜
+## Phase 12 — Beat Reconstruction ✅
 
-Approximate MIDI/project reconstruction from an uploaded beat, confidence
-per detected element.
+- ✅ Reconstruction mapping (`reconstructBeat.ts`, pure, unit-tested):
+  maps Phase 6's detected `BeatAnalysisResult` into Phase 11's own
+  `DrumHitEvent`/`BassNoteEvent`/`ChordEvent` shapes — drum hits map
+  directly (detection confidence becomes synthesis velocity, floored not
+  zeroed); the bass line needed real new logic, since Phase 6 outputs a
+  continuous per-frame pitch track, not discrete notes — grouped into
+  held notes via a pitch-tolerance + gap-length rule; chords map directly
+  (root + major/minor quality -> a stacked triad)
+- ✅ Synthesis reuse: `synthesizeReconstruction()` in `synthesizeBeat.ts`
+  calls the exact same `synthDrums`/`synthBass`/`synthChords` functions
+  Phase 11 uses (now exported for this), no melody stem — Phase 6 never
+  attempts melody extraction from a full mix, so there's nothing to
+  reconstruct there, named as inherited scope rather than a new gap
+- ✅ "Reconstruct as Tracks" button added to the existing Beat Analyzer
+  panel — no separate upload/analyze flow, reuses the panel's
+  already-computed analysis
+- ✅ Verified in-browser with Playwright: analyzed a synthesized test
+  beat, reconstructed it, confirmed 3 non-silent tracks (Drums/Bass/
+  Chords) whose waveforms reflect the actual detected hit/note/chord
+  counts (41 drum hits, 14 bass notes, 8 chords in the test run), played
+  back cleanly with live meters on all 3 tracks and master, zero console
+  errors
+- ✅ 11 new unit tests (201 total): BPM-to-beat conversion, confidence-to-
+  velocity mapping and the "other" hit type being dropped, major/minor
+  triad construction, bass-line note segmentation (grouping steady
+  pitch, splitting on a real pitch jump, tolerating a brief dropout vs.
+  ending a note on a real gap, empty/fully-unvoiced input)
+
+Reconstruction quality is bounded by Phase 6's own detection quality
+(tempo octave ambiguity, chord relative-major/minor confusion, heuristic
+drum classification) — inherited limitations, not new ones, and the UI
+calls this "best-effort approximation," never a lossless transcription.
 
 ## Phase 13 — Advanced AI ⬜
 
@@ -370,15 +400,14 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 12 (Beat Reconstruction) — next in PROJECT_SPEC.md's
-priority order (priority 6, continuing from Phase 11). Approximate
-MIDI/project reconstruction from an uploaded beat is the inverse problem
-of Phase 11's generation and can reuse a lot of what already exists:
-Phase 6's beat analysis (tempo, key, bass line, chords, drum hits) already
-extracts most of what reconstruction needs to detect — this phase is
-mostly about turning that analysis into actual generated tracks (using
-Phase 11's synthesis for the reconstructed drums/bass/chords) rather than
-building new detection from scratch. Every detected element should carry
-its own confidence, per this project's no-invented-precision principle,
-and the UI should be upfront that "reconstruction" means "best-effort
-approximation from analysis," not a lossless MIDI extraction.
+**Next up:** Phase 13 (Advanced AI) — the last phase in PROJECT_SPEC.md's
+roadmap: a natural-language assistant that resolves commands ("make this
+vocal darker") to concrete project mutations through the same Zustand
+actions the UI already uses (never a separate mutation path), plus a
+mastering assistant with per-platform LUFS targets. This is the first
+phase that plausibly needs a real LLM call rather than local rule-based
+DSP/math — worth deciding behind a swappable provider interface (per
+AI_FEATURES.md's existing open question on this) rather than hardcoding
+one vendor's SDK into the assistant logic, and worth being explicit in
+the UI about what "AI not configured" degrades to, per principle 1 (AI
+must be optional, the DAW works with zero AI configured).

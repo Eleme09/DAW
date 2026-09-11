@@ -98,6 +98,13 @@ src/
                      OfflineAudioContext-dependent file here, not
                      unit-tested, same reason as bounce.ts). See
                      AUDIO_ENGINE.md "Beat Generator (Phase 11)".
+                     Also Phase 12's Beat Reconstruction:
+                     reconstructBeat.ts (pure, unit-tested — maps Phase
+                     6's BeatAnalysisResult into the same event shapes
+                     Phase 11 defined) plus synthesizeReconstruction()
+                     in synthesizeBeat.ts, reusing that file's synth
+                     functions directly. See AUDIO_ENGINE.md "Beat
+                     Reconstruction (Phase 12)".
     bounce.ts        Offline project rendering (OfflineAudioContext) —
                      sums every track + master insert chain to one stereo
                      AudioBuffer, reusing effects/EffectChain.ts (typed

@@ -115,7 +115,7 @@ function synthHat(
   noise.start(t);
 }
 
-function synthDrums(ctx: BaseAudioContext, destination: AudioNode, events: DrumHitEvent[], bpm: number, rng: () => number): void {
+export function synthDrums(ctx: BaseAudioContext, destination: AudioNode, events: DrumHitEvent[], bpm: number, rng: () => number): void {
   for (const e of events) {
     const t = beatsToSec(e.startBeat, bpm);
     if (e.type === "kick") synthKick(ctx, destination, t, e.velocity);
@@ -124,7 +124,7 @@ function synthDrums(ctx: BaseAudioContext, destination: AudioNode, events: DrumH
   }
 }
 
-function synthBass(ctx: BaseAudioContext, destination: AudioNode, events: BassNoteEvent[], bpm: number): void {
+export function synthBass(ctx: BaseAudioContext, destination: AudioNode, events: BassNoteEvent[], bpm: number): void {
   for (const e of events) {
     const t = beatsToSec(e.startBeat, bpm);
     const lengthSec = beatsToSec(e.lengthBeats, bpm);
@@ -153,7 +153,7 @@ function synthBass(ctx: BaseAudioContext, destination: AudioNode, events: BassNo
   }
 }
 
-function synthChords(ctx: BaseAudioContext, destination: AudioNode, chords: ChordEvent[], bpm: number): void {
+export function synthChords(ctx: BaseAudioContext, destination: AudioNode, chords: ChordEvent[], bpm: number): void {
   for (const chord of chords) {
     const t = beatsToSec(chord.startBeat, bpm);
     const lengthSec = beatsToSec(chord.lengthBeats, bpm);
@@ -214,7 +214,7 @@ export interface SynthesizedBeat {
   melody: AudioBuffer;
 }
 
-async function renderStem(
+export async function renderStem(
   durationSec: number,
   sampleRate: number,
   render: (ctx: OfflineAudioContext, destination: AudioNode) => void
@@ -238,4 +238,34 @@ export async function synthesizeBeat(beat: GeneratedBeat, sampleRate = 44100): P
   ]);
 
   return { drums, bass, chords, melody };
+}
+
+export interface SynthesizedReconstruction {
+  drums: AudioBuffer;
+  bass: AudioBuffer;
+  chords: AudioBuffer;
+}
+
+/**
+ * Renders Phase 12's reconstructed events (reconstructBeat.ts) using the
+ * exact same instrument synths as generation — no melody stem, since
+ * reconstruction has no melody events to render (see reconstructBeat.ts's
+ * header comment for why).
+ */
+export async function synthesizeReconstruction(
+  bpm: number,
+  drums: DrumHitEvent[],
+  bass: BassNoteEvent[],
+  chords: ChordEvent[],
+  durationSec: number,
+  sampleRate = 44100,
+  seed = 0
+): Promise<SynthesizedReconstruction> {
+  const total = durationSec + TAIL_SEC;
+  const [drumsBuf, bassBuf, chordsBuf] = await Promise.all([
+    renderStem(total, sampleRate, (ctx, dest) => synthDrums(ctx, dest, drums, bpm, createRng(seed))),
+    renderStem(total, sampleRate, (ctx, dest) => synthBass(ctx, dest, bass, bpm)),
+    renderStem(total, sampleRate, (ctx, dest) => synthChords(ctx, dest, chords, bpm)),
+  ]);
+  return { drums: drumsBuf, bass: bassBuf, chords: chordsBuf };
 }

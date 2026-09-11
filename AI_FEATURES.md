@@ -167,9 +167,6 @@ playback path.
   of the offline one. See AUDIO_ENGINE.md.
 - **Formant preservation** in pitch correction (Phase 5's `psola.ts` — see
   AUDIO_ENGINE.md for why this was left out of the first pass).
-- **Beat Reconstruction** (Phase 12): approximate MIDI/project
-  reconstruction from an uploaded beat, confidence-scored per detected
-  element.
 - **AI Music Assistant** (Phase 13): natural-language commands ("make this
   vocal darker") that resolve to concrete project mutations (parameter
   changes via the same Zustand actions the UI uses), not just chat replies.
@@ -236,6 +233,29 @@ playback path.
   genres and 4/4 assumption this pass shipped with, and editing generated
   note events before they're rendered to audio (the output is audio clips
   immediately, not an editable MIDI-like representation in the UI).
+
+## Built (Phase 12)
+
+- **Beat Reconstruction** (`src/audio-engine/generate/reconstructBeat.ts`
+  + `synthesizeBeat.ts`'s `synthesizeReconstruction`): approximate
+  reconstruction of an uploaded beat's drums/bass/chords as 3 new,
+  editable tracks — the inverse of Phase 11's generation, reusing its
+  exact synthesis code rather than building a second rendering path.
+- **Confidence carried through, not discarded**: drum-hit detection
+  confidence becomes synthesis velocity (floored, never silent) — an
+  honest way to let uncertain detections sound less prominent instead of
+  presenting every reconstructed hit as equally certain, per principle 2.
+- **Scoped to what Phase 6 can actually detect**: no melody
+  reconstruction, because Phase 6 never attempts melody extraction from a
+  full mix in the first place (needs source separation — see
+  AUDIO_ENGINE.md "Beat analysis"). Reconstruction quality is bounded by
+  detection quality, including its documented failure modes (tempo octave
+  ambiguity, chord relative-major/minor confusion, heuristic-only drum
+  classification) — inherited here, not newly introduced, and not
+  presented as more accurate than the analysis it's built from.
+- **UI**: "Reconstruct as Tracks" button added directly to the existing
+  Beat Analyzer panel (no separate flow) — creates Drums/Bass/Chords
+  tracks from the panel's already-computed analysis.
 
 ## Open technical decisions (for whoever builds these)
 
