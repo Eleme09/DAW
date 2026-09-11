@@ -11,6 +11,10 @@
   library would fight us more than help. See `AUDIO_ENGINE.md`.
 - **Supabase** (`@supabase/supabase-js`) for future metadata persistence.
   Scaffolded, not wired up — see the Supabase section below.
+- **`@anthropic-ai/sdk`**, server-side only (`app/api/assistant/route.ts`),
+  for the AI Music Assistant (Phase 13). Never imported by client
+  components — see AUDIO_ENGINE.md "AI Music Assistant (Phase 13, part
+  2)".
 - **Vitest** for unit tests of pure logic (dB math, waveform peaks, project
   model defaults). No component/DOM testing yet — not worth the setup cost
   until there's non-trivial component logic to protect.
@@ -32,6 +36,11 @@ behind `useEffect`/`useState(() => ...)` inside that boundary, not above it.
 ## Directory layout
 
 ```
+app/api/assistant/  Server-only Route Handler for the AI Music Assistant
+                     (Phase 13). The only place ANTHROPIC_API_KEY is
+                     read — never sent to the browser. See
+                     AUDIO_ENGINE.md "AI Music Assistant (Phase 13,
+                     part 2)".
 src/
   audio-engine/     Real-time audio graph + transport (see AUDIO_ENGINE.md).
                      No React, no Next.js imports here — must stay usable
@@ -132,6 +141,10 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
     beatGen.ts         GenerateBeatOptions/GeneratedBeat and friends
                       (ChordEvent, DrumHitEvent, BassNoteEvent,
                       MelodyNoteEvent) — Phase 11's generation shapes.
+    assistant.ts       AssistantAction (the AI Music Assistant's closed
+                      tool vocabulary), AssistantProposedAction,
+                      AssistantTurnResult, AssistantContext — Phase 13's
+                      natural-language assistant shapes.
     vocalStyle.ts     VocalStyleParams + the VocalCharacter/GenreStyle
                       preset-key unions — Phase 9's style presets.
     beat.ts           TempoResult, OnsetEvent, DrumHit, BassNote,
@@ -162,11 +175,17 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      browser download — the Export button's handler).
   lib/supabase/      Supabase client factory. Returns null if env vars are
                      unset — the app must keep working local-only.
+  lib/ai/            AI Music Assistant (Phase 13) support code:
+                     assistantProvider.ts (the swappable interface the UI
+                     talks to), assistantTools.ts (server-only tool
+                     schema + untrusted-input parser), applyAssistantAction.ts
+                     (pure — action -> effect-chain mutation).
   components/daw/    UI. TransportBar, BrowserPanel, Timeline/*, Mixer/*,
                      EffectsRack/* (per-track/master insert chain UI +
                      Analyzer), MixAssistantPanel.tsx (Phase 10, the "Mix"
                      tab in BrowserPanel), BeatGeneratorPanel.tsx (Phase
-                     11, the "Generate" tab).
+                     11, the "Generate" tab), AiAssistantPanel.tsx (Phase
+                     13, the "Assistant" tab).
   hooks/             Small reusable hooks (useRafLoop for meters/clocks).
 app/                 Next.js App Router shell (layout, page, globals.css).
 supabase/migrations/ SQL schema, NOT applied to any live project (see below).

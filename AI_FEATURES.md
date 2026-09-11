@@ -279,15 +279,51 @@ playback path.
   inserted into the master chain — reuses Compressor rather than adding a
   dedicated "Gain" effect for one use case.
 
+## Built (Phase 13, part 2)
+
+- **AI Music Assistant** (`src/app/api/assistant/route.ts` +
+  `src/lib/ai/`): natural-language commands that resolve to concrete
+  project mutations — the one feature in this project that genuinely
+  needs a real LLM call, built after asking the user directly (this
+  file's own open question, below, flagged it as exactly that kind of
+  decision) rather than guessing at a provider or skipping it silently.
+  The user chose to connect Anthropic behind their own API key.
+- **Principle 3, enforced structurally, not just by convention**: the
+  model can only call one of nine fixed tools (`assistantTools.ts`), and
+  every tool call is re-validated field-by-field before it becomes an
+  `AssistantAction` — there is no path from "the model said so" to a
+  project mutation that skips validation or review. Every proposed
+  action is shown to the user with a plain-language description and an
+  Apply button; nothing auto-applies.
+- **Principle 1, structurally enforced too**: `ANTHROPIC_API_KEY` is
+  read only in the server route, never sent to the client. Unset ->
+  the route returns `{ configured: false }` immediately (no network
+  call attempted) and the UI shows a plain "not configured" state — the
+  rest of the DAW is entirely unaffected either way.
+- **Swappable provider, not a hardcoded vendor**: the UI only depends on
+  `AssistantProvider`'s one-method interface (`lib/ai/
+  assistantProvider.ts`); no Anthropic-specific type crosses that
+  boundary.
+- **Verification gap, stated plainly rather than hidden**: no API key
+  was available in the environment this was built in, so the real
+  model round-trip was never exercised end to end — verified instead
+  via the SDK's own type definitions, unit tests of every pure
+  parsing/validation/application function, and the "not configured"
+  path live in a browser. See AUDIO_ENGINE.md's full writeup for exactly
+  what was and wasn't checked, and what to verify once a real key is
+  added.
+
 ## Open technical decisions (for whoever builds these)
 
 - Which pitch-detection algorithm/library (autocorrelation, YIN, CREPE-style
   ML model) — depends on accuracy vs. latency needs once autotune UX is
   scoped.
-- Whether beat generation/reconstruction needs a server-side model or can
-  stay client-side/rule-based for a first pass. Given the "no mandatory
-  paid API" principle, a rule-based/local first pass is preferable, with a
-  pluggable interface for a stronger server-side model later.
-- LLM provider for the natural-language assistant (Phase 13) — keep it
-  behind an interface so it's swappable, don't hardcode one vendor's SDK
-  into the assistant logic itself.
+- ~~Whether beat generation/reconstruction needs a server-side model or
+  can stay client-side/rule-based for a first pass.~~ Resolved: Phases 11
+  and 12 stayed fully client-side/rule-based, no server-side model
+  needed.
+- ~~LLM provider for the natural-language assistant (Phase 13).~~
+  Resolved: asked the user directly rather than guessing — they chose to
+  connect Anthropic behind their own `ANTHROPIC_API_KEY`, kept behind the
+  swappable `AssistantProvider` interface. See "Built (Phase 13, part 2)"
+  above.

@@ -393,7 +393,7 @@ Reconstruction quality is bounded by Phase 6's own detection quality
 drum classification) — inherited limitations, not new ones, and the UI
 calls this "best-effort approximation," never a lossless transcription.
 
-## Phase 13 — Advanced AI 🚧
+## Phase 13 — Advanced AI ✅
 
 - ✅ **Mastering Assistant** (`masteringTargets.ts` + `loudness.ts`'s
   `approxLufsFromMix`): per-platform LUFS targets (Spotify/Apple Music/
@@ -411,28 +411,51 @@ calls this "best-effort approximation," never a lossless transcription.
   frequency-response checks, `approxLufsFromMix` silence/loudness/
   K-weighting behavior, and every mastering-suggestion direction
   (turn up, turn down, already-at-target, silence).
-- ⬜ **Natural-language AI Music Assistant**: not started — this is the
-  one remaining piece of the entire original roadmap, and it's a real
-  decision point rather than an engineering one. Every other AI feature
-  in this project (Phases 4/9/10/11/12/13's mastering half) is local,
-  rule-based DSP/math with zero external dependency. A natural-language
-  command interface ("make this vocal darker" -> concrete project
-  mutations) fundamentally needs an actual LLM call, which means picking
-  a provider, deciding whether the user supplies their own API key, and
-  reconciling that against the brief's own "no mandatory paid API"
-  principle. See AI_FEATURES.md's open question on this — this is
-  exactly the kind of decision that needs the user's input before
-  building further, not an engineering call to make unilaterally.
+- ✅ **Natural-language AI Music Assistant** (`app/api/assistant/route.ts`
+  + `lib/ai/`): the one feature in the entire original roadmap that
+  needed a real decision from the user rather than an engineering call —
+  asked directly rather than guessed at. The user chose to connect a
+  real provider (Anthropic, behind their own `ANTHROPIC_API_KEY`) rather
+  than leaving it unbuilt or skipping it. Commands resolve to a closed,
+  validated set of concrete project mutations (volume/pan/mute/solo,
+  EQ/compressor/reverb/delay/saturation) — the model can't express
+  anything outside that fixed tool vocabulary, and nothing it proposes
+  applies without the user clicking Apply. `ANTHROPIC_API_KEY` is
+  server-only (never reaches the browser); unset, the assistant shows
+  "not configured" and the rest of the DAW is unaffected — verified live
+  in-browser via Playwright (the actual state in this build environment,
+  since no key was available here). The provider sits behind a
+  one-method `AssistantProvider` interface so a different vendor could
+  be swapped in without touching the UI.
+- ⚠️ **Verification gap, named rather than hidden**: the real model
+  round-trip (an actual command in, actual tool calls out) was never
+  exercised end to end in this build environment — no API key was
+  available to test against. Everything reachable without a live key
+  was verified (SDK type-correctness, unit tests of the parsing/
+  validation/application logic, the "not configured" path). Whoever adds
+  a real key should do one live pass before relying on this daily — see
+  AUDIO_ENGINE.md's "AI Music Assistant (Phase 13, part 2)" for the full
+  list of what was and wasn't checked.
+
+This closes every phase in the original roadmap (1 through 13). What's
+left is exactly what's named throughout AUDIO_ENGINE.md/AI_FEATURES.md as
+deliberately out of scope for this pass (real-time pitch correction,
+formant preservation, true spectral/ML noise reduction, melody extraction
+from a full mix, a true psychoacoustic masking model, a live end-to-end
+test of the AI Music Assistant) — real gaps, named plainly, not silently
+missing.
 
 ---
 
-**Next up:** the natural-language AI Music Assistant half of Phase 13 —
-blocked on a decision only the user can make (LLM provider, whether/how
-an API key is supplied, how that squares with the brief's "no mandatory
-paid API" principle), asked about directly rather than guessed at. Once
-resolved: commands should resolve to concrete project mutations through
-the same Zustand actions the UI already uses (never a separate mutation
-path), kept behind a swappable provider interface so the LLM vendor isn't
-hardcoded into the assistant logic, and the DAW must keep working with
-zero AI configured (principle 1) — the UI should say plainly when the
-assistant isn't available rather than failing unclearly.
+**Next up:** nothing from the original 13-phase roadmap remains. What's
+left is (1) adding a real `ANTHROPIC_API_KEY` and doing a live end-to-end
+pass on the AI Music Assistant (the one verification gap named above),
+and (2) the many "deliberately not attempted" items named throughout
+AUDIO_ENGINE.md/AI_FEATURES.md as real, honestly-documented gaps rather
+than hidden ones — real-time/live pitch correction, formant preservation
+in PSOLA, true spectral/ML noise reduction, melody extraction from a full
+mix, instrument recognition, a true psychoacoustic masking model,
+mix-level clipping detection, and manual editing of a generated beat's
+note events before they're rendered to audio. None of these were skipped
+by oversight — each is called out at the point in the docs where it was
+deliberately scoped out, with the reasoning for why.

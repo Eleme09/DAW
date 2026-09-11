@@ -779,6 +779,78 @@ panel (Phase 10) rather than a separate tab — it's naturally the same
 bounced full mix (`MixAnalysisResult.mix.approxLufs`) instead of
 triggering a second render.
 
+## AI Music Assistant (Phase 13, part 2)
+
+`src/app/api/assistant/route.ts` (server-only), `src/lib/ai/` (provider
+interface, tool schema/parser, action-application logic), `src/types/
+assistant.ts`. The one feature in this project that genuinely needs a
+real LLM call rather than local rule-based DSP — built after asking the
+user directly (per AI_FEATURES.md's original open question on this),
+who chose to connect a real provider (Anthropic) behind their own API
+key rather than leaving it unbuilt.
+
+**The vocabulary is fixed, not open-ended.** `AssistantAction`
+(`types/assistant.ts`) is a closed discriminated union — volume/pan/
+mute/solo, plus add-an-EQ-band and set-compressor/reverb/delay/
+saturation. The model cannot express an arbitrary mutation: it can only
+call one of nine tools (`lib/ai/assistantTools.ts`'s `ASSISTANT_TOOLS`),
+and every tool call is re-validated field-by-field by `parseToolUse`
+before it becomes an `AssistantAction` — a malformed or out-of-schema
+call (wrong type, unknown enum value, missing field) is silently
+dropped, never passed through as-is. This is the same instinct as every
+other "untrusted input" boundary in this project, just applied to model
+output instead of a file/analysis result.
+
+**"AI proposes, DSP executes," literally**: nothing the model returns
+touches the project directly. The server route only *parses* tool calls
+into `AssistantProposedAction`s and returns them; the client shows each
+one (with a human-readable description built server-side by
+`describeAssistantAction`, from the validated action's own fields — not
+trusted free text from the model) with its own Apply button.
+`lib/ai/applyAssistantAction.ts`'s `applyEffectAction` (pure,
+unit-tested) computes the resulting insert chain for effect-shaping
+actions; track-field actions (volume/pan/mute/solo) apply directly via
+the existing `updateTrack` store action. Repeated commands update the
+existing effect of that type in place rather than stacking duplicates
+(EQ is the one exception — `addEqBand` always appends a band, since
+EQ shaping is additive by nature, the same way a producer keeps
+sculpting one EQ rather than inserting a fresh one per tweak).
+
+**API key stays server-only.** `ANTHROPIC_API_KEY` is read exclusively
+in `src/app/api/assistant/route.ts` (a Next.js Route Handler, never
+sent to the browser). If it's unset, the route returns
+`{ configured: false }` immediately — no network call, no error — and
+the UI shows a plain "not configured" state rather than failing
+unclearly, per AI_FEATURES.md principle 1 (AI must be optional, the DAW
+works with zero AI configured). The model itself
+(`ANTHROPIC_ASSISTANT_MODEL`, defaulting to a current Claude model) is
+also an env override, not hardcoded — see `.env.example`.
+
+**Provider interface, not a hardcoded vendor**: the UI panel only talks
+to `AssistantProvider` (`lib/ai/assistantProvider.ts`), an interface
+with one method (`sendCommand`). The concrete implementation
+(`httpAssistantProvider`) just calls this app's own `/api/assistant`
+route — no Anthropic-specific type or request shape crosses that
+boundary into the UI. Swapping providers later means writing a new
+server route (or branching this one) and pointing the interface at it,
+not touching the panel or the action-application logic.
+
+**Honestly-scoped verification, stated plainly**: no Anthropic API key
+was available in this environment, so the actual model round-trip
+(real command in, real tool calls out) was **not** exercised end to
+end — that's a real gap in verification, not hidden. What *was*
+verified: the request/response shapes were checked directly against the
+installed `@anthropic-ai/sdk`'s own type definitions (`Tool`,
+`ToolUseBlock`, `TextBlock`); `parseToolUse`/`describeAssistantAction`/
+`applyEffectAction` are unit-tested (valid input, malformed input,
+missing fields, out-of-enum values, in-place-update vs. append-a-band
+behavior); and the "not configured" degrade path was verified live in a
+real browser (Playwright) with zero console errors, including the route
+itself confirmed via a direct request to return `{"configured":false}`
+when the key is unset. Whoever adds a real key should do one live
+end-to-end pass (a command that should map to a tool call, one that
+shouldn't) before trusting this in daily use.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch
