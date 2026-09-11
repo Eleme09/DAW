@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import { TransportBar } from "./TransportBar";
@@ -10,9 +10,24 @@ import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { LivePitchMonitorPanel } from "./LivePitchMonitorPanel";
 
+// Below the `md` breakpoint the desktop's three-pane row (Browser/Timeline/
+// EffectsRack) plus the docked Mixer can't coexist on screen at once, so on
+// mobile exactly one of the four becomes a full-width view, switched via the
+// tab bar at the bottom. At `md` and up every pane renders simultaneously
+// exactly as before and this state is unused.
+type MobileView = "browser" | "timeline" | "mixer" | "effects";
+
+const MOBILE_VIEWS: { id: MobileView; label: string }[] = [
+  { id: "browser", label: "Browser" },
+  { id: "timeline", label: "Timeline" },
+  { id: "mixer", label: "Mixer" },
+  { id: "effects", label: "FX" },
+];
+
 export function DawShell() {
   const tracks = useProjectStore((s) => s.project.tracks);
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
+  const [mobileView, setMobileView] = useState<MobileView>("timeline");
 
   // Keep the audio graph in sync with track state even before the user hits
   // play, so mixer meters/pan/volume are live immediately.
@@ -52,11 +67,38 @@ export function DawShell() {
       <TransportBar />
       <LivePitchMonitorPanel />
       <div className="flex flex-1 overflow-hidden">
-        <BrowserPanel />
-        <Timeline />
-        <EffectsRackPanel />
+        <div className={`${mobileView === "browser" ? "block" : "hidden"} w-full md:contents`}>
+          <BrowserPanel />
+        </div>
+        <div className={`${mobileView === "timeline" ? "flex" : "hidden"} min-w-0 flex-1 md:contents`}>
+          <Timeline />
+        </div>
+        <div className={`${mobileView === "effects" ? "block" : "hidden"} w-full md:contents`}>
+          <EffectsRackPanel />
+        </div>
       </div>
-      <MixerPanel />
+      <div className={`shrink-0 ${mobileView === "mixer" ? "block" : "hidden"} md:block`}>
+        <MixerPanel />
+      </div>
+
+      <nav
+        className="flex shrink-0 border-t border-neutral-800 bg-neutral-950 md:hidden"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {MOBILE_VIEWS.map((v) => (
+          <button
+            key={v.id}
+            onClick={() => setMobileView(v.id)}
+            className={`flex-1 border-t-2 py-2.5 text-[11px] font-medium uppercase tracking-wide transition-colors ${
+              mobileView === v.id
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-neutral-500 hover:text-neutral-300"
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

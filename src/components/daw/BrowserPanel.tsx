@@ -28,7 +28,7 @@ export function BrowserPanel() {
   const [tab, setTab] = useState<Tab>("audio");
 
   return (
-    <div className="flex w-64 shrink-0 flex-col border-r border-neutral-800 bg-neutral-950">
+    <div className="flex h-full w-full shrink-0 flex-col border-r border-neutral-800 bg-neutral-950 md:w-64">
       <div className="grid grid-cols-3 border-b border-neutral-800 text-[10px] font-medium">
         {(["audio", "match", "mix", "generate", "assistant", "projects"] as const).map((t) => (
           <button

@@ -48,11 +48,11 @@ export function TransportBar() {
   }
 
   return (
-    <div className="flex h-14 shrink-0 items-center gap-4 border-b border-neutral-800 bg-neutral-950 px-4 text-sm text-neutral-200">
+    <div className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b border-neutral-800 bg-neutral-950 px-3 text-sm text-neutral-200 [&>*]:shrink-0 sm:gap-4 sm:px-4">
       <input
         value={project.name}
         onChange={(e) => renameProject(e.target.value)}
-        className="w-40 rounded bg-neutral-900 px-2 py-1 font-medium outline-none focus:ring-1 focus:ring-orange-500"
+        className="w-28 rounded bg-neutral-900 px-2 py-1 font-medium outline-none focus:ring-1 focus:ring-orange-500 sm:w-40"
       />
 
       <div className="flex items-center gap-1">

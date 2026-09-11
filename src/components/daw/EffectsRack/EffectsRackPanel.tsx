@@ -21,7 +21,7 @@ export function EffectsRackPanel() {
   const label = mode === "master" ? "Master Bus" : (selectedTrack?.name ?? "No track selected");
 
   return (
-    <div className="flex w-80 shrink-0 flex-col border-l border-neutral-800 bg-neutral-950">
+    <div className="flex h-full w-full shrink-0 flex-col border-l border-neutral-800 bg-neutral-950 md:w-80">
       <div className="flex border-b border-neutral-800 text-xs font-medium">
         <button
           onClick={() => setMode("track")}
