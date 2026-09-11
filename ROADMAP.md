@@ -314,10 +314,49 @@ mastering targets (Phase 13). Cost tradeoff named rather than hidden: this
 renders the project once per track plus once for the full mix, so it
 scales with track count/length, fine for this project's own scale.
 
-## Phase 11 — Beat Generator ⬜
+## Phase 11 — Beat Generator ✅
 
-Generative melody/chords/bass/drums from BPM/key/genre/mood, editable in
-the DAW afterward.
+- ✅ Chord progressions (`progressions.ts`): a hand-picked library per
+  scale (major/natural minor), stored as scale-degree sequences so they
+  transpose to any key; triad quality derived structurally from the
+  scale's own intervals (stacked thirds), not hardcoded per degree
+- ✅ Drum patterns (`drumPatterns.ts`): one idiomatic base pattern per
+  genre (trap/boomBap/dance/halfTime) on a 16-step grid, plus
+  mood-weighted, seeded-PRNG hihat rolls for trap specifically
+- ✅ Bassline (`bassGenerator.ts`): follows the kick pattern (a note per
+  kick, sustained to the next kick), two octaves below the chord root —
+  the "808 follows the kick" technique, not an independent melodic line
+- ✅ Melody (`melodyGenerator.ts`): an up-down arpeggio over each chord's
+  own tones, explicitly documented as a simplification rather than a
+  phrasing-aware melody generator
+- ✅ Orchestrator (`beatGenerator.ts`) + synthesis (`synthesizeBeat.ts`):
+  deterministic generation (same seed -> same `GeneratedBeat`, checked
+  directly in tests) rendered to 4 stereo `AudioBuffer`s via
+  `OfflineAudioContext` using simple synthesized instruments (sine/saw/
+  triangle oscillators, filtered noise) — no sample library, and the UI
+  says so plainly
+- ✅ New "Generate" tab (`BeatGeneratorPanel.tsx`): Key/Scale/Genre/Mood/
+  Seed controls, BPM taken from the project; Generate creates 4 new,
+  independently editable tracks (Drums/Bass/Chords/Melody) through the
+  same sample-storage pipeline recorded takes use — no special-cased
+  "generated track" concept
+- ✅ Verified in-browser with Playwright: generated a beat, confirmed 4
+  non-silent waveforms with correct names, played back cleanly with live
+  meters on all 4 tracks and the master bus, zero console errors, and
+  successfully exported the resulting project through the existing
+  Export pipeline with no special-casing needed
+- ✅ 32 new unit tests (190 total) for every pure generation module
+  (seeded-PRNG determinism, diatonic triad quality including the vii°
+  diminished case, progression/chord timing, drum-pattern genre rules,
+  kick-following bass timing, arpeggio note coverage, end-to-end
+  generator determinism and event-timeline bounds)
+
+Explicitly not attempted (see AI_FEATURES.md/AUDIO_ENGINE.md): a true
+generative/ML model, melody with real phrasing/motif development, genres
+or time signatures beyond the four genres and 4/4 assumption this pass
+shipped with, and editing the generated note events themselves (the
+output is rendered audio immediately, not an editable MIDI-like
+representation in the UI).
 
 ## Phase 12 — Beat Reconstruction ⬜
 
@@ -331,13 +370,15 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 11 (Beat Generator) — next in PROJECT_SPEC.md's
-priority order (priority 6) and the first phase that generates new
-content from scratch rather than analyzing/improving an existing
-recording. Every prior phase reused as much existing infrastructure as
-honestly possible (offline analysis pattern, effect chain, bounce engine);
-this one is a genuine architectural departure — worth deciding up front
-whether generation stays rule-based/parametric (matching this project's
-"AI proposes, DSP executes" principle and its no-mandatory-paid-API
-stance) or needs a different approach, per AI_FEATURES.md's open question
-on this.
+**Next up:** Phase 12 (Beat Reconstruction) — next in PROJECT_SPEC.md's
+priority order (priority 6, continuing from Phase 11). Approximate
+MIDI/project reconstruction from an uploaded beat is the inverse problem
+of Phase 11's generation and can reuse a lot of what already exists:
+Phase 6's beat analysis (tempo, key, bass line, chords, drum hits) already
+extracts most of what reconstruction needs to detect — this phase is
+mostly about turning that analysis into actual generated tracks (using
+Phase 11's synthesis for the reconstructed drums/bass/chords) rather than
+building new detection from scratch. Every detected element should carry
+its own confidence, per this project's no-invented-precision principle,
+and the UI should be upfront that "reconstruction" means "best-effort
+approximation from analysis," not a lossless MIDI extraction.

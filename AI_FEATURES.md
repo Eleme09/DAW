@@ -167,10 +167,9 @@ playback path.
   of the offline one. See AUDIO_ENGINE.md.
 - **Formant preservation** in pitch correction (Phase 5's `psola.ts` — see
   AUDIO_ENGINE.md for why this was left out of the first pass).
-- **Beat Generator / Reconstruction** (Phase 11-12): generative
-  melody/chords/drums from BPM/key/genre/mood inputs; approximate
-  MIDI reconstruction from an uploaded beat, confidence-scored per
-  detected element.
+- **Beat Reconstruction** (Phase 12): approximate MIDI/project
+  reconstruction from an uploaded beat, confidence-scored per detected
+  element.
 - **AI Music Assistant** (Phase 13): natural-language commands ("make this
   vocal darker") that resolve to concrete project mutations (parameter
   changes via the same Zustand actions the UI uses), not just chat replies.
@@ -210,6 +209,33 @@ playback path.
   approach. See AUDIO_ENGINE.md "AI Mix Assistant (Phase 10)" for the full
   design rationale, including why masking uses per-track band-energy
   *shares* rather than the relative-dB metric Phase 4 uses.
+
+## Built (Phase 11)
+
+- **Beat Generator** (`src/audio-engine/generate/`): generates a
+  drum/bass/chords/melody sketch from BPM/key/scale/genre/mood inputs as
+  four new, independently editable tracks — the brief's requirement,
+  resolved in favor of the rule-based/local-first approach this file's
+  "Open technical decisions" section below already flagged as
+  preferable (no mandatory paid API, matches principle 3).
+- **Deterministic, not a trained model**: a hand-picked library of chord
+  progressions and genre drum patterns, diatonic harmony derived
+  structurally from the chosen scale (not hardcoded per chord), a
+  kick-following bassline, and a chord-tone arpeggio melody — every piece
+  is inspectable and reproducible (same seed -> same result, including
+  the synthesized audio's noise texture, via a seeded PRNG). See
+  AUDIO_ENGINE.md "Beat Generator (Phase 11)" for the full design.
+- **Honesty about scope, built into the docs and the UI copy itself**:
+  the panel tells the user up front that instruments are synthesized
+  placeholders (oscillators + filtered noise, no sample library) meant to
+  be mixed/replaced/built on, not a finished beat — consistent with
+  principle 4 (never promise more than what's actually there).
+- **Not attempted**: a true generative/ML model, melody with real
+  phrasing or motif development (the arpeggiator is a deliberate
+  simplification, named as such), genres/time-signatures beyond the four
+  genres and 4/4 assumption this pass shipped with, and editing generated
+  note events before they're rendered to audio (the output is audio clips
+  immediately, not an editable MIDI-like representation in the UI).
 
 ## Open technical decisions (for whoever builds these)
 

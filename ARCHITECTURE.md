@@ -90,6 +90,14 @@ src/
                      Assistant (Phase 10)".
     audioBufferUtils.ts  Shared AudioBuffer helpers (mixToMono) used by
                      analysis/, pitch/, beat/, and matching/ alike.
+    generate/        Phase 11's Beat Generator: progressions.ts (chord
+                     progression + diatonic triad logic), drumPatterns.ts,
+                     bassGenerator.ts, melodyGenerator.ts, rng.ts (seeded
+                     PRNG), beatGenerator.ts (orchestrator — all pure,
+                     unit-tested), synthesizeBeat.ts (the one
+                     OfflineAudioContext-dependent file here, not
+                     unit-tested, same reason as bounce.ts). See
+                     AUDIO_ENGINE.md "Beat Generator (Phase 11)".
     bounce.ts        Offline project rendering (OfflineAudioContext) —
                      sums every track + master insert chain to one stereo
                      AudioBuffer, reusing effects/EffectChain.ts (typed
@@ -109,6 +117,9 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
     mixAnalysis.ts     MixAnalysisResult and friends (TrackBandProfile,
                       MaskingFinding, GainStagingFinding, MixSuggestion) —
                       Phase 10's session-wide diagnostics shapes.
+    beatGen.ts         GenerateBeatOptions/GeneratedBeat and friends
+                      (ChordEvent, DrumHitEvent, BassNoteEvent,
+                      MelodyNoteEvent) — Phase 11's generation shapes.
     vocalStyle.ts     VocalStyleParams + the VocalCharacter/GenreStyle
                       preset-key unions — Phase 9's style presets.
     beat.ts           TempoResult, OnsetEvent, DrumHit, BassNote,
@@ -142,7 +153,8 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
   components/daw/    UI. TransportBar, BrowserPanel, Timeline/*, Mixer/*,
                      EffectsRack/* (per-track/master insert chain UI +
                      Analyzer), MixAssistantPanel.tsx (Phase 10, the "Mix"
-                     tab in BrowserPanel).
+                     tab in BrowserPanel), BeatGeneratorPanel.tsx (Phase
+                     11, the "Generate" tab).
   hooks/             Small reusable hooks (useRafLoop for meters/clocks).
 app/                 Next.js App Router shell (layout, page, globals.css).
 supabase/migrations/ SQL schema, NOT applied to any live project (see below).

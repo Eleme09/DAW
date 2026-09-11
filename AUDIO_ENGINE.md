@@ -591,6 +591,101 @@ automatic (non-suggested) correction, no cross-track sidechain-style
 dynamic masking reduction, no mastering-stage LUFS targeting (that's
 Phase 13). Named here rather than implied by the feature's name.
 
+## Beat Generator (Phase 11)
+
+`src/audio-engine/generate/` and `src/types/beatGen.ts`. Generates a
+drum/bass/chords/melody sketch from BPM/key/scale/genre/mood inputs, as
+four new tracks the user can mix, replace, or build on — the brief's
+"Beat Generator" feature. First phase in this project that creates new
+content rather than analyzing or correcting existing audio, and the
+scope was kept deliberately honest about that: this is a rule-based
+sketch generator, not a music-generation model, and every instrument is a
+simple synthesized placeholder, not a sample library.
+
+Same split as everywhere else in this codebase: `progressions.ts`,
+`drumPatterns.ts`, `bassGenerator.ts`, `melodyGenerator.ts`,
+`beatGenerator.ts`, and `rng.ts` are pure, synchronous, and fully
+unit-tested (deterministic — same inputs always produce the same
+`GeneratedBeat`, checked directly in tests, not just "doesn't throw").
+`synthesizeBeat.ts` is the one OfflineAudioContext-dependent file (like
+`bounce.ts` and `mixAnalysis.ts`), not unit-tested, verified via
+Playwright instead.
+
+**Chord progressions** (`progressions.ts`): a small, hand-picked library
+of common progressions per scale (major/natural minor), stored as
+scale-degree index sequences (e.g. `[0, 5, 2, 6]` = i-VI-III-VII) rather
+than hardcoded note names — the same progression transposes to any key
+for free. Triad quality (major/minor/diminished/augmented) is *derived*
+from the scale's own interval structure by stacking thirds at degrees
+`d, d+2, d+4` and classifying the resulting intervals, not hardcoded per
+degree — that's genuinely how diatonic harmony works, and it's what makes
+the vii° triad in a major scale come out diminished without a special
+case for it (see `progressions.test.ts`).
+
+**Drum patterns** (`drumPatterns.ts`): one base 16-step (16th-note),
+one-bar pattern per genre (trap/boomBap/dance/halfTime), each a real,
+idiomatic skeleton for that genre (four-on-the-floor kicks with no snare
+for `dance`; a half-time snare-on-beat-3 for `halfTime`; trap's
+syncopated kick + dense hihats + open-hat accent). Trap additionally gets
+probabilistic hihat rolls (mood-dependent probability, from a seeded PRNG
+— `rng.ts`, mulberry32 — so "regenerate with the same seed" is a real,
+checkable guarantee, not just approximately similar) — trap-specific
+because hihat rolls are genuinely a trap convention, not generalized to
+every genre for the sake of code reuse.
+
+**Bassline** (`bassGenerator.ts`): deliberately tied to the drum pattern
+rather than independently melodic — a bass note fires on every kick
+within a chord's span (two octaves below the chord root), sustained until
+the next kick or the chord's end. This is a real, common technique
+("808 follows the kick"), not a simplification standing in for a proper
+bassline generator.
+
+**Melody** (`melodyGenerator.ts`): an up-down arpeggio over each chord's
+own tones (root-third-fifth-third) at a fixed 8th-note subdivision, one
+octave above the chords. Explicitly documented as a simplification, not a
+melody generator with phrasing/motif/contour — arpeggiated leads are
+genuinely idiomatic for this project's genre focus, which is why this
+was chosen over a more ambitious (and much harder to get right honestly)
+contour-aware melody model for a first pass.
+
+**Synthesis** (`synthesizeBeat.ts`): four independent `OfflineAudioContext`
+renders (drums/bass/chords/melody), each its own stereo `AudioBuffer` —
+kick (pitch-swept sine), snare (bandpass noise burst + triangle tone),
+hihat/open-hat (highpass-filtered noise, seeded per Phase 10/generator
+convention), bass (sawtooth through a lowpass filter with an ADSR-ish
+envelope), chords (three detuned sawtooth voices per triad, slow
+attack/release for a pad), melody (triangle oscillator, short plucky
+decay). None of this claims to be production-quality sound design — it's
+a rule-based sketch, and the UI says so.
+
+**Track creation**: each synthesized stem is encoded to WAV (reusing
+`wavEncoder.ts`), stored through the same `putSample`/`addSampleAsset`/
+`decodeAndCache` pipeline recorded takes use, and added as a new track +
+clip via the normal store actions — no special-cased "generated track"
+concept. That means a generated stem is fully editable afterward: insert
+effects, trim, re-arrange, re-export, exactly like anything else in the
+DAW.
+
+**UI**: a new "Generate" tab in the Browser panel
+(`BeatGeneratorPanel.tsx`) — Key/Scale/Genre/Mood/Seed controls (BPM
+comes from the project, not set independently, so a generated beat always
+matches the project's own tempo), a Generate button that creates the 4
+tracks. Verified in-browser via Playwright: generated a beat, confirmed 4
+non-silent waveforms appeared with correct names, played back cleanly
+with live meters on all 4 tracks plus master, and successfully exported
+the resulting project through the existing Export pipeline (Phase
+"Project Export" above) — reuses that infrastructure with zero special
+casing.
+
+**Explicitly not attempted**: no true generative/ML model (rule-based by
+design — see AI_FEATURES.md principle 3 and the project's
+no-mandatory-paid-API stance), no melody with real phrasing/contour, no
+manual editing of generated note events before rendering to audio (the
+result is audio, immediately — the underlying `GeneratedBeat` note data
+isn't exposed for editing, only the rendered clips), no genres beyond the
+four listed, no time signatures other than 4/4 (every pattern/progression
+assumes it).
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch
