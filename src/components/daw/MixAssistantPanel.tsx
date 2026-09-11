@@ -117,9 +117,9 @@ export function MixAssistantPanel() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">LUFS (approx.)</span>
+                <span className="text-neutral-500">Integrated LUFS</span>
                 <span className="text-neutral-300">
-                  {Number.isFinite(result.mix.approxLufs) ? result.mix.approxLufs.toFixed(1) : "-∞"}
+                  {Number.isFinite(result.mix.integratedLufs) ? result.mix.integratedLufs.toFixed(1) : "-∞"}
                 </span>
               </div>
             </div>
@@ -147,7 +147,7 @@ export function MixAssistantPanel() {
               ))}
             </select>
             {(() => {
-              const suggestion = suggestMasteringGain(result.mix.approxLufs, platform);
+              const suggestion = suggestMasteringGain(result.mix.integratedLufs, platform);
               return (
                 <>
                   <div className="mb-2 flex justify-between text-[11px]">

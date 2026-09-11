@@ -278,21 +278,27 @@ playback path.
 
 ## Built (Phase 13, part 1)
 
-- **Mastering Assistant** (`masteringTargets.ts` + `loudness.ts`'s
-  `approxLufsFromMix`): per-platform LUFS targets compared against the
-  actual bounced mix's approximate loudness, with a suggested master-gain
-  trim — the half of Phase 13 that's fully rule-based and needed no
-  external dependency, built ahead of the natural-language assistant
-  below (which does).
+- **Mastering Assistant** (`masteringTargets.ts` + `bs1770.ts`'s
+  `computeIntegratedLufs`): per-platform LUFS targets compared against the
+  actual bounced mix's loudness, with a suggested master-gain trim — the
+  half of Phase 13 that's fully rule-based and needed no external
+  dependency, built ahead of the natural-language assistant below (which
+  does).
 - **Explicit "not a guarantee" framing**: platform loudness-normalization
   targets are published by each platform but change over time and aren't
   contractually exact — the UI says so rather than implying a precise,
   permanent number.
-- **Same approximation used consistently**: the offline mastering LUFS
-  read uses the exact same K-weighting filter chain as the existing live
-  Analyzer meter (see AUDIO_ENGINE.md "Mastering Assistant" for why that
-  mattered enough to add two new filter functions rather than reuse a
-  simpler/different approximation).
+- **Upgraded to true gated-integrated LUFS (post-13a)**: originally used
+  the same fast K-weighting approximation as the live Analyzer meter, for
+  consistency between the two readings. Now uses `bs1770.ts`'s real
+  ITU-R BS.1770-4 implementation (exact published coefficients + the
+  standard's 400ms/100ms-hop absolute/relative gating) for the Mix
+  Assistant's full-mix reading — the live meter still uses the fast
+  approximation since it can't buffer the whole signal. See
+  AUDIO_ENGINE.md "Mastering Assistant" and `bs1770.ts`'s header comment
+  for the honest caveat: high-confidence standard coefficients and
+  gating structure, but not checked against official ITU/EBU conformance
+  test vectors.
 - **No new effect type for the correction**: applies as a 1:1-ratio
   compressor (pure makeup gain, no actual compression at that ratio)
   inserted into the master chain — reuses Compressor rather than adding a

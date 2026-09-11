@@ -101,9 +101,13 @@ src/
                      analysis/, pitch/, beat/, and matching/ alike.
     masteringTargets.ts  Phase 13's per-platform LUFS targets + gain-
                      suggestion function (pure, unit-tested). Paired with
-                     loudness.ts's approxLufsFromMix, which offline-
-                     replicates the live K-weighting tap using
-                     beat/filters.ts's highpassFilter/highShelfFilter.
+                     bs1770.ts's computeIntegratedLufs for the Mix
+                     Assistant's full-mix reading.
+    bs1770.ts        ITU-R BS.1770-4 K-weighting + gated integrated
+                     loudness (pure, unit-tested). Not the same math as
+                     the live Analyzer meter's fast approximation in
+                     loudness.ts — see AUDIO_ENGINE.md "Mastering
+                     Assistant (Phase 13, part 1)".
     generate/        Phase 11's Beat Generator: progressions.ts (chord
                      progression + diatonic triad logic), drumPatterns.ts,
                      bassGenerator.ts, melodyGenerator.ts, rng.ts (seeded

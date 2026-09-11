@@ -190,6 +190,41 @@ the gap Phase 5 named and deferred.
   an occasional brief crossfade artifact at a delay rebase, pitch ratio
   clamped to roughly ±6 semitones
 
+## BS.1770-4 integrated loudness ✅ (built after the original 13-phase roadmap)
+
+Part of the same "build everything you told me isn't done" pass as the
+real-time pitch monitor above. The Mastering Assistant (Phase 13, part 1)
+originally compared against a fast K-weighting approximation shared with
+the live Analyzer meter; this replaces that comparison's source with a
+real gated-integrated measurement.
+
+- ✅ `src/audio-engine/bs1770.ts`: exact published 48kHz ITU-R BS.1770-4
+  K-weighting biquad coefficients (shelf + high-pass stages), linear-
+  interpolation resample to 48kHz for other sample rates, 400ms blocks at
+  100ms hop, absolute gate (-70 LUFS) then relative gate (ungated average
+  - 10 LU) per the standard's two-pass structure
+- ✅ Wired into `analyzeMix`/`MixAnalysisResult.mix.integratedLufs` and
+  the Mix Assistant panel (`suggestMasteringGain` now receives the real
+  integrated value); the live Analyzer meter's separate fast
+  approximation (`loudness.ts`) is untouched on purpose — it can't buffer
+  the whole signal, so it structurally can't run the gated algorithm
+- ✅ 7 unit tests: length/attenuation behavior of the K-weighting filter,
+  silence reads -Infinity, louder-reads-louder, a full-scale 1kHz tone
+  lands in a plausible (not asserted-exact) range, gating keeps a loud
+  section's reading from being dragged down by a long quiet tail,
+  resampling doesn't crash for 44100/48000/22050 Hz
+- **Honest limit, stated plainly**: the coefficients and gating structure
+  are the standard's real published values (high confidence — they match
+  across essentially every independent open-source implementation), but
+  this has **not** been validated against ITU/EBU's own official
+  conformance test vectors (no internet access in this environment to
+  fetch them, and not enough confident recall of their exact expected
+  values to hand-type them safely as a test oracle). Trustworthy for
+  *comparing* loudness (louder/quieter, on/off a mastering target) —
+  not a claim of bit-exact match to a certified reference meter. Also
+  mono-only, consistent with the rest of this project's analysis
+  pipeline.
+
 ## Phase 6 — Beat Analyzer ✅
 
 - ✅ BPM detection: autocorrelation of an onset-strength envelope (a
@@ -435,15 +470,14 @@ calls this "best-effort approximation," never a lossless transcription.
 
 ## Phase 13 — Advanced AI ✅
 
-- ✅ **Mastering Assistant** (`masteringTargets.ts` + `loudness.ts`'s
-  `approxLufsFromMix`): per-platform LUFS targets (Spotify/Apple Music/
-  YouTube/SoundCloud/TikTok) compared against the bounced mix's
-  approximate loudness (reusing the exact same K-weighting filter chain
-  as the live Analyzer meter — two new pure filter functions,
-  `highpassFilter`/`highShelfFilter`, added to `beat/filters.ts` so the
-  offline and live readings stay consistent), with a suggested master-
-  gain trim folded into the existing Mix Assistant panel. Applies as a
-  1:1-ratio compressor makeup-gain stage — no new effect type needed.
+- ✅ **Mastering Assistant** (`masteringTargets.ts` + `bs1770.ts`'s
+  `computeIntegratedLufs`, upgraded from the original launch's
+  `approxLufsFromMix` — see "BS.1770-4 integrated loudness" below):
+  per-platform LUFS targets (Spotify/Apple Music/YouTube/SoundCloud/
+  TikTok) compared against the bounced mix's true gated-integrated
+  loudness, with a suggested master-gain trim folded into the existing
+  Mix Assistant panel. Applies as a 1:1-ratio compressor makeup-gain
+  stage — no new effect type needed.
   Verified in-browser: switching platforms recomputed the target/delta
   live, applying added exactly the expected Compressor (ratio 1.0:1,
   threshold 0dB, makeup +2.6dB in the verification run) to the master

@@ -742,26 +742,35 @@ zero console errors.
 
 ## Mastering Assistant (Phase 13, part 1)
 
-`src/audio-engine/masteringTargets.ts` + `loudness.ts`'s
-`approxLufsFromMix` + `beat/filters.ts`'s new `highpassFilter`/
+`src/audio-engine/masteringTargets.ts` + `bs1770.ts`'s
+`computeIntegratedLufs` + `beat/filters.ts`'s new `highpassFilter`/
 `highShelfFilter`. Per-platform LUFS targets (Spotify/Apple Music/
 YouTube/SoundCloud/TikTok — published streaming-normalization figures,
 not derived from this project's own measurements, and documented as
 "not a guarantee of exact platform behavior" since platforms change these
-over time) compared against the actual bounced mix's approximate
+over time) compared against the actual bounced mix's integrated
 loudness, with a suggested master-gain trim to close the gap.
 
-**Consistency, not a second loudness metric**: the live Analyzer's
-"LUFS (approx.)" already applies a 2-stage K-weighting approximation
-(highshelf ~1.5kHz +4dB, then highpass ~60Hz) via live `BiquadFilterNode`s
-tapped off the master bus (see "Master bus loudness tap" above).
-`approxLufsFromMix` is the *offline* equivalent of that exact same
-filter chain — new `highpassFilter`/`highShelfFilter` functions added to
-`beat/filters.ts` (RBJ cookbook coefficients, same pattern as the
-existing `lowpassFilter`, refactored to share one `runBiquad` helper) so
-a bounced-mix LUFS reading and the live meter reading stay consistent
-with each other for comparable material, instead of silently using two
-different approximations under the same "LUFS (approx.)" label.
+**Upgraded from approximate to true gated-integrated (post-13a)**: the
+original Phase 13a build compared against `loudness.ts`'s
+`approxLufsFromMix` (a 2-stage K-weighting approximation reusing the live
+meter's filter chain, for consistency between the live readout and the
+offline reading). That approximation is still what the live Analyzer
+meter uses — it has to update continuously without buffering the whole
+signal, which a gated measurement structurally can't do — but the Mix
+Assistant's full-mix reading now calls `bs1770.ts`'s
+`computeIntegratedLufs` instead: the actual ITU-R BS.1770-4 algorithm
+(exact published 48kHz K-weighting coefficients, 400ms/100ms-hop gated
+block integration with the standard's absolute -70 LUFS and relative
+-10 LU gates), not a simplified filter shortcut. See `bs1770.ts`'s own
+header comment for the honest limit on this: the coefficients and gating
+structure are high-confidence and standard, but this has not been
+checked against ITU/EBU's own conformance test vectors, so treat it as
+trustworthy for comparing levels rather than a guaranteed bit-exact match
+to a certified meter. The live meter's "LUFS (approx.)" label and the Mix
+Assistant's "Integrated LUFS" label are now deliberately different
+strings — they are two different measurements, not the same one shown
+twice.
 
 **Applying a suggestion doesn't invent a new effect type**: the suggested
 gain lands as a compressor inserted into `masterInserts` with `ratio: 1`
@@ -776,7 +785,7 @@ master Effects Rack like any other insert.
 **Where this lives in the UI**: folded into the existing Mix Assistant
 panel (Phase 10) rather than a separate tab — it's naturally the same
 "look at the whole mix" workflow, and it reuses that panel's already-
-bounced full mix (`MixAnalysisResult.mix.approxLufs`) instead of
+bounced full mix (`MixAnalysisResult.mix.integratedLufs`) instead of
 triggering a second render.
 
 ## AI Music Assistant (Phase 13, part 2)
@@ -970,8 +979,12 @@ very first render quantum, with no such race.
   way as the existing effects: a new `*Effect.ts` implementing `Effect<T>`,
   a new params type in `types/effects.ts`, a case in `EffectChain`'s
   `createEffectNode` factory.
-- No certified LUFS (see "Master bus loudness tap" above) — approximate
-  and labeled as such.
+- The live Analyzer meter's "LUFS (approx.)" (see "Master bus loudness
+  tap" above) stays a fast approximation, by necessity — it can't buffer
+  the whole signal. The Mix Assistant's "Integrated LUFS" now uses the
+  real BS.1770-4 gated algorithm (`bs1770.ts`) instead, but is still not
+  conformance-tested against official ITU/EBU reference vectors — see
+  "Mastering Assistant" above.
 - No MIDI/instrument tracks — `Track.type` is `"audio"` only for now; the
   type is already a union-of-one so adding `"midi"` later doesn't require
   restructuring existing tracks.

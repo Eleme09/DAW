@@ -83,8 +83,14 @@ export interface MixAnalysisResult {
     dynamicRangeDb: number;
     peakDb: number;
     rmsDb: number;
-    /** Approximate K-weighted loudness of the full mix — see loudness.ts's approxLufsFromMix. */
-    approxLufs: number;
+    /**
+     * True BS.1770-4 gated integrated loudness of the full mix — see
+     * bs1770.ts's computeIntegratedLufs (and its header comment on what
+     * "certified" does and doesn't mean here). Distinct from the live
+     * Analyzer meter's "LUFS (approx.)", which uses a fast momentary
+     * approximation since it can't buffer the whole signal.
+     */
+    integratedLufs: number;
   };
   tracks: TrackBandProfile[];
   masking: MaskingFinding[];
