@@ -18,7 +18,7 @@ export interface EffectChainDeps {
 /** No-op passthrough, used as a placeholder while the noise-gate worklet loads. */
 class PassthroughEffect implements Effect<unknown> {
   private gain: GainNode;
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.gain = ctx.createGain();
   }
   get inputNode(): AudioNode {
@@ -33,7 +33,7 @@ class PassthroughEffect implements Effect<unknown> {
   }
 }
 
-function createEffectNode(ctx: AudioContext, type: EffectType): Effect<unknown> {
+function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unknown> {
   switch (type) {
     case "eq":
       return new EqEffect(ctx) as unknown as Effect<unknown>;
@@ -67,14 +67,14 @@ interface ChainEntry {
  * add/remove/reorder/bypass does. See AUDIO_ENGINE.md "Effect chain".
  */
 export class EffectChain {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private deps: EffectChainDeps;
   private input: GainNode;
   private output: GainNode;
   private effects = new Map<string, ChainEntry>();
   private lastInserts: EffectInstance[] = [];
 
-  constructor(ctx: AudioContext, deps: EffectChainDeps) {
+  constructor(ctx: BaseAudioContext, deps: EffectChainDeps) {
     this.ctx = ctx;
     this.deps = deps;
     this.input = ctx.createGain();

@@ -8,14 +8,14 @@ import type { DeEsserParams } from "@/types/effects";
  * built entirely from stock nodes — no custom DSP needed.
  */
 export class DeEsserEffect implements Effect<DeEsserParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
   private lowBand: BiquadFilterNode;
   private highBand: BiquadFilterNode;
   private sibilanceCompressor: DynamicsCompressorNode;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.input = ctx.createGain();
     this.output = ctx.createGain();

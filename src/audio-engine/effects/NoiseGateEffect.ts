@@ -9,7 +9,7 @@ import type { NoiseGateParams } from "@/types/effects";
 export class NoiseGateEffect implements Effect<NoiseGateParams> {
   private node: AudioWorkletNode;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.node = new AudioWorkletNode(ctx, "noise-gate-processor", {
       numberOfInputs: 1,
       numberOfOutputs: 1,

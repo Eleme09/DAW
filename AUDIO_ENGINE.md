@@ -431,6 +431,80 @@ doesn't care how the chroma was built).
 Both are real gaps against the original brief's wishlist, named here
 rather than faked with a heuristic that would mostly be wrong.
 
+## Offline bounce / project export
+
+`src/audio-engine/bounce.ts` — renders a whole `Project` (every track's
+clips, volume/pan/mute/solo, insert chain, plus the master insert chain) to
+a single stereo `AudioBuffer` via `OfflineAudioContext`, instead of only
+ever being audible live. Built because the original brief's mobile workflow
+("Mix -> Master -> Export") had no actual export path until now — a real
+gap, not deferred on purpose like the items above.
+
+This is why `Effect.ts` and every `*Effect.ts`/`EffectChain.ts` are typed
+against `BaseAudioContext` rather than `AudioContext`: `AudioContext` and
+`OfflineAudioContext` are siblings under `BaseAudioContext` in the Web
+Audio spec, and every node-creation call the effects use
+(`createGain`, `createBiquadFilter`, `createDynamicsCompressor`,
+`createWaveShaper`, `createConvolver`, `createDelay`, `createStereoPanner`,
+`audioWorklet.addModule`) lives on that shared base — so the exact same
+effect classes run unmodified inside either context. `bounceProject`
+rebuilds the same graph shape `AudioEngine.syncTracks`/`ensureContext` use
+(`input -> EffectChain -> volume -> pan -> muteGain -> master -> EffectChain
+-> destination`), just against a throwaway offline context instead of the
+live one, so a bounce always matches what was actually heard — there's no
+separate "export renderer" to drift out of sync with playback.
+
+A few deliberate differences from the live engine, all because a bounce is
+a one-shot render from t=0 rather than a resumable transport:
+
+- **Clip scheduling is simpler.** The live engine's `scheduleClip` has to
+  handle starting mid-clip (playback beginning after a clip's start) and
+  translate between timeline time and `AudioContext.currentTime` at an
+  arbitrary play position. A bounce always starts at project time 0 with
+  the offline context's clock also at 0, so `source.start(clip.startTime,
+  clip.sourceOffset, clip.duration)` needs no such translation.
+- **The noise-gate worklet loads eagerly, not lazily.** The live
+  `EffectChain` drops in a `PassthroughEffect` placeholder while
+  `audioWorklet.addModule()` resolves in the background, specifically so a
+  synchronous `setInserts()` call never blocks the UI thread (see "Loading
+  the noise-gate worklet" above). A bounce has no such constraint — it's
+  already an async, user-triggered one-shot operation — so
+  `bounceProject` just `await`s `ctx.audioWorklet.addModule()` once up
+  front (only if some insert actually uses the gate) and passes an
+  `EffectChainDeps` that always reports the worklet as already loaded.
+  Reusing the live engine's lazy-placeholder path here would just add a
+  race for no benefit.
+- **Muted/non-soloed tracks are skipped entirely** rather than wired in at
+  zero gain — same audible result, no wasted render work on audio nobody
+  will hear.
+- **A fixed 3-second tail is appended** past the last clip's end
+  (`TAIL_PADDING_SEC`) so reverb/delay decay isn't truncated. This is a
+  flat constant, not computed from the actual longest decay time in the
+  chain — long enough for this project's own reverb/delay ranges, not a
+  general solution for an arbitrarily long tail.
+- **`AudioBuffer`s are reused across contexts.** `getBuffer` (passed in by
+  the caller) resolves each clip's `sampleId` against whatever's already
+  decoded in `AudioEngine`'s buffer cache — an `AudioBuffer` isn't bound to
+  the context that decoded it, so buffers decoded against the live
+  `AudioContext` play back fine inside the throwaway `OfflineAudioContext`
+  with no re-decode needed.
+
+`src/lib/audio/exportProject.ts` is the thin browser-facing wrapper: makes
+sure every sample the project references is actually decoded
+(`hydrateProjectSamples`, same helper used when reopening a saved
+project), calls `bounceProject`, encodes the result with the existing
+`wavEncoder.ts` (so recordings and exports share one WAV writer), and
+triggers a download via an `<a download>` click — no new persistence
+layer, no server round-trip. Wired to the **Export** button in
+`TransportBar`, disabled while nothing's on the timeline or a take is
+recording.
+
+This same offline-rendering infrastructure (not just the WAV-writing part)
+is what the planned Mix Assistant (Phase 10) is meant to build on: it needs
+to analyze the actual summed mix, not per-track buffers in isolation, and
+`bounceProject` is exactly that summed signal, available before it ever
+reaches an output device.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch

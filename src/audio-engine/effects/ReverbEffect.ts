@@ -3,7 +3,7 @@ import type { ReverbParams } from "@/types/effects";
 import { generateImpulseResponseSamples } from "./impulseResponse";
 
 export class ReverbEffect implements Effect<ReverbParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
   private convolver: ConvolverNode;
@@ -11,7 +11,7 @@ export class ReverbEffect implements Effect<ReverbParams> {
   private wetGain: GainNode;
   private irKey: string | null = null;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.input = ctx.createGain();
     this.output = ctx.createGain();

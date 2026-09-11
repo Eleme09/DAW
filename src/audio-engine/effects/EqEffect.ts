@@ -15,13 +15,13 @@ const WEB_AUDIO_FILTER_TYPE: Record<EqParams["bands"][number]["type"], BiquadFil
  * plain parameter tweak).
  */
 export class EqEffect implements Effect<EqParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
   private filters: BiquadFilterNode[] = [];
   private bandIds: string[] = [];
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.input = ctx.createGain();
     this.output = ctx.createGain();

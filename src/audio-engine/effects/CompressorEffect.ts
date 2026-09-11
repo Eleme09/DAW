@@ -3,11 +3,11 @@ import type { CompressorParams } from "@/types/effects";
 
 /** Thin wrapper around the native DynamicsCompressorNode + a makeup-gain stage. */
 export class CompressorEffect implements Effect<CompressorParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private compressor: DynamicsCompressorNode;
   private makeup: GainNode;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.compressor = ctx.createDynamicsCompressor();
     this.makeup = ctx.createGain();

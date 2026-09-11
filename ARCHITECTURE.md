@@ -80,6 +80,14 @@ src/
                      No new detection — see AI_FEATURES.md "Built (Phase 8)".
     audioBufferUtils.ts  Shared AudioBuffer helpers (mixToMono) used by
                      analysis/, pitch/, beat/, and matching/ alike.
+    bounce.ts        Offline project rendering (OfflineAudioContext) —
+                     sums every track + master insert chain to one stereo
+                     AudioBuffer, reusing effects/EffectChain.ts (typed
+                     against BaseAudioContext specifically so it works
+                     here as well as on the live AudioContext). Backs both
+                     project export and, later, the Mix Assistant's
+                     session-wide analysis. See AUDIO_ENGINE.md "Offline
+                     bounce / project export".
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
@@ -113,7 +121,9 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
   lib/audio/         Glue between storage and the engine
                      (sampleLoader.ts: decode-on-demand + rehydrate after
                      reload, since the engine's buffer cache is in-memory
-                     only).
+                     only; exportProject.ts: hydrates samples, calls
+                     audio-engine/bounce.ts, encodes WAV, triggers a
+                     browser download — the Export button's handler).
   lib/supabase/      Supabase client factory. Returns null if env vars are
                      unset — the app must keep working local-only.
   components/daw/    UI. TransportBar, BrowserPanel, Timeline/*, Mixer/*,

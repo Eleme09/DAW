@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
+import { exportProjectToWav } from "@/lib/audio/exportProject";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -28,6 +30,22 @@ export function TransportBar() {
   const toggleMetronome = useProjectStore((s) => s.toggleMetronome);
   const renameProject = useProjectStore((s) => s.renameProject);
   const persist = useProjectStore((s) => s.persist);
+
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const hasAudio = project.tracks.some((t) => t.clips.length > 0);
+
+  async function handleExport() {
+    setExportError(null);
+    setIsExporting(true);
+    try {
+      await exportProjectToWav(project);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   return (
     <div className="flex h-14 shrink-0 items-center gap-4 border-b border-neutral-800 bg-neutral-950 px-4 text-sm text-neutral-200">
@@ -123,7 +141,21 @@ export function TransportBar() {
         CLICK
       </button>
 
-      <div className="ml-auto">
+      {exportError && (
+        <span className="max-w-xs truncate text-xs text-red-400" title={exportError}>
+          Export error: {exportError}
+        </span>
+      )}
+
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={handleExport}
+          disabled={isExporting || isRecording || !hasAudio}
+          title={hasAudio ? "Render the full mix and download as WAV" : "Add audio to the timeline first"}
+          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+        >
+          {isExporting ? "Exporting…" : "Export"}
+        </button>
         <button
           onClick={persist}
           className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"

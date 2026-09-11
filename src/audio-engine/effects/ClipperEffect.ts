@@ -4,12 +4,12 @@ import { makeHardClipCurve } from "./curves";
 
 /** Standalone hard clipper — distinct from LimiterEffect (no compression stage first). */
 export class ClipperEffect implements Effect<ClipperParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private preGain: GainNode;
   private shaper: WaveShaperNode;
   private makeupGain: GainNode;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.preGain = ctx.createGain();
     this.shaper = ctx.createWaveShaper();

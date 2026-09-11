@@ -5,7 +5,7 @@ import { makeSaturationCurve } from "./curves";
 const POST_GAIN_COMPENSATION = 0.85; // shaped signal reads louder than input; pull back a bit
 
 export class SaturationEffect implements Effect<SaturationParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
   private drive: GainNode;
@@ -15,7 +15,7 @@ export class SaturationEffect implements Effect<SaturationParams> {
   private wetGain: GainNode;
   private currentTone: SaturationParams["tone"] | null = null;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.input = ctx.createGain();
     this.output = ctx.createGain();

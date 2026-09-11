@@ -8,12 +8,12 @@ import { makeHardClipCurve } from "./curves";
  * exceeds `ceilingDb` even if the compressor's release lags a transient.
  */
 export class LimiterEffect implements Effect<LimiterParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private compressor: DynamicsCompressorNode;
   private clipper: WaveShaperNode;
   private makeupGain: GainNode;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.compressor = ctx.createDynamicsCompressor();
     this.compressor.knee.value = 0;

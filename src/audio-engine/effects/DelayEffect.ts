@@ -5,7 +5,7 @@ const MAX_DELAY_SEC = 4;
 
 /** Feedback delay with a lowpass filter in the feedback loop (tape-style damping). */
 export class DelayEffect implements Effect<DelayParams> {
-  private ctx: AudioContext;
+  private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
   private delay: DelayNode;
@@ -14,7 +14,7 @@ export class DelayEffect implements Effect<DelayParams> {
   private dryGain: GainNode;
   private wetGain: GainNode;
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.input = ctx.createGain();
     this.output = ctx.createGain();

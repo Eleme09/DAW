@@ -243,6 +243,37 @@ whoever reads it next.
   taking whichever is stronger (corrective vs. stylistic), EQ tilt math,
   skip-when-zero-mix logic, every preset producing a valid chain
 
+## Project Export ✅ (gap fix, not a numbered phase)
+
+Built between Phase 9 and Phase 10 after noticing a real hole against the
+brief's mobile workflow ("Mix → Master → Export"): there was no way to
+actually get a finished mix out of the DAW as a file.
+
+- ✅ Effects generalized from `AudioContext` to `BaseAudioContext`
+  (`Effect.ts` and all nine `*Effect.ts`/`EffectChain.ts`) — mechanical,
+  no behavior change, verified by the full existing test suite passing
+  unmodified
+- ✅ Offline bounce engine (`src/audio-engine/bounce.ts`): renders the full
+  project (every track's clips/volume/pan/mute/solo/inserts + master
+  inserts) to one stereo `AudioBuffer` via `OfflineAudioContext`, reusing
+  the same `EffectChain` the live engine uses — see AUDIO_ENGINE.md
+  "Offline bounce / project export" for the specific differences from
+  live playback (eager worklet load, t=0 scheduling, fixed reverb/delay
+  tail padding)
+- ✅ Export button in `TransportBar`: hydrates every sample referenced by
+  the project, bounces, encodes with the existing `wavEncoder.ts`,
+  triggers a browser download (`src/lib/audio/exportProject.ts`) — disabled
+  while there's nothing on the timeline or a take is recording
+- ✅ Verified in-browser with Playwright: imported a 2s test tone, added it
+  to a track, exported — downloaded WAV was stereo/44.1kHz/16-bit, 5s long
+  (2s clip + the 3s tail pad, as expected), non-silent (`maxAbs` well above
+  zero), zero console errors
+- ✅ tsc/lint/vitest (142 tests, unchanged) and `next build` all clean
+
+This is also the infrastructure Phase 10 (below) needs: analyzing the
+*actual summed mix* requires rendering it first, which is exactly what
+`bounceProject` now does.
+
 ## Phase 10 — AI Mix Assistant ⬜
 
 Session-wide diagnostics (masking, mud, harshness, gain staging) with
@@ -270,4 +301,6 @@ priority order (AI assistance, priority 5) and the last "AI improves an
 existing recording" phase before beat generation/reconstruction (priority
 6) starts building new content from scratch. Session-wide diagnostics
 (masking, mud, gain staging across tracks) is a natural extension of
-Phase 4's single-track analysis, not a new detection paradigm.
+Phase 4's single-track analysis, not a new detection paradigm — and now
+has `bounceProject` (see "Project Export" above) to render the actual
+summed mix to analyze, instead of only ever seeing per-track buffers.
