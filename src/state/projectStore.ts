@@ -35,6 +35,7 @@ interface ProjectState {
   selectTrack: (trackId: TrackId | null) => void;
 
   addEffect: (target: EffectTarget, type: EffectType) => void;
+  setEffectChain: (target: EffectTarget, inserts: EffectInstance[]) => void;
   removeEffect: (target: EffectTarget, effectId: string) => void;
   moveEffect: (target: EffectTarget, effectId: string, direction: -1 | 1) => void;
   updateEffectParams: (target: EffectTarget, effectId: string, params: EffectInstance["params"]) => void;
@@ -215,6 +216,9 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     addEffect: (target, type) => {
       const instance = createEffectInstance(type);
       mutateInserts(target, (inserts) => [...inserts, instance]);
+    },
+    setEffectChain: (target, inserts) => {
+      mutateInserts(target, () => inserts);
     },
     removeEffect: (target, effectId) => {
       mutateInserts(target, (inserts) => inserts.filter((e) => e.id !== effectId));

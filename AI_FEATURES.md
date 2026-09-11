@@ -47,19 +47,40 @@ Either way, results come back as **data** (numbers, suggested parameter
 sets) applied to the existing engine/effects, never as an alternate
 playback path.
 
+## Built (Phase 4)
+
+- **Vocal Analysis** (`src/audio-engine/analysis/`): clipping ratio, peak,
+  RMS, noise floor (windowed-RMS percentile — assumes the recording has
+  real quiet moments to measure, see `dynamicsAnalysis.ts`), dynamic
+  range, and spectral balance (mud/harshness/sibilance/low-end, each
+  reported **relative to the recording's own average level**, via a
+  from-scratch FFT — `fft.ts`/`spectralAnalysis.ts` — not the Web Audio
+  `AnalyserNode`, since this runs offline on a full buffer rather than a
+  live signal). Severity thresholds (`vocalAnalysis.ts`) are heuristic,
+  calibrated by ear against a handful of recordings — not trained on a
+  labeled dataset, and not presented as more precise than that. No pitch
+  analysis yet — pitch belongs to Phase 5, not duplicated here.
+- **Phone Mic Enhance** (`autoChain.ts`): a deterministic, inspectable
+  rule table maps the analysis to a concrete effect chain (Noise Gate → EQ
+  → De-Esser → Compressor → Limiter, each stage only added if its
+  corresponding problem was actually flagged) built from Phase 3's real
+  DSP nodes. This is the **Phone Mic Enhance** feature specifically
+  (artifacts typical of phone/earbud mics) — the broader, AI-driven "Auto
+  Vocal Engineer" below is still Phase 9 and will likely supersede or
+  extend this rule table rather than duplicate it.
+- **Honesty check, in code, not just prose**: when clipping is detected,
+  the UI surfaces it as an unfixable limitation instead of routing it
+  through the auto-chain as if it could be corrected (`vocalAnalysis.ts`'s
+  `limitations` array) — see PROJECT_SPEC.md's hard constraint.
+
 ## Planned surfaces (not built)
 
-- **Vocal Analysis** (Phase 3/9): clipping, peak, RMS, LUFS, noise floor,
-  dynamic range, spectral issues (mud, boxiness, harshness, sibilance),
-  pitch stability. Feeds "Auto Vocal Engineer."
-- **Auto Vocal Engineer** (Phase 9): analysis -> derived parameters for a
-  noise reduction -> HPF -> corrective EQ -> dynamic EQ -> de-esser ->
-  compressor -> saturation -> tone EQ -> pitch correction -> limiter chain.
+- **Auto Vocal Engineer** (Phase 9): broader than Phase 4's rule-based
+  Phone Mic Enhance — analysis -> derived parameters for a fuller chain
+  (dynamic EQ, saturation, tone shaping, pitch correction) and likely
+  AI/ML-assisted parameter suggestions, not just fixed thresholds.
   Parameters must come from the analysis, not a fixed preset — see
   principle 3.
-- **Phone Mic Enhance** (Phase 4): a specialized analysis profile tuned for
-  phone/earbud mic artifacts specifically (proximity effect, harsh upper
-  mids, room noise, inconsistent gain).
 - **Pitch/Autotune engine** (Phase 5): pitch detection, key/scale
   detection, correction with retune speed / humanize / formant controls.
   This is real-time-adjacent (needs to run during monitoring for a usable

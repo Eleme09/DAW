@@ -7,8 +7,12 @@ import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset, listSampleAssets } from "@/lib/storage/sampleIndex";
 import { deleteProject, listProjects, loadProject as loadProjectFromDisk } from "@/lib/storage/projectStore";
 import { hydrateProjectSamples } from "@/lib/audio/sampleLoader";
+import { analyzeVocalRecording } from "@/audio-engine/analysis/vocalAnalysis";
+import { buildPhoneMicEnhanceChain } from "@/audio-engine/analysis/autoChain";
 import { useProjectStore } from "@/state/projectStore";
+import { VocalAnalysisPanel } from "./VocalAnalysisPanel";
 import type { AudioClip, SampleAsset } from "@/types/project";
+import type { VocalAnalysisResult } from "@/types/analysis";
 
 type Tab = "projects" | "audio";
 
@@ -38,12 +42,17 @@ export function BrowserPanel() {
 function AudioTab() {
   const [samples, setSamples] = useState<SampleAsset[]>(() => listSampleAssets());
   const [importing, setImporting] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<Record<string, VocalAnalysisResult>>({});
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [enhancingId, setEnhancingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const project = useProjectStore((s) => s.project);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
   const addTrack = useProjectStore((s) => s.addTrack);
   const addClip = useProjectStore((s) => s.addClip);
+  const selectTrack = useProjectStore((s) => s.selectTrack);
+  const setEffectChain = useProjectStore((s) => s.setEffectChain);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -93,6 +102,38 @@ function AudioTab() {
       color: track.color,
     };
     addClip(clip);
+    return { track, clip };
+  }
+
+  async function analyzeSample(sample: SampleAsset) {
+    setAnalyzingId(sample.id);
+    try {
+      const buffer = await ensureSampleLoaded(sample.id);
+      if (!buffer) return;
+      const result = analyzeVocalRecording(buffer);
+      setAnalysisResults((prev) => ({ ...prev, [sample.id]: result }));
+    } finally {
+      setAnalyzingId(null);
+    }
+  }
+
+  async function enhanceSample(sample: SampleAsset) {
+    const result = analysisResults[sample.id];
+    if (!result) return;
+    setEnhancingId(sample.id);
+    try {
+      let track = project.tracks.find((t) => t.clips.some((c) => c.sampleId === sample.id));
+      if (!track) {
+        const created = await addSampleToTimeline(sample);
+        if (!created) return;
+        track = created.track;
+      }
+      const chain = buildPhoneMicEnhanceChain(result);
+      setEffectChain(track.id, chain);
+      selectTrack(track.id);
+    } finally {
+      setEnhancingId(null);
+    }
   }
 
   return (
@@ -119,15 +160,30 @@ function AudioTab() {
           <p className="mt-4 text-center text-neutral-600">No audio imported yet.</p>
         )}
         {samples.map((s) => (
-          <button
-            key={s.id}
-            onClick={() => addSampleToTimeline(s)}
-            className="mb-1 block w-full truncate rounded bg-neutral-900 px-2 py-2 text-left text-neutral-300 hover:bg-neutral-800"
-            title={`Add "${s.name}" to timeline`}
-          >
-            <div className="truncate font-medium text-neutral-200">{s.name}</div>
-            <div className="text-neutral-500">{s.durationSec.toFixed(1)}s</div>
-          </button>
+          <div key={s.id} className="mb-1 rounded bg-neutral-900 px-2 py-2 text-neutral-300">
+            <button
+              onClick={() => addSampleToTimeline(s)}
+              className="block w-full truncate text-left hover:text-neutral-100"
+              title={`Add "${s.name}" to timeline`}
+            >
+              <div className="truncate font-medium text-neutral-200">{s.name}</div>
+              <div className="text-neutral-500">{s.durationSec.toFixed(1)}s</div>
+            </button>
+            <button
+              onClick={() => analyzeSample(s)}
+              disabled={analyzingId === s.id}
+              className="mt-1 w-full rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+            >
+              {analyzingId === s.id ? "Analyzing…" : "Analyze"}
+            </button>
+            {analysisResults[s.id] && (
+              <VocalAnalysisPanel
+                result={analysisResults[s.id]}
+                onEnhance={() => enhanceSample(s)}
+                enhancing={enhancingId === s.id}
+              />
+            )}
+          </div>
         ))}
       </div>
     </div>

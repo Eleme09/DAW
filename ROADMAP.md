@@ -86,10 +86,33 @@ Deferred on purpose (not gaps, scope decisions — see `AUDIO_ENGINE.md`
 exciter, chorus/flanger/phaser, auto-pan, stereo width, true spectral/ML
 noise reduction (→ Phase 4), certified LUFS.
 
-## Phase 4 — Phone Mic Enhancement ⬜
+## Phase 4 — Phone Mic Enhancement ✅
 
-Specialized analysis + chain tuned for phone/earbud recordings specifically.
-Depends on Phase 3's DSP nodes existing.
+- ✅ Offline vocal analysis (`src/audio-engine/analysis/`): from-scratch
+  FFT, spectral band energies (relative to the recording's own average —
+  not absolute thresholds), noise floor/dynamic range/clipping via
+  windowed RMS, all combined into a categorical read (Noise/Low-end/Mud/
+  Harshness/Sibilance: Low/Medium/High, Dynamics: Controlled/Uncontrolled)
+- ✅ "Analyze" action per sample in the Audio browser tab, showing the
+  VOCAL ANALYSIS block
+- ✅ Rule-based "Phone Mic Enhance" auto-chain (`autoChain.ts`): measured
+  analysis -> concrete Phase 3 effect chain (gate -> EQ -> de-esser ->
+  compressor -> limiter, each stage only when its problem is actually
+  flagged), applied via "Enhance This Recording"
+- ✅ Honesty check built into the pipeline, not just documented: clipping
+  is reported as an unfixable limitation, never routed through the
+  auto-chain as if correctable
+- ✅ Verified in-browser: a synthesized noisy/muddy recording correctly
+  read Noise: High and Mud: High, Enhance applied a matching Noise Gate +
+  EQ chain, playback stayed glitch-free with the new chain live
+- ✅ 68 unit tests total (added: FFT correctness against known sine bins,
+  spectral band detection, dynamics/noise-floor math, auto-chain rule
+  mapping and stage ordering)
+
+True spectral/ML noise reduction is still not built — the gate silences
+gaps, it doesn't remove noise under the signal. Deferred, not hidden: see
+AUDIO_ENGINE.md "What's deliberately not here yet." Pitch analysis was
+deliberately kept out of this phase's result — that's Phase 5's job.
 
 ## Phase 5 — Pitch / Autotune ⬜
 
@@ -137,9 +160,9 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 4 (Phone Mic Enhancement) — the DSP building blocks
-from Phase 3 (EQ, compressor, de-esser, saturation, gate) are what a
-phone/earbud-tuned auto-chain would configure and apply; this is also
-where true noise reduction belongs (deferred out of Phase 3 on purpose).
-Phase 5 (pitch/autotune) is the other unblocked option if that's a higher
-priority to use first.
+**Next up:** Phase 5 (Pitch/Autotune) — key/scale detection, pitch
+correction with retune speed/humanize, which Phase 4's analysis
+deliberately left out so it wouldn't be duplicated. It's also the
+higher-complexity phase (likely needs an AudioWorklet for real-time
+monitoring, see AI_FEATURES.md's open question on this) worth tackling
+while the codebase's effect-chain patterns are still fresh context.

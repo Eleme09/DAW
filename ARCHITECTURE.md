@@ -44,6 +44,11 @@ src/
                      interface, plus EffectChain.ts which renders a track's
                      or the master bus's declarative insert list into real
                      nodes. See AUDIO_ENGINE.md "Effect chain".
+    analysis/         Offline vocal analysis (fft.ts, spectralAnalysis.ts,
+                     dynamicsAnalysis.ts, vocalAnalysis.ts, autoChain.ts).
+                     Runs once on a full AudioBuffer, never during
+                     playback — no AudioContext dependency, pure math,
+                     unit-tested. See AUDIO_ENGINE.md "Offline analysis".
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
@@ -51,6 +56,9 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
     project.ts       Shared data model: Project / Track / AudioClip / etc.
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
+    analysis.ts       VocalAnalysisResult: the categorical read
+                      (Noise/Mud/Harshness/... severities) analysis.ts
+                      produces and the UI/autoChain consume.
     effects.ts        Effect-chain data model: the EffectInstance
                       discriminated union + one params type per effect type.
                       Track.inserts / Project.masterInserts are EffectInstance[].

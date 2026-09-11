@@ -223,11 +223,69 @@ callback's timing). This is the one place Phase 1 already does lookahead
 scheduling — worth reusing that pattern instead of reinventing it when the
 clip scheduler eventually needs the same treatment.
 
+## Offline analysis (Phase 4)
+
+`src/audio-engine/analysis/` — this is the other half of the real-time/
+offline split described above: it runs once on a full `AudioBuffer`
+(never during playback), and never touches the live node graph directly.
+It hands back plain numbers/categorical results; `autoChain.ts` turns
+those into an `EffectInstance[]` the UI applies through the normal
+`setEffectChain` store action — same path as manually adding effects, not
+a separate mechanism.
+
+- **`fft.ts`** — a from-scratch iterative radix-2 FFT. Not the Web Audio
+  `AnalyserNode`: that's a live, single-frame, engine-attached tool built
+  for metering (see Analyzer above); this needs to run offline over an
+  entire buffer with proper windowing and frame-averaging, on a signal
+  that was never connected to an `AudioContext` in the first place (e.g.
+  a sample the user hasn't added to a track yet). Pure math, unit-tested
+  against known sine-wave bin positions.
+- **`spectralAnalysis.ts`** — Hann-windowed, 50%-overlap frame averaging
+  into 8 named bands (subBass/bass/lowMid/mid/highMid/presence/sibilance/
+  air). Reports each band **relative to the recording's own average bin
+  power**, not an absolute dB threshold — that's what makes "Mud: High"
+  mean the same thing whether the source recording is quiet or loud.
+- **`dynamicsAnalysis.ts`** — peak/RMS (reusing `loudness.ts`'s math),
+  clipping ratio (samples at/above ~0dBFS), and a noise-floor estimate
+  from the bottom ~10th percentile of 50ms-windowed RMS values. That
+  noise-floor estimate assumes the recording has real quiet moments
+  (breaths, gaps between phrases) — a take with no pauses at all reads its
+  own signal level as "noise floor," since there's nothing quieter to
+  find. Documented, not hidden.
+- **`vocalAnalysis.ts`** — turns the above into the categorical read the
+  UI shows (Noise/Low-end/Mud/Harshness/Sibilance: Low/Medium/High,
+  Dynamics: Controlled/Uncontrolled). Severity thresholds are heuristic —
+  calibrated by ear, not trained on a labeled dataset — and it's explicit
+  about it in the file's own header comment. No pitch/pitch-stability
+  field here on purpose: pitch analysis belongs to Phase 5, not
+  duplicated into this result.
+- **`autoChain.ts`** — the "Phone Mic Enhance" rule table: analysis ->
+  concrete `EffectInstance[]` using Phase 3's real effect types, in a
+  fixed signal-flow order (gate -> EQ -> de-esser -> compressor ->
+  limiter), each stage included only if its corresponding problem was
+  actually flagged. Deterministic and inspectable on purpose — see
+  AI_FEATURES.md principle 3 (AI proposes, DSP executes) and principle 5
+  (this is exactly the kind of thing that should be rules, not a model,
+  until rules stop being good enough).
+
+Clipping gets special handling everywhere in this pipeline: when
+`clippedSampleRatio` is non-trivial, `vocalAnalysis.ts` adds a message to
+`limitations` explaining that the audio at those points is gone and
+nothing here can recover it — and the chain that message produces does
+**not** try to compensate with extra processing. Reporting a limitation
+honestly beats quietly doing something that can't actually help (see
+PROJECT_SPEC.md's hard constraint on this project).
+
 ## What's deliberately not here yet
 
 - No pitch detection/correction (Phase 5).
-- No true spectral/ML noise reduction — only the envelope-follower Noise
-  Gate exists (Phase 3); real denoising is Phase 4 (phone mic enhancement).
+- No true spectral/ML noise reduction. What exists instead: the
+  envelope-follower Noise Gate (Phase 3, silences gaps between phrases)
+  and a gate-tuned auto-chain (Phase 4's `autoChain.ts`). Neither removes
+  noise sitting *underneath* a loud signal — that needs actual spectral
+  subtraction or a trained model (e.g. an RNNoise-style WASM module),
+  still not built. `vocalAnalysis.ts` says so explicitly when a
+  recording's noise floor is high, instead of implying the gate fixes it.
 - No multiband compressor, expander, exciter, chorus/flanger/phaser,
   auto-pan, or stereo-width tool. These were in the original effects list
   as "eventually" — the Phase 3 priority was getting EQ/compressor/
