@@ -18,11 +18,18 @@ export type EffectTarget = TrackId | "master";
 
 interface ProjectState {
   project: Project;
+  /** Undo/redo history of `project` snapshots. Continuous edits (dragging a
+   * fader, typing a name) coalesce into one entry — see `setProject`. */
+  past: Project[];
+  future: Project[];
   currentTime: number;
   isPlaying: boolean;
   selectedTrackId: TrackId | null;
   isRecording: boolean;
   recordingError: string | null;
+
+  undo: () => void;
+  redo: () => void;
 
   addTrack: (name?: string) => Track;
   removeTrack: (trackId: TrackId) => void;
@@ -66,8 +73,17 @@ function touch(project: Project): Project {
 
 const MIN_CLIP_SEC = 0.05;
 
+/** Consecutive coalesced edits (dragging a fader, typing a field) that land
+ * within this window collapse into a single undo step. */
+const COALESCE_MS = 400;
+/** Cap history length so an hours-long session doesn't grow this unbounded —
+ * project snapshots are plain JSON (no audio data), so this is cheap. */
+const HISTORY_LIMIT = 200;
+
 export const useProjectStore = create<ProjectState>((set, get) => {
   let unsubscribeTime: (() => void) | null = null;
+  let lastPushAt = 0;
+  let lastPushWasCoalescible = false;
 
   const attachEngineClock = () => {
     unsubscribeTime?.();
@@ -75,14 +91,30 @@ export const useProjectStore = create<ProjectState>((set, get) => {
   };
   attachEngineClock();
 
+  /** The single funnel every project-data mutation goes through, so
+   * undo/redo covers all of them uniformly. `coalesce: true` merges this
+   * change into the in-progress edit instead of creating a new undo step —
+   * use it for continuous input (drag, typing), never for discrete actions
+   * (add/remove, toggles) where every call must be its own step. */
+  function setProject(next: Project, opts?: { coalesce?: boolean; extra?: Partial<ProjectState> }) {
+    const { past, project: current } = get();
+    const now = Date.now();
+    const coalesce = Boolean(opts?.coalesce) && lastPushWasCoalescible && now - lastPushAt < COALESCE_MS;
+    const nextPast = coalesce ? past : [...past, current].slice(-HISTORY_LIMIT);
+    set({ project: next, past: nextPast, future: [], ...opts?.extra });
+    lastPushAt = now;
+    lastPushWasCoalescible = Boolean(opts?.coalesce);
+  }
+
   function mutateInserts(
     target: EffectTarget,
-    updater: (inserts: EffectInstance[]) => EffectInstance[]
+    updater: (inserts: EffectInstance[]) => EffectInstance[],
+    opts?: { coalesce?: boolean }
   ): void {
     const project = get().project;
     if (target === "master") {
       const nextProject = touch({ ...project, masterInserts: updater(project.masterInserts) });
-      set({ project: nextProject });
+      setProject(nextProject, opts);
       getAudioEngine().syncMasterInserts(nextProject.masterInserts);
       return;
     }
@@ -90,41 +122,63 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       ...project,
       tracks: project.tracks.map((t) => (t.id === target ? { ...t, inserts: updater(t.inserts) } : t)),
     });
-    set({ project: nextProject });
+    setProject(nextProject, opts);
     getAudioEngine().syncTracks(nextProject.tracks);
   }
 
   return {
     project: createEmptyProject(),
+    past: [],
+    future: [],
     currentTime: 0,
     isPlaying: false,
     selectedTrackId: null,
     isRecording: false,
     recordingError: null,
 
+    undo: () => {
+      const { past, project, future } = get();
+      const previous = past[past.length - 1];
+      if (!previous) return;
+      set({ project: previous, past: past.slice(0, -1), future: [project, ...future] });
+      getAudioEngine().syncTracks(previous.tracks);
+      getAudioEngine().syncMasterInserts(previous.masterInserts);
+      lastPushWasCoalescible = false;
+    },
+    redo: () => {
+      const { past, project, future } = get();
+      const next = future[0];
+      if (!next) return;
+      set({ project: next, past: [...past, project], future: future.slice(1) });
+      getAudioEngine().syncTracks(next.tracks);
+      getAudioEngine().syncMasterInserts(next.masterInserts);
+      lastPushWasCoalescible = false;
+    },
+
     addTrack: (name) => {
       const project = get().project;
       const track = createTrack(name ?? `Track ${project.tracks.length + 1}`, project.tracks.length);
-      set({ project: touch({ ...project, tracks: [...project.tracks, track] }), selectedTrackId: track.id });
+      setProject(touch({ ...project, tracks: [...project.tracks, track] }), {
+        extra: { selectedTrackId: track.id },
+      });
       return track;
     },
 
     removeTrack: (trackId) => {
       const project = get().project;
-      set({
-        project: touch({ ...project, tracks: project.tracks.filter((t) => t.id !== trackId) }),
-        selectedTrackId: get().selectedTrackId === trackId ? null : get().selectedTrackId,
+      const selectedTrackId = get().selectedTrackId === trackId ? null : get().selectedTrackId;
+      setProject(touch({ ...project, tracks: project.tracks.filter((t) => t.id !== trackId) }), {
+        extra: { selectedTrackId },
       });
     },
 
     updateTrack: (trackId, patch) => {
       const project = get().project;
-      set({
-        project: touch({
-          ...project,
-          tracks: project.tracks.map((t) => (t.id === trackId ? { ...t, ...patch } : t)),
-        }),
-      });
+      const coalesce = Object.keys(patch).every((k) => k === "volumeDb" || k === "pan");
+      setProject(
+        touch({ ...project, tracks: project.tracks.map((t) => (t.id === trackId ? { ...t, ...patch } : t)) }),
+        { coalesce }
+      );
       getAudioEngine().syncTracks(get().project.tracks);
     },
 
@@ -133,30 +187,30 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       const project = get().project;
       const target = project.tracks.find((t) => t.id === trackId);
       const nextArmed = !target?.armed;
-      set({
-        project: touch({
+      setProject(
+        touch({
           ...project,
           tracks: project.tracks.map((t) => ({ ...t, armed: t.id === trackId ? nextArmed : false })),
-        }),
-      });
+        })
+      );
     },
 
     addClip: (clip) => {
       const project = get().project;
-      set({
-        project: touch({
+      setProject(
+        touch({
           ...project,
           tracks: project.tracks.map((t) =>
             t.id === clip.trackId ? { ...t, clips: [...t.clips, clip] } : t
           ),
-        }),
-      });
+        })
+      );
     },
 
     updateClip: (trackId, clipId, patch) => {
       const project = get().project;
-      set({
-        project: touch({
+      setProject(
+        touch({
           ...project,
           tracks: project.tracks.map((t) =>
             t.id !== trackId
@@ -164,19 +218,20 @@ export const useProjectStore = create<ProjectState>((set, get) => {
               : { ...t, clips: t.clips.map((c) => (c.id === clipId ? { ...c, ...patch } : c)) }
           ),
         }),
-      });
+        { coalesce: true }
+      );
     },
 
     removeClip: (trackId, clipId) => {
       const project = get().project;
-      set({
-        project: touch({
+      setProject(
+        touch({
           ...project,
           tracks: project.tracks.map((t) =>
             t.id !== trackId ? t : { ...t, clips: t.clips.filter((c) => c.id !== clipId) }
           ),
-        }),
-      });
+        })
+      );
     },
 
     splitClipAtPlayhead: () => {
@@ -199,16 +254,16 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         fadeInSec: 0,
       };
 
-      set({
-        project: touch({
+      setProject(
+        touch({
           ...project,
           tracks: project.tracks.map((t) =>
             t.id !== track.id
               ? t
               : { ...t, clips: t.clips.flatMap((c) => (c.id === clip.id ? [left, right] : [c])) }
           ),
-        }),
-      });
+        })
+      );
     },
 
     selectTrack: (trackId) => set({ selectedTrackId: trackId }),
@@ -234,8 +289,10 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       });
     },
     updateEffectParams: (target, effectId, params) => {
-      mutateInserts(target, (inserts) =>
-        inserts.map((e) => (e.id === effectId ? ({ ...e, params } as EffectInstance) : e))
+      mutateInserts(
+        target,
+        (inserts) => inserts.map((e) => (e.id === effectId ? ({ ...e, params } as EffectInstance) : e)),
+        { coalesce: true }
       );
     },
     toggleEffectBypass: (target, effectId) => {
@@ -244,15 +301,15 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       );
     },
 
-    setBpm: (bpm) => set({ project: touch({ ...get().project, bpm }) }),
+    setBpm: (bpm) => setProject(touch({ ...get().project, bpm }), { coalesce: true }),
     setTimeSignature: (num, den) =>
-      set({ project: touch({ ...get().project, timeSignature: [num, den] }) }),
+      setProject(touch({ ...get().project, timeSignature: [num, den] }), { coalesce: true }),
     setLoop: (patch) =>
-      set({ project: touch({ ...get().project, loop: { ...get().project.loop, ...patch } }) }),
+      setProject(touch({ ...get().project, loop: { ...get().project.loop, ...patch } })),
     toggleMetronome: () => {
       const project = get().project;
       const enabled = !project.metronomeEnabled;
-      set({ project: touch({ ...project, metronomeEnabled: enabled }) });
+      setProject(touch({ ...project, metronomeEnabled: enabled }));
       getAudioEngine().setMetronomeEnabled(enabled, get().project.tracks, project.bpm);
     },
 
@@ -292,7 +349,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
           ...project,
           tracks: project.tracks.map((t) => (t.id === armedTrack!.id ? { ...t, armed: true } : t)),
         });
-        set({ project, selectedTrackId: armedTrack.id });
+        setProject(project, { extra: { selectedTrackId: armedTrack.id } });
       }
 
       set({ recordingError: null });
@@ -348,14 +405,25 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       get().addClip(clip);
     },
 
-    renameProject: (name) => set({ project: touch({ ...get().project, name }) }),
+    renameProject: (name) => setProject(touch({ ...get().project, name }), { coalesce: true }),
     loadProject: (project) => {
+      // Opening a different project starts a fresh undo history - carrying
+      // over the previous project's history would let undo cross documents.
       getAudioEngine().stop();
-      set({ project, currentTime: 0, isPlaying: false, selectedTrackId: null });
+      set({ project, currentTime: 0, isPlaying: false, selectedTrackId: null, past: [], future: [] });
+      lastPushWasCoalescible = false;
     },
     newProject: () => {
       getAudioEngine().stop();
-      set({ project: createEmptyProject(), currentTime: 0, isPlaying: false, selectedTrackId: null });
+      set({
+        project: createEmptyProject(),
+        currentTime: 0,
+        isPlaying: false,
+        selectedTrackId: null,
+        past: [],
+        future: [],
+      });
+      lastPushWasCoalescible = false;
     },
     persist: () => saveProject(get().project),
   };

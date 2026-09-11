@@ -108,6 +108,24 @@ export function NoteIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function UndoIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M7 7H15.5C18 7 20 9 20 11.5C20 14 18 16 15.5 16H10" />
+      <path d="M10.5 3.5L7 7L10.5 10.5" />
+    </svg>
+  );
+}
+
+export function RedoIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M17 7H8.5C6 7 4 9 4 11.5C4 14 6 16 8.5 16H14" />
+      <path d="M13.5 3.5L17 7L13.5 10.5" />
+    </svg>
+  );
+}
+
 export function BusIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

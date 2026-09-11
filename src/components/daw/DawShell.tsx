@@ -48,6 +48,18 @@ export function DawShell() {
       if (e.key === "s" || e.key === "S") {
         e.preventDefault();
         useProjectStore.getState().splitClipAtPlayhead();
+        return;
+      }
+      const isUndoRedoModifier = e.ctrlKey || e.metaKey;
+      if (isUndoRedoModifier && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        if (e.shiftKey) useProjectStore.getState().redo();
+        else useProjectStore.getState().undo();
+        return;
+      }
+      if (isUndoRedoModifier && (e.key === "y" || e.key === "Y")) {
+        e.preventDefault();
+        useProjectStore.getState().redo();
       }
     }
     window.addEventListener("keydown", onKeyDown);

@@ -10,10 +10,10 @@ Audit (verified by reading the code, 2026-09-11):
 
 - [x] `ARCHITECTURE.md` exists and documents the stack/directory layout. Does **not** yet cover the patterns/notes/automation data model (none of that exists yet) — will be extended as those land in FASE 4/6.
 - [x] Audio clock is already `AudioContext.currentTime`-based (`AudioEngine.ts` `getCurrentTime()`), with `requestAnimationFrame` driving UI polling and `setInterval` used only for metronome lookahead scheduling — this is the standard pattern, not a bug. No rework needed.
-- [ ] Undo/redo: **does not exist anywhere in the codebase** (confirmed by grep across `src/state` and `src/lib` — zero matches). Blocking per the master prompt.
+- [x] **Undo/redo — implemented.** `src/state/projectStore.ts`: every project-mutating action funnels through a new `setProject()` helper that maintains `past`/`future` snapshot stacks (capped at 200 entries). Continuous edits (fader/knob drag, typing a name, BPM) coalesce into a single undo step within a 400ms window instead of one step per tick; discrete actions (add/remove track or clip, add/remove/reorder effect, mute/solo/arm toggles) always get their own step. `loadProject`/`newProject` reset history. `undo()`/`redo()` re-sync the live audio graph (`syncTracks`/`syncMasterInserts`) after jumping. Wired to Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z, Ctrl+Y in `DawShell.tsx`, and to Undo/Redo icon buttons in `TransportBar.tsx` (disabled when there's nothing to undo/redo). Covered by 7 new tests in `projectStore.test.ts` (discrete undo/redo, redo-cleared-by-new-action, coalescing, non-coalescing across discrete actions, history-clear-on-new-project) — full suite (256 tests) and typecheck/lint pass.
 - [ ] Persistence: audio sample **blobs** already use IndexedDB (`src/lib/storage/sampleStore.ts`). Project **state** (tracks/clips/effects/settings) is JSON in `localStorage` (`src/lib/storage/projectStore.ts`) — needs migration to IndexedDB with autosave.
 
-Next in this phase: implement the global undo/redo command stack, then migrate project-state persistence to IndexedDB with autosave.
+Next in this phase: migrate project-state persistence to IndexedDB with autosave.
 
 ## FASE 1 — Sistema de diseño y shell móvil
 

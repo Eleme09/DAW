@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav } from "@/lib/audio/exportProject";
+import { UndoIcon, RedoIcon } from "./icons";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -30,6 +31,10 @@ export function TransportBar() {
   const toggleMetronome = useProjectStore((s) => s.toggleMetronome);
   const renameProject = useProjectStore((s) => s.renameProject);
   const persist = useProjectStore((s) => s.persist);
+  const undo = useProjectStore((s) => s.undo);
+  const redo = useProjectStore((s) => s.redo);
+  const canUndo = useProjectStore((s) => s.past.length > 0);
+  const canRedo = useProjectStore((s) => s.future.length > 0);
 
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -85,6 +90,25 @@ export function TransportBar() {
           title={isRecording ? "Stop recording" : "Record onto the armed track"}
         >
           ●
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+          className="flex h-10 w-10 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-30 sm:h-9 sm:w-9"
+        >
+          <UndoIcon className="h-4 w-4" />
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Shift+Z)"
+          className="flex h-10 w-10 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-30 sm:h-9 sm:w-9"
+        >
+          <RedoIcon className="h-4 w-4" />
         </button>
       </div>
 
