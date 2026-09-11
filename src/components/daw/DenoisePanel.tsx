@@ -9,6 +9,7 @@ import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset } from "@/lib/storage/sampleIndex";
 import { useProjectStore } from "@/state/projectStore";
 import type { AudioClip, SampleAsset } from "@/types/project";
+import { WaveformIcon } from "./icons";
 
 interface DenoisePanelProps {
   sample: SampleAsset;
@@ -87,7 +88,10 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
 
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1 font-semibold text-neutral-400">DENOISE</div>
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
+        <WaveformIcon className="h-3.5 w-3.5 text-orange-400" />
+        Denoise
+      </div>
 
       {loading ? (
         <p className="text-neutral-600">Analyzing noise floor…</p>

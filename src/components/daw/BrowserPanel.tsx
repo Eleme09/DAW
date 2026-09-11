@@ -318,6 +318,7 @@ function ProjectsTab() {
                 refresh();
               }}
               className="ml-2 shrink-0 text-neutral-500 hover:text-red-400"
+              title="Delete project"
               aria-label="Delete project"
             >
               ✕

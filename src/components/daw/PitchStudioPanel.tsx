@@ -18,6 +18,7 @@ import {
   type ScaleName,
 } from "@/types/pitch";
 import type { AudioClip, SampleAsset } from "@/types/project";
+import { NoteIcon } from "./icons";
 
 interface PitchStudioPanelProps {
   sample: SampleAsset;
@@ -109,7 +110,10 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
 
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1 font-semibold text-neutral-400">PITCH STUDIO</div>
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
+        <NoteIcon className="h-3.5 w-3.5 text-orange-400" />
+        Pitch Studio
+      </div>
 
       {analyzing && <p className="text-neutral-600">Analyzing pitch…</p>}
 

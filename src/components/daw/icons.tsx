@@ -98,6 +98,16 @@ export function TimelineIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function NoteIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="7" cy="17" r="3" />
+      <circle cx="16" cy="15" r="3" />
+      <path d="M10 17V5l9-2v10" />
+    </svg>
+  );
+}
+
 export function BusIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

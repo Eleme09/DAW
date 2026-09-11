@@ -41,6 +41,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             removeTrack(track.id);
           }}
           disabled={isLiveInput}
+          title="Delete track"
           className="shrink-0 text-neutral-600 hover:text-red-400 disabled:opacity-30"
         >
           ✕
@@ -70,8 +71,9 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             e.stopPropagation();
             updateTrack(track.id, { muted: !track.muted });
           }}
+          title={track.muted ? "Unmute" : "Mute"}
           className={`h-5 w-5 rounded text-[10px] font-bold ${
-            track.muted ? "bg-red-500 text-black" : "bg-neutral-800 text-neutral-400"
+            track.muted ? "bg-red-500 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
           }`}
         >
           M
@@ -81,8 +83,9 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             e.stopPropagation();
             updateTrack(track.id, { solo: !track.solo });
           }}
+          title={track.solo ? "Unsolo" : "Solo"}
           className={`h-5 w-5 rounded text-[10px] font-bold ${
-            track.solo ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400"
+            track.solo ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
           }`}
         >
           S

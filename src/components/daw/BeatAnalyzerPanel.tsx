@@ -16,6 +16,7 @@ import { useProjectStore } from "@/state/projectStore";
 import { NOTE_NAMES } from "@/types/pitch";
 import type { BeatAnalysisResult, DrumHitType } from "@/types/beat";
 import type { AudioClip, SampleAsset } from "@/types/project";
+import { BeatGridIcon } from "./icons";
 
 interface BeatAnalyzerPanelProps {
   sample: SampleAsset;
@@ -114,7 +115,10 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
 
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1 font-semibold text-neutral-400">BEAT ANALYZER</div>
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
+        <BeatGridIcon className="h-3.5 w-3.5 text-orange-400" />
+        Beat Analyzer
+      </div>
 
       {analyzing && <p className="text-neutral-600">Analyzing beat — longer tracks can take a moment…</p>}
 

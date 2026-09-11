@@ -22,7 +22,11 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
   return (
     <div className={`rounded border ${effect.bypassed ? "border-neutral-800 opacity-50" : "border-neutral-700"} bg-neutral-900`}>
       <div className="flex items-center gap-1 px-2 py-1.5">
-        <button onClick={() => setExpanded((v) => !v)} className="text-neutral-500">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          title={expanded ? "Collapse" : "Expand"}
+          className="text-neutral-500 hover:text-neutral-300"
+        >
           {expanded ? "▾" : "▸"}
         </button>
         <span className="flex-1 text-xs font-medium text-neutral-200">{EFFECT_LABELS[effect.type]}</span>
@@ -51,7 +55,11 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         >
           {effect.bypassed ? "OFF" : "ON"}
         </button>
-        <button onClick={() => removeEffect(target, effect.id)} className="text-neutral-600 hover:text-red-400">
+        <button
+          onClick={() => removeEffect(target, effect.id)}
+          title="Remove effect"
+          className="text-neutral-600 hover:text-red-400"
+        >
           ✕
         </button>
       </div>

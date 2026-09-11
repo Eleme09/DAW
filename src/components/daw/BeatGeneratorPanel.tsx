@@ -13,6 +13,7 @@ import { NOTE_NAMES } from "@/types/pitch";
 import type { ScaleName } from "@/types/pitch";
 import type { GenGenre, GenMood } from "@/types/beatGen";
 import type { AudioClip, SampleAsset } from "@/types/project";
+import { BeatGridIcon } from "./icons";
 
 const GENRE_LABELS: Record<GenGenre, string> = {
   trap: "Trap",
@@ -100,6 +101,10 @@ export function BeatGeneratorPanel() {
 
   return (
     <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2 text-xs">
+      <div className="flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+        <BeatGridIcon className="h-3.5 w-3.5 text-orange-400" />
+        Beat Generator
+      </div>
       <p className="text-neutral-500">
         Generates a rule-based drum/bass/chords/melody sketch as 4 new tracks, using the project&apos;s
         current BPM ({project.bpm}). Synthesized placeholder instruments (oscillators + filtered noise),

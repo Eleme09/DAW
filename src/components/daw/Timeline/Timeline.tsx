@@ -24,6 +24,14 @@ export function Timeline() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-neutral-950">
       <div className="relative flex-1 overflow-auto">
+        {project.tracks.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-1 text-center">
+            <p className="text-sm font-medium text-neutral-500">No tracks yet</p>
+            <p className="text-xs text-neutral-700">
+              Import a sample from the Samples tab, or click + Add Track below
+            </p>
+          </div>
+        )}
         <div className="relative" style={{ width: HEADER_WIDTH + contentWidth }}>
           <div className="sticky top-0 z-20 flex">
             <div

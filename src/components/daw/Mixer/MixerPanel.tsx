@@ -11,6 +11,11 @@ export function MixerPanel() {
 
   return (
     <div className="flex h-48 shrink-0 gap-2 overflow-x-auto border-t border-neutral-800 bg-neutral-950 p-2">
+      {tracks.length === 0 && (
+        <div className="flex flex-1 items-center justify-center text-xs text-neutral-700">
+          No tracks yet — add one from the Timeline
+        </div>
+      )}
       {tracks.map((track) => (
         <div
           key={track.id}
@@ -27,6 +32,7 @@ export function MixerPanel() {
               step={0.5}
               value={track.volumeDb}
               onChange={(e) => updateTrack(track.id, { volumeDb: Number(e.target.value) })}
+              title={`Volume ${track.volumeDb.toFixed(1)} dB`}
               className="h-24 w-6 accent-orange-500"
               style={{ writingMode: "vertical-lr", direction: "rtl" }}
             />
@@ -36,16 +42,18 @@ export function MixerPanel() {
           <div className="flex gap-1">
             <button
               onClick={() => updateTrack(track.id, { muted: !track.muted })}
+              title={track.muted ? "Unmute" : "Mute"}
               className={`h-5 w-5 rounded text-[10px] font-bold ${
-                track.muted ? "bg-red-500 text-black" : "bg-neutral-800 text-neutral-400"
+                track.muted ? "bg-red-500 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               }`}
             >
               M
             </button>
             <button
               onClick={() => updateTrack(track.id, { solo: !track.solo })}
+              title={track.solo ? "Unsolo" : "Solo"}
               className={`h-5 w-5 rounded text-[10px] font-bold ${
-                track.solo ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400"
+                track.solo ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               }`}
             >
               S

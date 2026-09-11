@@ -9,6 +9,7 @@ import { createEffectInstance } from "@/types/effects";
 import { useProjectStore } from "@/state/projectStore";
 import type { MixAnalysisResult, MixSuggestion } from "@/types/mixAnalysis";
 import type { Severity } from "@/types/analysis";
+import { MixIcon } from "./icons";
 
 const PLATFORMS = Object.keys(PLATFORM_LABELS) as MasteringPlatform[];
 
@@ -80,6 +81,10 @@ export function MixAssistantPanel() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-2 text-xs">
+      <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+        <MixIcon className="h-3.5 w-3.5 text-orange-400" />
+        AI Mix Assistant
+      </div>
       <button
         onClick={runAnalysis}
         disabled={analyzing || !hasEnoughAudio}

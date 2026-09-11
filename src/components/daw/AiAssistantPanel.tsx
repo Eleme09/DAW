@@ -5,6 +5,7 @@ import { httpAssistantProvider } from "@/lib/ai/assistantProvider";
 import { applyEffectAction } from "@/lib/ai/applyAssistantAction";
 import { useProjectStore } from "@/state/projectStore";
 import type { AssistantProposedAction, AssistantTurnResult } from "@/types/assistant";
+import { SparkleIcon } from "./icons";
 
 /**
  * Natural-language AI Music Assistant (Phase 13). Every proposed action
@@ -65,6 +66,10 @@ export function AiAssistantPanel() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-2 text-xs">
+      <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+        <SparkleIcon className="h-3.5 w-3.5 text-orange-400" />
+        AI Assistant
+      </div>
       <p className="mb-2 text-neutral-500">
         Describe a change in plain language (e.g. &quot;make the vocal darker&quot;, &quot;add some reverb
         to the beat&quot;). The assistant proposes concrete parameter changes — nothing is applied until

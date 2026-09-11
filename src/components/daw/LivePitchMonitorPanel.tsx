@@ -136,8 +136,8 @@ export function LivePitchMonitorPanel() {
             <span className="text-orange-400">{hzToNoteLabel(live.targetHz)}</span>
           </div>
 
-          <span className="text-red-400" title="El mic se manda directo al parlante/auriculares para que te escuches en tiempo real.">
-            ⚠ Usá auriculares — sin ellos vas a tener feedback/eco
+          <span className="text-red-400" title="The mic feeds directly to your speakers/headphones so you can hear yourself corrected in real time.">
+            ⚠ Use headphones — without them you&apos;ll get feedback/echo
           </span>
         </>
       )}

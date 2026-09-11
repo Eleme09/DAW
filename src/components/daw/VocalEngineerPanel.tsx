@@ -9,6 +9,7 @@ import { useProjectStore } from "@/state/projectStore";
 import type { VocalAnalysisResult } from "@/types/analysis";
 import type { GenreStyle, VocalCharacter } from "@/types/vocalStyle";
 import type { AudioClip, SampleAsset } from "@/types/project";
+import { SparkleIcon } from "./icons";
 
 interface VocalEngineerPanelProps {
   sample: SampleAsset;
@@ -79,7 +80,10 @@ export function VocalEngineerPanel({ sample }: VocalEngineerPanelProps) {
 
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1 font-semibold text-neutral-400">VOCAL ENGINEER</div>
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
+        <SparkleIcon className="h-3.5 w-3.5 text-orange-400" />
+        Vocal Engineer
+      </div>
 
       {analyzing && <p className="text-neutral-600">Analyzing…</p>}
 

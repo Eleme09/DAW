@@ -8,6 +8,7 @@ import { detectBeatKey, matchVocalToBeat } from "@/audio-engine/matching/vocalBe
 import { NOTE_NAMES } from "@/types/pitch";
 import { listSampleAssets } from "@/lib/storage/sampleIndex";
 import type { VocalBeatMatchResult } from "@/types/match";
+import { MatchIcon } from "./icons";
 
 export function VocalBeatMatchPanel() {
   const [samples] = useState(() => listSampleAssets());
@@ -40,6 +41,10 @@ export function VocalBeatMatchPanel() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden p-2 text-xs">
+      <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+        <MatchIcon className="h-3.5 w-3.5 text-orange-400" />
+        Vocal Match
+      </div>
       {samples.length < 2 ? (
         <p className="mt-4 text-center text-neutral-600">Import a vocal take and a beat first.</p>
       ) : (

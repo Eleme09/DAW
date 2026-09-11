@@ -222,6 +222,8 @@ function EqEditor({ bands, onChange }: { bands: EqBand[]; onChange: (bands: EqBa
               type="checkbox"
               checked={band.enabled}
               onChange={(e) => updateBand(band.id, { enabled: e.target.checked })}
+              title={band.enabled ? "Disable band" : "Enable band"}
+              className="accent-orange-500"
             />
             <select
               value={band.type}
@@ -234,7 +236,11 @@ function EqEditor({ bands, onChange }: { bands: EqBand[]; onChange: (bands: EqBa
               <option value="highshelf">High shelf</option>
               <option value="lowpass">Low-pass</option>
             </select>
-            <button onClick={() => removeBand(band.id)} className="text-neutral-600 hover:text-red-400">
+            <button
+              onClick={() => removeBand(band.id)}
+              title="Remove band"
+              className="text-neutral-600 hover:text-red-400"
+            >
               ✕
             </button>
           </div>

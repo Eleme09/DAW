@@ -20,15 +20,20 @@ export function Ruler({ width, onSeek }: RulerProps) {
         onSeek(Math.max(0, (e.clientX - rect.left) / PIXELS_PER_SECOND));
       }}
     >
-      {ticks.map((s) => (
-        <div
-          key={s}
-          className="absolute top-0 h-full border-l border-neutral-800 pl-1 text-[10px] text-neutral-500"
-          style={{ left: s * PIXELS_PER_SECOND }}
-        >
-          {s % 5 === 0 ? `${s}s` : ""}
-        </div>
-      ))}
+      {ticks.map((s) => {
+        const isMajor = s % 5 === 0;
+        return (
+          <div
+            key={s}
+            className={`absolute top-0 h-full pl-1 text-[10px] ${
+              isMajor ? "border-l border-neutral-700 text-neutral-400" : "border-l border-neutral-900 text-transparent"
+            }`}
+            style={{ left: s * PIXELS_PER_SECOND }}
+          >
+            {isMajor ? `${s}s` : ""}
+          </div>
+        );
+      })}
     </div>
   );
 }
