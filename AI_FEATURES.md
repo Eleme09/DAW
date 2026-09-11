@@ -257,6 +257,28 @@ playback path.
   Beat Analyzer panel (no separate flow) — creates Drums/Bass/Chords
   tracks from the panel's already-computed analysis.
 
+## Built (Phase 13, part 1)
+
+- **Mastering Assistant** (`masteringTargets.ts` + `loudness.ts`'s
+  `approxLufsFromMix`): per-platform LUFS targets compared against the
+  actual bounced mix's approximate loudness, with a suggested master-gain
+  trim — the half of Phase 13 that's fully rule-based and needed no
+  external dependency, built ahead of the natural-language assistant
+  below (which does).
+- **Explicit "not a guarantee" framing**: platform loudness-normalization
+  targets are published by each platform but change over time and aren't
+  contractually exact — the UI says so rather than implying a precise,
+  permanent number.
+- **Same approximation used consistently**: the offline mastering LUFS
+  read uses the exact same K-weighting filter chain as the existing live
+  Analyzer meter (see AUDIO_ENGINE.md "Mastering Assistant" for why that
+  mattered enough to add two new filter functions rather than reuse a
+  simpler/different approximation).
+- **No new effect type for the correction**: applies as a 1:1-ratio
+  compressor (pure makeup gain, no actual compression at that ratio)
+  inserted into the master chain — reuses Compressor rather than adding a
+  dedicated "Gain" effect for one use case.
+
 ## Open technical decisions (for whoever builds these)
 
 - Which pitch-detection algorithm/library (autocorrelation, YIN, CREPE-style

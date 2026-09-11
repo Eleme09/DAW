@@ -90,6 +90,11 @@ src/
                      Assistant (Phase 10)".
     audioBufferUtils.ts  Shared AudioBuffer helpers (mixToMono) used by
                      analysis/, pitch/, beat/, and matching/ alike.
+    masteringTargets.ts  Phase 13's per-platform LUFS targets + gain-
+                     suggestion function (pure, unit-tested). Paired with
+                     loudness.ts's approxLufsFromMix, which offline-
+                     replicates the live K-weighting tap using
+                     beat/filters.ts's highpassFilter/highShelfFilter.
     generate/        Phase 11's Beat Generator: progressions.ts (chord
                      progression + diatonic triad logic), drumPatterns.ts,
                      bassGenerator.ts, melodyGenerator.ts, rng.ts (seeded

@@ -393,21 +393,46 @@ Reconstruction quality is bounded by Phase 6's own detection quality
 drum classification) — inherited limitations, not new ones, and the UI
 calls this "best-effort approximation," never a lossless transcription.
 
-## Phase 13 — Advanced AI ⬜
+## Phase 13 — Advanced AI 🚧
 
-Natural-language assistant that executes project mutations, mastering
-assistant with per-platform LUFS targets.
+- ✅ **Mastering Assistant** (`masteringTargets.ts` + `loudness.ts`'s
+  `approxLufsFromMix`): per-platform LUFS targets (Spotify/Apple Music/
+  YouTube/SoundCloud/TikTok) compared against the bounced mix's
+  approximate loudness (reusing the exact same K-weighting filter chain
+  as the live Analyzer meter — two new pure filter functions,
+  `highpassFilter`/`highShelfFilter`, added to `beat/filters.ts` so the
+  offline and live readings stay consistent), with a suggested master-
+  gain trim folded into the existing Mix Assistant panel. Applies as a
+  1:1-ratio compressor makeup-gain stage — no new effect type needed.
+  Verified in-browser: switching platforms recomputed the target/delta
+  live, applying added exactly the expected Compressor (ratio 1.0:1,
+  threshold 0dB, makeup +2.6dB in the verification run) to the master
+  chain, zero console errors. 9 new unit tests (214 total): filter
+  frequency-response checks, `approxLufsFromMix` silence/loudness/
+  K-weighting behavior, and every mastering-suggestion direction
+  (turn up, turn down, already-at-target, silence).
+- ⬜ **Natural-language AI Music Assistant**: not started — this is the
+  one remaining piece of the entire original roadmap, and it's a real
+  decision point rather than an engineering one. Every other AI feature
+  in this project (Phases 4/9/10/11/12/13's mastering half) is local,
+  rule-based DSP/math with zero external dependency. A natural-language
+  command interface ("make this vocal darker" -> concrete project
+  mutations) fundamentally needs an actual LLM call, which means picking
+  a provider, deciding whether the user supplies their own API key, and
+  reconciling that against the brief's own "no mandatory paid API"
+  principle. See AI_FEATURES.md's open question on this — this is
+  exactly the kind of decision that needs the user's input before
+  building further, not an engineering call to make unilaterally.
 
 ---
 
-**Next up:** Phase 13 (Advanced AI) — the last phase in PROJECT_SPEC.md's
-roadmap: a natural-language assistant that resolves commands ("make this
-vocal darker") to concrete project mutations through the same Zustand
-actions the UI already uses (never a separate mutation path), plus a
-mastering assistant with per-platform LUFS targets. This is the first
-phase that plausibly needs a real LLM call rather than local rule-based
-DSP/math — worth deciding behind a swappable provider interface (per
-AI_FEATURES.md's existing open question on this) rather than hardcoding
-one vendor's SDK into the assistant logic, and worth being explicit in
-the UI about what "AI not configured" degrades to, per principle 1 (AI
-must be optional, the DAW works with zero AI configured).
+**Next up:** the natural-language AI Music Assistant half of Phase 13 —
+blocked on a decision only the user can make (LLM provider, whether/how
+an API key is supplied, how that squares with the brief's "no mandatory
+paid API" principle), asked about directly rather than guessed at. Once
+resolved: commands should resolve to concrete project mutations through
+the same Zustand actions the UI already uses (never a separate mutation
+path), kept behind a swappable provider interface so the LLM vendor isn't
+hardcoded into the assistant logic, and the DAW must keep working with
+zero AI configured (principle 1) — the UI should say plainly when the
+assistant isn't available rather than failing unclearly.

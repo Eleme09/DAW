@@ -83,6 +83,8 @@ export interface MixAnalysisResult {
     dynamicRangeDb: number;
     peakDb: number;
     rmsDb: number;
+    /** Approximate K-weighted loudness of the full mix — see loudness.ts's approxLufsFromMix. */
+    approxLufs: number;
   };
   tracks: TrackBandProfile[];
   masking: MaskingFinding[];

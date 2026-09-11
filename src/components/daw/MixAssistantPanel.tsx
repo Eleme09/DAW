@@ -4,9 +4,13 @@ import { useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { hydrateProjectSamples } from "@/lib/audio/sampleLoader";
 import { analyzeMix } from "@/audio-engine/analysis/mixAnalysis";
+import { PLATFORM_LABELS, suggestMasteringGain, type MasteringPlatform } from "@/audio-engine/masteringTargets";
+import { createEffectInstance } from "@/types/effects";
 import { useProjectStore } from "@/state/projectStore";
 import type { MixAnalysisResult, MixSuggestion } from "@/types/mixAnalysis";
 import type { Severity } from "@/types/analysis";
+
+const PLATFORMS = Object.keys(PLATFORM_LABELS) as MasteringPlatform[];
 
 const SEVERITY_COLOR: Record<Severity, string> = {
   low: "text-green-400",
@@ -20,6 +24,8 @@ export function MixAssistantPanel() {
   const [result, setResult] = useState<MixAnalysisResult | null>(null);
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<MasteringPlatform>("spotify");
+  const [masterGainApplied, setMasterGainApplied] = useState(false);
 
   const project = useProjectStore((s) => s.project);
   const setEffectChain = useProjectStore((s) => s.setEffectChain);
@@ -32,6 +38,7 @@ export function MixAssistantPanel() {
     setAnalyzing(true);
     setResult(null);
     setAppliedIds(new Set());
+    setMasterGainApplied(false);
     try {
       const sampleIds = Array.from(
         new Set(project.tracks.flatMap((t) => t.clips.map((c) => c.sampleId)))
@@ -56,6 +63,19 @@ export function MixAssistantPanel() {
       updateTrack(track.id, { volumeDb: track.volumeDb + suggestion.deltaDb });
     }
     setAppliedIds((prev) => new Set(prev).add(suggestion.id));
+  }
+
+  function applyMasterGain(deltaDb: number) {
+    // A ratio-1 compressor is just a makeup-gain stage — no compression happens at 1:1, so this is
+    // purely a master gain trim, reusing an existing effect type instead of adding a dedicated one.
+    const gainStage = createEffectInstance("compressor");
+    if (gainStage.type === "compressor") {
+      gainStage.params.ratio = 1;
+      gainStage.params.thresholdDb = 0;
+      gainStage.params.makeupDb = deltaDb;
+    }
+    setEffectChain("master", [...project.masterInserts, gainStage]);
+    setMasterGainApplied(true);
   }
 
   return (
@@ -96,7 +116,58 @@ export function MixAssistantPanel() {
                   {result.mix.peakDb.toFixed(1)} / {result.mix.rmsDb.toFixed(1)} dB
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">LUFS (approx.)</span>
+                <span className="text-neutral-300">
+                  {Number.isFinite(result.mix.approxLufs) ? result.mix.approxLufs.toFixed(1) : "-∞"}
+                </span>
+              </div>
             </div>
+          </section>
+
+          <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
+            <div className="mb-1 font-semibold text-neutral-400">MASTERING</div>
+            <p className="mb-2 text-[11px] text-neutral-600">
+              Published streaming-normalization targets, not a guarantee of exact platform behavior.
+              Applies as a master-bus gain trim (a 1:1-ratio compressor stage used purely for its
+              makeup gain) — review before exporting.
+            </p>
+            <select
+              value={platform}
+              onChange={(e) => {
+                setPlatform(e.target.value as MasteringPlatform);
+                setMasterGainApplied(false);
+              }}
+              className="mb-2 w-full rounded bg-neutral-900 px-2 py-1.5 text-[11px] text-neutral-300"
+            >
+              {PLATFORMS.map((p) => (
+                <option key={p} value={p}>
+                  {PLATFORM_LABELS[p]}
+                </option>
+              ))}
+            </select>
+            {(() => {
+              const suggestion = suggestMasteringGain(result.mix.approxLufs, platform);
+              return (
+                <>
+                  <div className="mb-2 flex justify-between text-[11px]">
+                    <span className="text-neutral-500">Target</span>
+                    <span className="text-neutral-300">{suggestion.targetLufs} LUFS</span>
+                  </div>
+                  <button
+                    onClick={() => applyMasterGain(suggestion.deltaDb)}
+                    disabled={masterGainApplied || Math.abs(suggestion.deltaDb) < 0.1}
+                    className="w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                  >
+                    {masterGainApplied
+                      ? "Applied"
+                      : Math.abs(suggestion.deltaDb) < 0.1
+                        ? "Already at target"
+                        : `Apply ${suggestion.deltaDb > 0 ? "+" : ""}${suggestion.deltaDb.toFixed(1)}dB master gain`}
+                  </button>
+                </>
+              );
+            })()}
           </section>
 
           <section className="rounded border border-neutral-800 bg-neutral-950 p-2">

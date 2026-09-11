@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeMeanSquare, computePeakDb, computeRmsDb, meanSquareToLufsApprox } from "./loudness";
+import { approxLufsFromMix, computeMeanSquare, computePeakDb, computeRmsDb, meanSquareToLufsApprox } from "./loudness";
 
 describe("computePeakDb / computeRmsDb", () => {
   it("full-scale sample reads 0 dBFS peak", () => {
@@ -39,5 +39,33 @@ describe("computeMeanSquare / meanSquareToLufsApprox", () => {
 
   it("full-scale DC mean square (1.0) maps to the ITU offset constant", () => {
     expect(meanSquareToLufsApprox(1)).toBeCloseTo(-0.691, 3);
+  });
+});
+
+describe("approxLufsFromMix", () => {
+  const SAMPLE_RATE = 44100;
+
+  function makeTone(freqHz: number, amp: number, seconds: number): Float32Array {
+    const n = Math.floor(SAMPLE_RATE * seconds);
+    const data = new Float32Array(n);
+    for (let i = 0; i < n; i++) data[i] = Math.sin((2 * Math.PI * freqHz * i) / SAMPLE_RATE) * amp;
+    return data;
+  }
+
+  it("silence reads -Infinity", () => {
+    const silence = new Float32Array(SAMPLE_RATE * 0.5);
+    expect(approxLufsFromMix(silence, SAMPLE_RATE)).toBe(-Infinity);
+  });
+
+  it("a louder tone reads a higher approx-LUFS than a quieter one", () => {
+    const quiet = approxLufsFromMix(makeTone(1000, 0.1, 0.5), SAMPLE_RATE);
+    const loud = approxLufsFromMix(makeTone(1000, 0.5, 0.5), SAMPLE_RATE);
+    expect(loud).toBeGreaterThan(quiet);
+  });
+
+  it("a sub-60Hz tone reads much quieter than a mid-range tone at the same amplitude (highpass in the K-weighting chain)", () => {
+    const sub = approxLufsFromMix(makeTone(30, 0.5, 0.5), SAMPLE_RATE);
+    const mid = approxLufsFromMix(makeTone(1000, 0.5, 0.5), SAMPLE_RATE);
+    expect(sub).toBeLessThan(mid - 10);
   });
 });

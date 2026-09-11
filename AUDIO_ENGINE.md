@@ -740,6 +740,45 @@ confirmed 3 non-silent tracks with waveforms reflecting the actual
 detected hit/note/chord counts, played back cleanly with live meters,
 zero console errors.
 
+## Mastering Assistant (Phase 13, part 1)
+
+`src/audio-engine/masteringTargets.ts` + `loudness.ts`'s
+`approxLufsFromMix` + `beat/filters.ts`'s new `highpassFilter`/
+`highShelfFilter`. Per-platform LUFS targets (Spotify/Apple Music/
+YouTube/SoundCloud/TikTok — published streaming-normalization figures,
+not derived from this project's own measurements, and documented as
+"not a guarantee of exact platform behavior" since platforms change these
+over time) compared against the actual bounced mix's approximate
+loudness, with a suggested master-gain trim to close the gap.
+
+**Consistency, not a second loudness metric**: the live Analyzer's
+"LUFS (approx.)" already applies a 2-stage K-weighting approximation
+(highshelf ~1.5kHz +4dB, then highpass ~60Hz) via live `BiquadFilterNode`s
+tapped off the master bus (see "Master bus loudness tap" above).
+`approxLufsFromMix` is the *offline* equivalent of that exact same
+filter chain — new `highpassFilter`/`highShelfFilter` functions added to
+`beat/filters.ts` (RBJ cookbook coefficients, same pattern as the
+existing `lowpassFilter`, refactored to share one `runBiquad` helper) so
+a bounced-mix LUFS reading and the live meter reading stay consistent
+with each other for comparable material, instead of silently using two
+different approximations under the same "LUFS (approx.)" label.
+
+**Applying a suggestion doesn't invent a new effect type**: the suggested
+gain lands as a compressor inserted into `masterInserts` with `ratio: 1`
+and `thresholdDb: 0` — at a 1:1 ratio no compression ever actually
+happens regardless of threshold, so this is purely a makeup-gain stage,
+reusing the existing Compressor effect instead of adding a dedicated
+"Gain" effect type for one narrow use. Verified in-browser: applying a
++2.6dB Apple Music suggestion added exactly that — Compressor, ratio
+1.0:1, threshold 0dB, makeup +2.6dB — visible and further editable in the
+master Effects Rack like any other insert.
+
+**Where this lives in the UI**: folded into the existing Mix Assistant
+panel (Phase 10) rather than a separate tab — it's naturally the same
+"look at the whole mix" workflow, and it reuses that panel's already-
+bounced full mix (`MixAnalysisResult.mix.approxLufs`) instead of
+triggering a second render.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch

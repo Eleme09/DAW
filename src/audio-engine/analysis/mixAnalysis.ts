@@ -1,5 +1,6 @@
 import { bounceProject, type BounceOptions } from "../bounce";
 import { mixToMono } from "../audioBufferUtils";
+import { approxLufsFromMix } from "../loudness";
 import { analyzeDynamics } from "./dynamicsAnalysis";
 import { computeAveragePowerSpectrum, VOCAL_BANDS } from "./spectralAnalysis";
 import { analyzeVocalChannel } from "./vocalAnalysis";
@@ -99,6 +100,7 @@ export async function analyzeMix(
       dynamicRangeDb: mixRead.metrics.dynamicRangeDb,
       peakDb: mixRead.metrics.peakDb,
       rmsDb: mixRead.metrics.rmsDb,
+      approxLufs: approxLufsFromMix(fullMixMono, fullMix.sampleRate),
     },
     tracks: profiles,
     masking,
