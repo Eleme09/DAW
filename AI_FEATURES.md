@@ -96,6 +96,30 @@ playback path.
 - **Manual note editing**: not built. The pitch track is visible but not
   yet draggable/editable — a real gap, not hidden.
 
+## Built (real-time pitch monitor)
+
+- **Live "🎤 Live Tune" monitor** (`public/worklets/
+  realtime-pitch-processor.js`): hear your own voice corrected toward the
+  nearest scale note *while singing*, addressing the exact use case the
+  offline pipeline above explicitly deferred ("what a real-time version
+  would need instead"). A from-scratch causal reimplementation of the
+  same three algorithmic stages (YIN detection, glide+humanize
+  correction curve, pitch-shifting resynthesis) — not a reuse of the
+  offline code, which fundamentally needs the whole take up front. See
+  AUDIO_ENGINE.md "Real-time pitch monitor" for the full design,
+  including a real bug (a naive grain-reset design that measurably
+  applied zero net correction) caught by rendering known test tones
+  through the worklet via `OfflineAudioContext` and measuring the output
+  frequency — worth reading before touching this file again.
+- **Deliberate, narrow exception to "mic never touches output"**: opt-in
+  only, off by default, with a persistent UI warning to use headphones.
+  Recording is unaffected — it still always captures the dry signal.
+- **Real limitations, stated plainly**: ~30-50ms latency, no formant
+  preservation (same as offline), an occasional brief crossfade artifact
+  when the internal delay periodically rebases, and pitch ratio clamped
+  to roughly ±6 semitones (nudging toward a nearby note, not arbitrary
+  transposition).
+
 ## Built (Phase 6)
 
 - **Beat Analyzer** (`src/audio-engine/beat/`): BPM (autocorrelation of an
@@ -160,11 +184,6 @@ playback path.
   Still fully rule-based, not ML — same principle-3 reasoning as Phase 4:
   deterministic, inspectable, and every result stays editable afterward
   in the Effects Rack like any manually-built chain.
-- **Real-time pitch correction** (monitor live while singing): the offline
-  Phase 5 pipeline above handles "record then correct"; live correction
-  needs a streaming pitch tracker and an `AudioWorklet`-based shifter with
-  bounded look-ahead instead — a different architecture, not an extension
-  of the offline one. See AUDIO_ENGINE.md.
 - **Formant preservation** in pitch correction (Phase 5's `psola.ts` — see
   AUDIO_ENGINE.md for why this was left out of the first pass).
 - **AI Music Assistant** (Phase 13): natural-language commands ("make this

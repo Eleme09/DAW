@@ -146,9 +146,49 @@ deliberately kept out of this phase's result — that's Phase 5's job.
   re-detect test confirming corrected audio actually lands near the target
 
 Deliberately not built (see AUDIO_ENGINE.md "What's deliberately not here
-yet" and AI_FEATURES.md): real-time/live pitch correction, formant
-preservation, manual note editing (the pitch track is visible, not yet
-draggable).
+yet" and AI_FEATURES.md): formant preservation, manual note editing (the
+pitch track is visible, not yet draggable). Real-time/live pitch
+correction was deferred here but has since been built — see "Real-time
+pitch monitor" below.
+
+## Real-time pitch monitor ✅ (built after the original 13-phase roadmap)
+
+The user explicitly asked for this after reviewing the finished roadmap —
+"debe sonar conmigo cuando cante, es la manera de caer en nota" (I need to
+hear it while I sing, that's how I land on the note). Addresses exactly
+the gap Phase 5 named and deferred.
+
+- ✅ `public/worklets/realtime-pitch-processor.js`: causal YIN detection +
+  streaming glide/humanize correction curve + a delay-line pitch shifter,
+  all reimplemented from scratch for streaming/causal operation (the
+  offline PSOLA pipeline can't run causally — see AUDIO_ENGINE.md)
+- ✅ `AudioEngine.enableLivePitchMonitor`/`disableLivePitchMonitor`/
+  `updateLivePitchMonitorSettings`: routes the mic through the worklet to
+  `ctx.destination` — a deliberate, narrow, opt-in-only exception to
+  "mic never touches output," with a persistent headphones/feedback
+  warning in the UI. Recording stays unaffected (still captures dry).
+- ✅ "🎤 Live Tune" bar (`LivePitchMonitorPanel.tsx`) under the transport:
+  Key/Scale/Mode controls plus a live Sung→Target note readout
+- ✅ Two real bugs caught and fixed during verification, both worth
+  remembering (see AUDIO_ENGINE.md for the full writeup): (1) a naive
+  grain-reset pitch-shift design that measurably applied *zero* net
+  correction despite correct detection/glide math, caught by rendering a
+  known-frequency test tone through the worklet via `OfflineAudioContext`
+  and measuring the output hadn't moved; (2) passing `scale` via a
+  worklet port message, which is async and can arrive after an
+  `OfflineAudioContext` render already finished — fixed by making it a
+  k-rate `AudioParam` like the other settings, which is guaranteed
+  in effect from the first render quantum
+- ✅ Verified via a battery of `OfflineAudioContext` renders (Playwright):
+  correct upward and downward correction, stability across 4 seconds and
+  multiple internal delay rebases, the slower "natural" glide mode
+  converging within its expected time constant, bypass passing audio
+  through unchanged, no NaNs/runaway amplitude over a 6-second render,
+  and the full UI flow (toggle on/off, live readout, headphones warning)
+  exercised with Playwright's fake mic device — zero console errors
+- Real limitations, not hidden: ~30-50ms latency, no formant preservation,
+  an occasional brief crossfade artifact at a delay rebase, pitch ratio
+  clamped to roughly ±6 semitones
 
 ## Phase 6 — Beat Analyzer ✅
 

@@ -851,12 +851,109 @@ when the key is unset. Whoever adds a real key should do one live
 end-to-end pass (a command that should map to a tool call, one that
 shouldn't) before trusting this in daily use.
 
+## Real-time pitch monitor
+
+`public/worklets/realtime-pitch-processor.js` + `AudioEngine.
+enableLivePitchMonitor`/`disableLivePitchMonitor`/
+`updateLivePitchMonitorSettings` + `LivePitchMonitorPanel.tsx` (the "🎤
+Live Tune" bar under the transport). Lets you hear your own voice
+corrected toward the nearest scale note **while singing**, not just
+after recording — a genuinely different feature from Pitch Studio's
+offline "record, then correct" pipeline (still the right choice for a
+polished final take; this is for finding the note in the moment).
+
+**Deliberate, narrow exception to a standing rule.** Every other part of
+this engine never connects the raw mic to `ctx.destination` (see
+"Recording" above) specifically to avoid feedback. This feature does,
+because hearing yourself is the entire point — it is strictly opt-in (the
+"🎤 Live Tune" button, off by default) and the UI carries a persistent,
+unmissable warning to use headphones. Recording itself is untouched: it
+still always captures the dry mic signal, never the monitor's corrected
+output — this is purely what you hear while singing, not what gets
+written to a track.
+
+**Why this is a from-scratch reimplementation, not a reuse of Phase 5.**
+The offline pipeline (`pitchDetection.ts` → `correctionCurve.ts` →
+`psola.ts`) needs the whole take up front — PSOLA's synthesis marks are
+built from the *entire* correction curve, including samples that haven't
+been sung yet. A live monitor fundamentally can't have that. The worklet
+reimplements the same three stages causally, deliberately kept in
+sync with the offline math where the algorithm allows:
+
+1. **YIN pitch detection**, same algorithm and default threshold/range as
+   `pitchDetection.ts`'s `detectPitchYin` (translated to plain JS — like
+   every worklet in this project, it's a dependency-free static file, no
+   import of the TS modules), re-run every 512-sample hop (~11.6ms) on a
+   2048-sample rolling window.
+2. **A streaming version of `correctionCurve.ts`'s glide+humanize
+   logic** — same formulas (exponential glide toward the snapped note,
+   smoothed random-walk humanize), restructured as a per-hop state
+   update instead of a whole-array pass, so retune speed/humanize *sound*
+   the same live as they do in the offline render.
+3. **A causal delay-line pitch shifter** — genuinely new DSP, not
+   adapted from `psola.ts` (PSOLA's pitch-synchronous grain marks aren't
+   causal). See the worklet file's own header comment for the full
+   design and, importantly, **a real bug caught during verification,
+   worth remembering**: the first version used a fixed-rate two-voice
+   grain crossfade that reset each voice's read position to a
+   `writePos`-relative anchor every cycle — that discards the very pitch
+   drift it's supposed to accumulate, netting *zero* correction overall
+   despite the detection/glide math being completely correct. It went
+   undetected until a Playwright test rendered a known 427Hz tone through
+   the worklet via `OfflineAudioContext` and measured the output
+   frequency hadn't moved from 427Hz at all. The fix: a single
+   continuously-drifting delay (`delay += 1 - pitchRatio` every sample —
+   that unbroken drift *is* the shift), only ever rebased via a brief
+   crossfade to a second tap when the drift would otherwise run past the
+   delay buffer's bounds (every several hundred ms to a few seconds for
+   realistic correction amounts, not every cycle). Verified afterward
+   with a battery of `OfflineAudioContext` renders: a sustained upward
+   correction stayed locked within ~1 cent of the target across 4 seconds
+   and multiple rebase cycles, a downward correction (sharp input)
+   snapped correctly, the slower "natural" glide mode converged within
+   its expected time constant, bypass passed audio through unchanged,
+   and a 6-second render showed no NaNs or runaway amplitude.
+
+**Config is an AudioParam, not a port message — this also bit once.**
+`key`/`scaleIndex`/`retuneSpeedMs`/`humanizeAmount`/`bypassed` are all
+k-rate `AudioParam`s, not values sent via `port.postMessage`. A port
+message is a genuine async round-trip; for a one-shot
+`OfflineAudioContext` render in particular, rendering can finish before
+the message is even delivered, so the worklet would silently run with
+its default instead of the value actually requested. This was caught the
+same way as the drift bug: a verification render requested `scale:
+"major"`, the worklet used its default `"naturalMinor"` instead (missed
+message), and the output snapped to a note outside the requested scale.
+`scaleIndex` (0/1/2 for major/naturalMinor/chromatic) went through the
+same `AudioParam` path as the others once this was understood — a value
+set via `.value =` on the main thread is guaranteed in effect from the
+very first render quantum, with no such race.
+
+**Real, honest limitations, not hidden:**
+- Total latency is roughly 30-50ms (mostly the 2048-sample analysis
+  window) — usable for "hear yourself land on pitch while singing," not
+  inaudible. Real hardware/software vocal processors have comparable
+  latency; this isn't unusual, but it's not zero either.
+- Occasional brief crossfade artifact at a delay rebase — not
+  synced to the signal's own period (unlike PSOLA), so it can land
+  anywhere in the waveform's cycle. Infrequent for realistic correction
+  amounts, not imperceptible.
+- No formant preservation, same as the offline PSOLA — larger
+  corrections can sound thinner.
+- Pitch ratio is clamped to roughly 0.7x-1.4x (about ±6 semitones) —
+  intentional: this project's corrections are meant to nudge toward a
+  nearby scale tone, not perform arbitrary pitch transposition, and the
+  clamp also keeps the delay-drift math working within the buffer's safe
+  bounds.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch
   track is visualized (Pitch Studio's canvas) but not yet interactively
   editable. A real feature to add later, not implied by what exists today.
-- No real-time/live pitch correction — see the architecture decision above.
+- Real-time/live pitch correction now exists (see "Real-time pitch
+  monitor" above) — a separate, causal reimplementation from the offline
+  pipeline below, not a replacement for it.
 - No formant preservation in PSOLA — see `psola.ts` above.
 - No true spectral/ML noise reduction. What exists instead: the
   envelope-follower Noise Gate (Phase 3, silences gaps between phrases)

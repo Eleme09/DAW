@@ -3,6 +3,7 @@ import { encodeWav } from "./wavEncoder";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import type { AudioClip, LoopRegion, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
+import type { LivePitchInfo, LivePitchMonitorSettings } from "@/types/pitch";
 
 /**
  * Real-time audio engine: owns the single AudioContext, the per-track mixer
@@ -26,6 +27,12 @@ interface ScheduledSource {
   source: AudioBufferSourceNode;
   envelope: GainNode;
   clipId: string;
+}
+
+interface LivePitchMonitorSession {
+  stream: MediaStream;
+  source: MediaStreamAudioSourceNode;
+  node: AudioWorkletNode;
 }
 
 interface RecordingSession {
@@ -53,6 +60,9 @@ const METRONOME_LOOKAHEAD_SEC = 0.1;
 const METRONOME_INTERVAL_MS = 25;
 const RECORDER_WORKLET_URL = "/worklets/recorder-processor.js";
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
+const REALTIME_PITCH_WORKLET_URL = "/worklets/realtime-pitch-processor.js";
+/** Must match SCALE_BY_INDEX in public/worklets/realtime-pitch-processor.js — see that file's comment on why scale is an AudioParam, not a port message. */
+const SCALE_INDEX: Record<LivePitchMonitorSettings["scale"], number> = { major: 0, naturalMinor: 1, chromatic: 2 };
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -81,6 +91,11 @@ export class AudioEngine {
 
   private recording: RecordingSession | null = null;
   private recorderWorkletLoaded = false;
+
+  private livePitchMonitor: LivePitchMonitorSession | null = null;
+  private realtimePitchWorkletPromise: Promise<void> | null = null;
+  private realtimePitchWorkletLoaded = false;
+  private livePitchListeners = new Set<(info: LivePitchInfo) => void>();
 
   /** Must be called from a user-gesture handler (click) before any playback. */
   ensureContext(): AudioContext {
@@ -589,6 +604,110 @@ export class AudioEngine {
     const durationSec = channelArrays[0] ? channelArrays[0].length / this.ctx.sampleRate : 0;
     const blob = encodeWav(channelArrays, this.ctx.sampleRate);
     return { blob, durationSec, startTime };
+  }
+
+  // ---------------------------------------------------------------------
+  // Live pitch monitor (real-time autotune-while-singing)
+  //
+  // Deliberate, narrow exception to "mic never connected to destination"
+  // (see the Recording section above): this routes mic input through
+  // realtime-pitch-processor.js straight to ctx.destination so the singer
+  // can actually hear themselves corrected while singing — that's the
+  // entire point of the feature. It is opt-in only (never on by default)
+  // and the UI must carry a clear headphones/feedback warning, since this
+  // is a real physical risk on speakers, not a bug. Recording itself
+  // still captures the dry mic signal unchanged — this monitor never
+  // touches what gets written to a clip; it's purely what you hear while
+  // singing, to help you land on pitch (see AUDIO_ENGINE.md "Real-time
+  // pitch monitor").
+  // ---------------------------------------------------------------------
+
+  private ensureRealtimePitchWorklet(): Promise<void> {
+    if (this.realtimePitchWorkletLoaded) return Promise.resolve();
+    if (!this.realtimePitchWorkletPromise) {
+      const ctx = this.ensureContext();
+      this.realtimePitchWorkletPromise = ctx.audioWorklet.addModule(REALTIME_PITCH_WORKLET_URL).then(() => {
+        this.realtimePitchWorkletLoaded = true;
+      });
+    }
+    return this.realtimePitchWorkletPromise;
+  }
+
+  isLivePitchMonitorActive(): boolean {
+    return this.livePitchMonitor !== null;
+  }
+
+  onLivePitchUpdate(listener: (info: LivePitchInfo) => void): () => void {
+    this.livePitchListeners.add(listener);
+    return () => this.livePitchListeners.delete(listener);
+  }
+
+  async enableLivePitchMonitor(settings: LivePitchMonitorSettings): Promise<StartRecordingResult> {
+    if (this.livePitchMonitor) return { ok: true };
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return { ok: false, error: "Microphone access is not available in this browser/context" };
+    }
+
+    const ctx = this.ensureContext();
+    await this.ensureRealtimePitchWorklet();
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 1,
+        },
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Microphone permission denied",
+      };
+    }
+
+    const source = ctx.createMediaStreamSource(stream);
+    const node = new AudioWorkletNode(ctx, "realtime-pitch-processor", {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      channelCount: 1,
+    });
+    node.parameters.get("key")!.value = settings.key;
+    node.parameters.get("scaleIndex")!.value = SCALE_INDEX[settings.scale];
+    node.parameters.get("retuneSpeedMs")!.value = settings.retuneSpeedMs;
+    node.parameters.get("humanizeAmount")!.value = settings.humanizeAmount;
+    node.parameters.get("bypassed")!.value = 0;
+    node.port.onmessage = (event: MessageEvent<{ type: string } & LivePitchInfo>) => {
+      if (event.data?.type !== "pitch") return;
+      for (const listener of this.livePitchListeners) listener(event.data);
+    };
+
+    source.connect(node);
+    node.connect(ctx.destination);
+
+    this.livePitchMonitor = { stream, source, node };
+    return { ok: true };
+  }
+
+  updateLivePitchMonitorSettings(settings: Partial<LivePitchMonitorSettings>): void {
+    if (!this.livePitchMonitor) return;
+    const { node } = this.livePitchMonitor;
+    if (settings.key !== undefined) node.parameters.get("key")!.value = settings.key;
+    if (settings.retuneSpeedMs !== undefined) node.parameters.get("retuneSpeedMs")!.value = settings.retuneSpeedMs;
+    if (settings.humanizeAmount !== undefined) node.parameters.get("humanizeAmount")!.value = settings.humanizeAmount;
+    if (settings.scale !== undefined) node.parameters.get("scaleIndex")!.value = SCALE_INDEX[settings.scale];
+  }
+
+  disableLivePitchMonitor(): void {
+    if (!this.livePitchMonitor) return;
+    const { stream, source, node } = this.livePitchMonitor;
+    source.disconnect();
+    node.disconnect();
+    node.port.onmessage = null;
+    stream.getTracks().forEach((track) => track.stop());
+    this.livePitchMonitor = null;
   }
 
   /** Aborts recording without producing a clip (permission errors, user cancel, etc). */

@@ -8,6 +8,7 @@ import { BrowserPanel } from "./BrowserPanel";
 import { Timeline } from "./Timeline/Timeline";
 import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
+import { LivePitchMonitorPanel } from "./LivePitchMonitorPanel";
 
 export function DawShell() {
   const tracks = useProjectStore((s) => s.project.tracks);
@@ -36,9 +37,20 @@ export function DawShell() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // Live pitch monitor uses its own mic stream independent of the transport/
+  // recording lifecycle - make sure it's actually released on unmount.
+  useEffect(() => {
+    return () => {
+      if (getAudioEngine().isLivePitchMonitorActive()) {
+        getAudioEngine().disableLivePitchMonitor();
+      }
+    };
+  }, []);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-neutral-100">
       <TransportBar />
+      <LivePitchMonitorPanel />
       <div className="flex flex-1 overflow-hidden">
         <BrowserPanel />
         <Timeline />

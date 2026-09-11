@@ -130,6 +130,14 @@ src/
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
+                     realtime-pitch-processor.js: causal YIN detection +
+                     streaming correction curve + delay-line pitch
+                     shifter for the live "🎤 Live Tune" monitor — a
+                     from-scratch reimplementation of pitch/*.ts's
+                     offline algorithms, not a reuse (see AUDIO_ENGINE.md
+                     "Real-time pitch monitor" for why, and for a real
+                     bug caught there worth reading before touching this
+                     file again).
   types/
     project.ts       Shared data model: Project / Track / AudioClip / etc.
                       Every other layer (state, storage, UI, future AI) reads
@@ -185,7 +193,8 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      Analyzer), MixAssistantPanel.tsx (Phase 10, the "Mix"
                      tab in BrowserPanel), BeatGeneratorPanel.tsx (Phase
                      11, the "Generate" tab), AiAssistantPanel.tsx (Phase
-                     13, the "Assistant" tab).
+                     13, the "Assistant" tab), LivePitchMonitorPanel.tsx
+                     (the "🎤 Live Tune" bar under the transport).
   hooks/             Small reusable hooks (useRafLoop for meters/clocks).
 app/                 Next.js App Router shell (layout, page, globals.css).
 supabase/migrations/ SQL schema, NOT applied to any live project (see below).
