@@ -110,10 +110,11 @@ too but have since been built — see "Additional effects" below.
   spectral band detection, dynamics/noise-floor math, auto-chain rule
   mapping and stage ordering)
 
-True spectral/ML noise reduction is still not built — the gate silences
-gaps, it doesn't remove noise under the signal. Deferred, not hidden: see
-AUDIO_ENGINE.md "What's deliberately not here yet." Pitch analysis was
-deliberately kept out of this phase's result — that's Phase 5's job.
+Spectral noise reduction (the gate here only silences gaps, doesn't
+remove noise under the signal) was deferred at this point in the roadmap
+but has since been built — see "Spectral noise reduction" below. Pitch
+analysis was deliberately kept out of this phase's result — that's
+Phase 5's job.
 
 ## Phase 5 — Pitch / Autotune ✅
 
@@ -264,6 +265,49 @@ real-time pitch monitor and BS.1770 upgrade above.
   low-band settings measurably dropped output RMS vs. a neutral
   baseline on a tone routed into that band. See AUDIO_ENGINE.md
   "Additional effects (post-launch)" for the full writeup.
+
+## Spectral noise reduction ✅ (built after the original 13-phase roadmap)
+
+Closes the gap Phase 3/4 named and deferred: the Noise Gate only silences
+gaps between phrases, never noise sitting *underneath* a loud signal.
+Classic spectral subtraction (no ML), same "build everything you told me
+isn't done" pass as the other post-launch additions above.
+
+- ✅ `src/audio-engine/analysis/spectralNoiseReduction.ts`: STFT via new
+  `ifftInPlace` (`fft.ts`) → noise profile estimated from the recording's
+  own quietest 10% of frames → per-frame magnitude subtraction with a
+  spectral floor → original phase kept → inverse FFT → windowed
+  overlap-add, normalized by actual window energy
+- ✅ **Two real bugs caught and fixed during development** (see
+  AUDIO_ENGINE.md for the full writeup): (1) dividing by near-zero
+  overlap-add window energy at a buffer's absolute start/end amplified
+  any spectral change there by orders of magnitude — a debug render
+  caught peaks reaching ~3x the input; (2) a units mismatch between the
+  noise-profile estimator (normalized by frame size) and the subtraction
+  loop (not normalized) made the profile ~2048x too small, so
+  subtraction was effectively a no-op at any strength — caught by
+  hand-deriving the expected per-bin scale factor and comparing it
+  against what a debug render actually produced
+- ✅ "Denoise" button added to the Audio browser tab next to Analyze/
+  Engineer/Pitch/Beat (`DenoisePanel.tsx`), same "renders a new, separate
+  take" pattern as Pitch Studio — the original recording is never
+  overwritten
+- ✅ 19 unit tests (268 total): `ifftInPlace` round-trips correctly,
+  noise profile built from a recording's quiet section rather than its
+  loud one, monotonic never-amplifying reduction as strength increases,
+  a noise-only section reduced far more than a section where the same
+  noise sits under a loud tone, substantial attenuation with an accurate
+  profile, no NaN/Infinity, multi-channel handling
+- ✅ Verified in-browser with Playwright: imported a synthetic noisy-
+  then-toned recording, applied Denoise at high strength, confirmed a
+  new track was created with a visibly different waveform and played
+  back cleanly, zero console errors
+
+Real limitations, not hidden: needs actual quiet moments in the
+recording to build an accurate profile from; prone to "musical noise" at
+aggressive settings; assumes stationary noise; not a substitute for a
+trained model (RNNoise-style) at separating voice from noise that
+overlaps heavily in time and frequency.
 
 ## Phase 6 — Beat Analyzer ✅
 

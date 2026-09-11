@@ -1035,6 +1035,78 @@ custom-wired node graphs, not simple node wrappers, and carry the same
   the right band's compressor, not just passing everything through
   unprocessed.
 
+## Spectral noise reduction (post-launch)
+
+`src/audio-engine/analysis/spectralNoiseReduction.ts` — classic spectral
+subtraction (Boll 1979-style), no ML/trained model. This is what the
+Noise Gate (Phase 3) and Phone Mic Enhance (Phase 4) couldn't do: remove
+noise sitting *underneath* a loud signal, not just silence gaps between
+phrases. Pure math, no AudioContext dependency — unit-tested directly,
+same split as `bs1770.ts`/PSOLA.
+
+**Pipeline**: STFT via `fft.ts`'s `fftInPlace`/`ifftInPlace` (2048-sample
+Hann-windowed frames, 75% overlap) → estimate a noise magnitude profile
+from the recording's own quietest 10% of frames (no separate "noise-only"
+clip needed from the user) → per-frame magnitude subtraction with a
+spectral floor (never fully zeroed, to limit "musical noise" artifacts) →
+resynthesize using the ORIGINAL phase (standard simplification in this
+technique) → inverse FFT → windowed overlap-add back to time domain,
+normalized by the actual accumulated window energy at each sample rather
+than an assumed closed-form constant.
+
+**A real bug caught and fixed during development, worth remembering**:
+the first working version divided the overlap-add output by its
+window-energy normalizer unconditionally. Near the absolute start/end of
+a buffer, where fewer than the full set of overlapping frames have
+contributed yet, that normalizer is tiny — dividing by it doesn't just
+normalize, it *amplifies*, and any spectral modification (even one
+correctly bounded to never exceed the original magnitude) got blown up
+by orders of magnitude there. A debug render caught this directly: peaks
+reaching ~3x the input's after "reduction." Fixed by only trusting the
+division where window energy is at least 5% of the buffer's own
+steady-state (max) value; the handful of samples at the absolute start/
+end of a processed clip fade to silence instead — an honest, well-
+precedented STFT edge artifact (well under a millisecond), not a defect
+in the subtraction itself.
+
+**A second, subtler bug caught the same way**: `estimateNoiseProfile`
+normalized its output by dividing by the frame size, while
+`reduceNoiseChannel`'s own per-bin magnitude calculation did not — a
+units mismatch that made the noise profile ~2048x smaller than it should
+have been relative to what it was being subtracted from, so the
+subtraction was effectively a no-op at any strength setting. Caught by
+comparing the algorithm's expected per-bin scale factor (hand-derived)
+against what a debug render actually produced, then tracing the
+mismatch back through both functions' units. Fixed by making both use
+the same (unnormalized) raw FFT magnitude convention.
+
+**Real, honest limitations, named rather than hidden** (also in the
+module's own header comment): needs the recording to actually contain
+some genuinely-quiet moments (room tone between phrases) to build an
+accurate noise profile — a signal with no quiet moments at all gets a
+weaker profile and correspondingly weaker reduction; classic spectral
+subtraction is prone to "musical noise" (a warbly/gurgly artifact from
+isolated surviving bins) at aggressive settings, which the spectral
+floor mitigates but doesn't eliminate; assumes the noise is roughly
+stationary (a poor assumption for noise that changes character partway
+through, e.g. a door closing); not a substitute for a trained model
+(RNNoise-style) at separating voice from noise that overlaps heavily in
+both time and frequency — this only ever subtracts a fixed spectral
+shape.
+
+**Verified**: 19 unit tests covering `ifftInPlace` (fft.ts) round-tripping
+back to the original signal, `estimateNoiseProfile` building its profile
+from a recording's quiet section rather than its loud one, monotonic
+(never-amplifying) reduction as strength increases, a noise-only section
+getting reduced far more than a section where the same noise sits under
+a loud tone (the actual point of the technique), substantial attenuation
+with an accurate profile, no NaN/Infinity, and multi-channel handling.
+Plus an in-browser Playwright pass: imported a synthetic noisy-then-
+toned recording, ran "Denoise" (`DenoisePanel.tsx`, reachable from the
+Audio browser tab next to Analyze/Engineer/Pitch/Beat), applied at high
+strength, confirmed a new track was created with a visibly different
+waveform and played back cleanly — zero console errors.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch
@@ -1044,13 +1116,14 @@ custom-wired node graphs, not simple node wrappers, and carry the same
   monitor" above) — a separate, causal reimplementation from the offline
   pipeline below, not a replacement for it.
 - No formant preservation in PSOLA — see `psola.ts` above.
-- No true spectral/ML noise reduction. What exists instead: the
-  envelope-follower Noise Gate (Phase 3, silences gaps between phrases)
-  and a gate-tuned auto-chain (Phase 4's `autoChain.ts`). Neither removes
-  noise sitting *underneath* a loud signal — that needs actual spectral
-  subtraction or a trained model (e.g. an RNNoise-style WASM module),
-  still not built. `vocalAnalysis.ts` says so explicitly when a
-  recording's noise floor is high, instead of implying the gate fixes it.
+- Classic spectral subtraction noise reduction now exists (see "Spectral
+  noise reduction (post-launch)" above) — removes noise sitting
+  *underneath* a loud signal, which the envelope-follower Noise Gate
+  (Phase 3, silences gaps between phrases only) and the gate-tuned
+  Phase 4 auto-chain never could. Still no trained-model option (e.g. an
+  RNNoise-style WASM module) — genuinely not built, and the classic
+  technique has its own real limitations, named in that section rather
+  than implied away.
 - Multiband compressor, chorus, flanger, exciter, auto-pan, and stereo
   width now exist (see "Additional effects" below) — built after the
   original Phase 3 priority list (vocal quality first) was done. No

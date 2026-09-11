@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fftInPlace, hannWindow, magnitudeSpectrum, nextPowerOfTwo } from "./fft";
+import { fftInPlace, hannWindow, ifftInPlace, magnitudeSpectrum, nextPowerOfTwo } from "./fft";
 
 describe("nextPowerOfTwo", () => {
   it("returns the same value for exact powers of two", () => {
@@ -25,6 +25,46 @@ describe("fftInPlace", () => {
     for (let i = 1; i < n; i++) {
       expect(Math.abs(re[i])).toBeLessThan(1e-3);
       expect(Math.abs(im[i])).toBeLessThan(1e-3);
+    }
+  });
+});
+
+describe("ifftInPlace", () => {
+  it("round-trips fft -> ifft back to the original signal", () => {
+    const n = 128;
+    const original = new Float32Array(n);
+    for (let i = 0; i < n; i++) original[i] = Math.sin((2 * Math.PI * 5 * i) / n) + 0.3 * Math.sin((2 * Math.PI * 20 * i) / n);
+
+    const re = Float32Array.from(original);
+    const im = new Float32Array(n);
+    fftInPlace(re, im);
+    ifftInPlace(re, im);
+
+    for (let i = 0; i < n; i++) {
+      expect(re[i]).toBeCloseTo(original[i], 4);
+      expect(im[i]).toBeCloseTo(0, 4);
+    }
+  });
+
+  it("a modified spectrum's inverse is real-valued when magnitude scaling preserves conjugate symmetry", () => {
+    // Scale every bin's magnitude by 0.5 while keeping phase - a stand-in
+    // for what spectralNoiseReduction.ts does to a real frame's spectrum.
+    const n = 64;
+    const original = new Float32Array(n);
+    for (let i = 0; i < n; i++) original[i] = Math.sin((2 * Math.PI * 7 * i) / n);
+
+    const re = Float32Array.from(original);
+    const im = new Float32Array(n);
+    fftInPlace(re, im);
+    for (let i = 0; i < n; i++) {
+      re[i] *= 0.5;
+      im[i] *= 0.5;
+    }
+    ifftInPlace(re, im);
+
+    for (let i = 0; i < n; i++) {
+      expect(im[i]).toBeCloseTo(0, 4);
+      expect(re[i]).toBeCloseTo(original[i] * 0.5, 4);
     }
   });
 });

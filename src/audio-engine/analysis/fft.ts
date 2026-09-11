@@ -53,6 +53,21 @@ export function fftInPlace(re: Float32Array, im: Float32Array): void {
   }
 }
 
+/**
+ * In-place inverse FFT: ifft(X) = conj(fft(conj(X))) / N. `re`/`im` are
+ * overwritten with the time-domain signal. Used by spectralNoiseReduction.ts
+ * to resynthesize a frame after modifying its magnitude spectrum.
+ */
+export function ifftInPlace(re: Float32Array, im: Float32Array): void {
+  const n = re.length;
+  for (let i = 0; i < n; i++) im[i] = -im[i];
+  fftInPlace(re, im);
+  for (let i = 0; i < n; i++) {
+    re[i] = re[i] / n;
+    im[i] = -im[i] / n;
+  }
+}
+
 /** Magnitude spectrum (bins 0..N/2-1) of a real-valued frame, normalized by frame length. */
 export function magnitudeSpectrum(frame: Float32Array): Float32Array<ArrayBuffer> {
   const n = frame.length;

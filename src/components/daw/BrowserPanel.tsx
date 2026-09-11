@@ -12,6 +12,7 @@ import { buildPhoneMicEnhanceChain } from "@/audio-engine/analysis/autoChain";
 import { useProjectStore } from "@/state/projectStore";
 import { VocalAnalysisPanel } from "./VocalAnalysisPanel";
 import { PitchStudioPanel } from "./PitchStudioPanel";
+import { DenoisePanel } from "./DenoisePanel";
 import { BeatAnalyzerPanel } from "./BeatAnalyzerPanel";
 import { VocalBeatMatchPanel } from "./VocalBeatMatchPanel";
 import { VocalEngineerPanel } from "./VocalEngineerPanel";
@@ -60,6 +61,7 @@ function AudioTab() {
   const [pitchOpenId, setPitchOpenId] = useState<string | null>(null);
   const [beatOpenId, setBeatOpenId] = useState<string | null>(null);
   const [engineerOpenId, setEngineerOpenId] = useState<string | null>(null);
+  const [denoiseOpenId, setDenoiseOpenId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const project = useProjectStore((s) => s.project);
@@ -210,6 +212,12 @@ function AudioTab() {
               >
                 Beat
               </button>
+              <button
+                onClick={() => setDenoiseOpenId((prev) => (prev === s.id ? null : s.id))}
+                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+              >
+                Denoise
+              </button>
             </div>
             {analysisResults[s.id] && (
               <VocalAnalysisPanel
@@ -223,6 +231,9 @@ function AudioTab() {
               <PitchStudioPanel sample={s} onNewSample={() => setSamples(listSampleAssets())} />
             )}
             {beatOpenId === s.id && <BeatAnalyzerPanel sample={s} />}
+            {denoiseOpenId === s.id && (
+              <DenoisePanel sample={s} onNewSample={() => setSamples(listSampleAssets())} />
+            )}
           </div>
         ))}
       </div>

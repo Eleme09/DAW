@@ -55,10 +55,12 @@ src/
                      nodes. See AUDIO_ENGINE.md "Effect chain".
     analysis/         Offline vocal analysis (fft.ts, spectralAnalysis.ts,
                      dynamicsAnalysis.ts, vocalAnalysis.ts, autoChain.ts,
-                     vocalEngineerChain.ts, vocalStylePresets.ts).
-                     Runs once on a full AudioBuffer, never during
-                     playback — no AudioContext dependency, pure math,
-                     unit-tested. See AUDIO_ENGINE.md "Offline analysis".
+                     vocalEngineerChain.ts, vocalStylePresets.ts,
+                     spectralNoiseReduction.ts). Runs once on a full
+                     AudioBuffer, never during playback — no AudioContext
+                     dependency, pure math, unit-tested. See
+                     AUDIO_ENGINE.md "Offline analysis" and "Spectral
+                     noise reduction (post-launch)".
                      autoChain.ts (Phase 4, phone-mic-specific corrective
                      chain) and vocalEngineerChain.ts (Phase 9, the same
                      corrective logic plus a stylistic preset layer) are
