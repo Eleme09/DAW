@@ -114,12 +114,41 @@ gaps, it doesn't remove noise under the signal. Deferred, not hidden: see
 AUDIO_ENGINE.md "What's deliberately not here yet." Pitch analysis was
 deliberately kept out of this phase's result — that's Phase 5's job.
 
-## Phase 5 — Pitch / Autotune ⬜
+## Phase 5 — Pitch / Autotune ✅
 
-Pitch/key/scale detection, correction (Natural/Hard Tune/Modern
-Trap/Extreme modes), manual note editing, formant control if viable. Likely
-needs `AudioWorklet` for real-time monitoring — see open question in
-`AI_FEATURES.md`.
+- ✅ Pitch detection: a real YIN implementation
+  (`src/audio-engine/pitch/pitchDetection.ts`), not autocorrelation-only —
+  chosen specifically to avoid octave errors before they feed correction
+- ✅ Key/scale detection: Krumhansl-Kessler key-finding from a
+  confidence-weighted chroma histogram of the pitch track
+  (`keyDetection.ts`), correctly identifies transposed keys, not just C
+- ✅ Pitch-over-time visualization in the Pitch Studio panel (Audio browser
+  tab → "Pitch" button) — the "poder visualizar las notas detectadas"
+  requirement
+- ✅ Pitch correction with Key/Scale/Retune Speed/Humanize controls and
+  Natural/Hard Tune/Modern Trap/Extreme mode presets, exactly as specified
+- ✅ Built as an **offline render** (analyze the whole take, resynthesize
+  via TD-PSOLA), not real-time monitoring — a deliberate architecture
+  decision, documented in AUDIO_ENGINE.md/AI_FEATURES.md rather than a
+  silently-missed requirement. "Apply Pitch Correction" always creates a
+  new sample + clip; the original take is never overwritten
+- ✅ Verified in-browser: a synthesized, deliberately-flat C major arpeggio
+  correctly visualized as an ascending note staircase, correctly detected
+  as C major, Hard Tune correction rendered a new in-tune take, playback
+  clean with zero console errors
+- ✅ 34 pitch-specific unit tests (102 total project-wide): YIN accuracy
+  against known frequencies (including an octave-error resistance case),
+  key detection including a transposition test, note/scale snapping,
+  retune-speed glide behavior (this caught and fixed a real bug — the
+  glide was jumping straight to target instead of gliding from the sung
+  pitch, which would have made the "retune speed" knob do nothing
+  audible), humanize variation, and an end-to-end detect→correct→
+  re-detect test confirming corrected audio actually lands near the target
+
+Deliberately not built (see AUDIO_ENGINE.md "What's deliberately not here
+yet" and AI_FEATURES.md): real-time/live pitch correction, formant
+preservation, manual note editing (the pitch track is visible, not yet
+draggable).
 
 ## Phase 6 — Beat Analyzer ⬜
 
@@ -160,9 +189,8 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 5 (Pitch/Autotune) — key/scale detection, pitch
-correction with retune speed/humanize, which Phase 4's analysis
-deliberately left out so it wouldn't be duplicated. It's also the
-higher-complexity phase (likely needs an AudioWorklet for real-time
-monitoring, see AI_FEATURES.md's open question on this) worth tackling
-while the codebase's effect-chain patterns are still fresh context.
+**Next up:** Phase 6 (Beat Analyzer) — BPM/key/scale/structure detection
+from an imported beat. Reuse Phase 5's `keyDetection.ts` rather than
+reimplementing key-finding. This unblocks Phase 8 (Vocal + Beat Matching),
+which needs both a detected beat key and the vocal pitch-center work
+Phase 5 already built.

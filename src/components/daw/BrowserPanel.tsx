@@ -11,6 +11,7 @@ import { analyzeVocalRecording } from "@/audio-engine/analysis/vocalAnalysis";
 import { buildPhoneMicEnhanceChain } from "@/audio-engine/analysis/autoChain";
 import { useProjectStore } from "@/state/projectStore";
 import { VocalAnalysisPanel } from "./VocalAnalysisPanel";
+import { PitchStudioPanel } from "./PitchStudioPanel";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
@@ -45,6 +46,7 @@ function AudioTab() {
   const [analysisResults, setAnalysisResults] = useState<Record<string, VocalAnalysisResult>>({});
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [enhancingId, setEnhancingId] = useState<string | null>(null);
+  const [pitchOpenId, setPitchOpenId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const project = useProjectStore((s) => s.project);
@@ -169,19 +171,30 @@ function AudioTab() {
               <div className="truncate font-medium text-neutral-200">{s.name}</div>
               <div className="text-neutral-500">{s.durationSec.toFixed(1)}s</div>
             </button>
-            <button
-              onClick={() => analyzeSample(s)}
-              disabled={analyzingId === s.id}
-              className="mt-1 w-full rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
-            >
-              {analyzingId === s.id ? "Analyzing…" : "Analyze"}
-            </button>
+            <div className="mt-1 flex gap-1">
+              <button
+                onClick={() => analyzeSample(s)}
+                disabled={analyzingId === s.id}
+                className="flex-1 rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+              >
+                {analyzingId === s.id ? "Analyzing…" : "Analyze"}
+              </button>
+              <button
+                onClick={() => setPitchOpenId((prev) => (prev === s.id ? null : s.id))}
+                className="flex-1 rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+              >
+                Pitch
+              </button>
+            </div>
             {analysisResults[s.id] && (
               <VocalAnalysisPanel
                 result={analysisResults[s.id]}
                 onEnhance={() => enhanceSample(s)}
                 enhancing={enhancingId === s.id}
               />
+            )}
+            {pitchOpenId === s.id && (
+              <PitchStudioPanel sample={s} onNewSample={() => setSamples(listSampleAssets())} />
             )}
           </div>
         ))}

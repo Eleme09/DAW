@@ -59,7 +59,7 @@ playback path.
   live signal). Severity thresholds (`vocalAnalysis.ts`) are heuristic,
   calibrated by ear against a handful of recordings — not trained on a
   labeled dataset, and not presented as more precise than that. No pitch
-  analysis yet — pitch belongs to Phase 5, not duplicated here.
+  analysis in this result on purpose — see Phase 5 below, not duplicated.
 - **Phone Mic Enhance** (`autoChain.ts`): a deterministic, inspectable
   rule table maps the analysis to a concrete effect chain (Noise Gate → EQ
   → De-Esser → Compressor → Limiter, each stage only added if its
@@ -73,6 +73,29 @@ playback path.
   through the auto-chain as if it could be corrected (`vocalAnalysis.ts`'s
   `limitations` array) — see PROJECT_SPEC.md's hard constraint.
 
+## Built (Phase 5)
+
+- **Pitch detection & key/scale detection** (`src/audio-engine/pitch/`):
+  YIN pitch tracking (chosen over naive autocorrelation to avoid octave
+  errors) and Krumhansl-Kessler key-finding from the resulting chroma
+  histogram, both confidence-scored rather than presented as certain.
+  Visualized as a pitch-over-time plot in the Pitch Studio panel — this is
+  the "poder visualizar las notas detectadas" requirement from the brief.
+- **Pitch correction** (`correctionCurve.ts` + `psola.ts` +
+  `applyPitchCorrection.ts`): Key/Scale/Retune Speed/Humanize controls plus
+  Natural/Hard Tune/Modern Trap/Extreme mode presets, exactly as specified.
+  Implemented as an **offline render** (analyze the whole take, then
+  resynthesize via TD-PSOLA), not a real-time monitor-while-singing effect
+  — a deliberate architecture choice, not a missed requirement; see
+  AUDIO_ENGINE.md's "Pitch detection & correction" section for the reasons
+  and for what a real-time version would need instead. No formant
+  preservation yet (also documented there) — the brief itself flagged this
+  as "si es técnicamente viable," which turned out to mean "not in this
+  pass." Every stage of this pipeline is unit-tested against synthetic
+  tones with known frequencies, not just exercised in the UI.
+- **Manual note editing**: not built. The pitch track is visible but not
+  yet draggable/editable — a real gap, not hidden.
+
 ## Planned surfaces (not built)
 
 - **Auto Vocal Engineer** (Phase 9): broader than Phase 4's rule-based
@@ -81,14 +104,20 @@ playback path.
   AI/ML-assisted parameter suggestions, not just fixed thresholds.
   Parameters must come from the analysis, not a fixed preset — see
   principle 3.
-- **Pitch/Autotune engine** (Phase 5): pitch detection, key/scale
-  detection, correction with retune speed / humanize / formant controls.
-  This is real-time-adjacent (needs to run during monitoring for a usable
-  autotune experience) — when built, it likely needs an `AudioWorklet`,
-  not an offline pass; revisit the real-time/offline split in
-  `AUDIO_ENGINE.md` specifically for this feature.
+- **Real-time pitch correction** (monitor live while singing): the offline
+  Phase 5 pipeline above handles "record then correct"; live correction
+  needs a streaming pitch tracker and an `AudioWorklet`-based shifter with
+  bounded look-ahead instead — a different architecture, not an extension
+  of the offline one. See AUDIO_ENGINE.md.
+- **Formant preservation** in pitch correction (Phase 5's `psola.ts` — see
+  AUDIO_ENGINE.md for why this was left out of the first pass).
+- **Manual note editing** on the detected pitch track (Phase 5's Pitch
+  Studio shows it, doesn't yet let you drag individual notes).
 - **Beat Analyzer / Key-Scale detection** (Phase 6-7): BPM, key, scale,
-  section structure, confidence-scored.
+  section structure, confidence-scored. Note: Phase 5 already built a
+  general-purpose key detector (`keyDetection.ts`) for vocal pitch tracks —
+  Phase 6/7 should reuse it against a beat's detected notes/bassline rather
+  than reimplementing key-finding from scratch.
 - **Vocal + Beat Match** (Phase 8): compares detected vocal center to beat
   key, reports compatibility plainly (no music-theory essay, per the
   brief).

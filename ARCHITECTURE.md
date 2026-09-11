@@ -49,6 +49,13 @@ src/
                      Runs once on a full AudioBuffer, never during
                      playback — no AudioContext dependency, pure math,
                      unit-tested. See AUDIO_ENGINE.md "Offline analysis".
+    pitch/            Pitch detection, key detection, and pitch correction
+                     (pitchDetection.ts, keyDetection.ts, noteUtils.ts,
+                     correctionCurve.ts, psola.ts, applyPitchCorrection.ts).
+                     Also offline/no-AudioContext, also unit-tested end to
+                     end. See AUDIO_ENGINE.md "Pitch detection & correction"
+                     for why this renders a new sample instead of being a
+                     live effect-chain insert.
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
@@ -59,6 +66,8 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
     analysis.ts       VocalAnalysisResult: the categorical read
                       (Noise/Mud/Harshness/... severities) analysis.ts
                       produces and the UI/autoChain consume.
+    pitch.ts          PitchFrame, PitchCorrectionSettings, DetectedKeyResult
+                      — the pitch pipeline's shared shapes.
     effects.ts        Effect-chain data model: the EffectInstance
                       discriminated union + one params type per effect type.
                       Track.inserts / Project.masterInserts are EffectInstance[].

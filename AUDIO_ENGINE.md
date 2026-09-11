@@ -276,9 +276,87 @@ nothing here can recover it — and the chain that message produces does
 honestly beats quietly doing something that can't actually help (see
 PROJECT_SPEC.md's hard constraint on this project).
 
+## Pitch detection & correction (Phase 5)
+
+`src/audio-engine/pitch/` and `src/types/pitch.ts`.
+
+**Architecture decision, stated up front:** this is an offline **render**,
+not a real-time effect-chain insert. Unlike Phase 3's effects (live,
+non-destructive, reversible from the Effects Rack), pitch correction here
+needs the whole take's pitch track before it can compute a sensible
+correction curve — retune-speed glide and humanize both reason across
+time, and the resynthesis isn't a per-block streaming operation. "Apply
+Pitch Correction" in the UI reads the source sample, runs the full
+pipeline below, and writes a **new** sample + clip — the original
+recording is never overwritten. Real-time pitch correction (monitor
+live while singing) would need a fundamentally different approach — a
+streaming pitch tracker plus an `AudioWorklet`-based shifter with bounded
+look-ahead — and is explicitly not attempted here; see AI_FEATURES.md's
+open question on this for whoever picks it up.
+
+Pipeline, in order:
+
+1. **`pitchDetection.ts`** — YIN (de Cheveigné & Kawahara): difference
+   function → cumulative mean normalized difference → absolute-threshold
+   local minimum → parabolic interpolation for sub-sample precision. Chosen
+   over naive autocorrelation specifically because YIN is designed to avoid
+   octave errors, which matter a lot once the result feeds *correction* (an
+   octave-wrong snap target isn't just imprecise, it's an obviously broken
+   note). `trackPitch` frame-hops this across a buffer into a `PitchFrame[]`
+   (time, frequency-or-null, confidence).
+2. **`noteUtils.ts`** — frequency⇄MIDI conversion, scale interval tables
+   (major/naturalMinor/chromatic), nearest-in-scale-note search.
+3. **`keyDetection.ts`** — Krumhansl-Kessler key-finding: a
+   confidence-weighted chroma histogram from the pitch track, correlated
+   against the standard major/minor key profiles rotated to each of the 12
+   possible tonics. An established MIR technique, not invented for this
+   project — and still a statistical best guess, hence the `confidence` on
+   `DetectedKeyResult` rather than presenting it as certain.
+4. **`correctionCurve.ts`** — detected pitch → target pitch, per frame.
+   `retuneSpeedMs` is the time constant of an exponential glide toward the
+   snapped note (0 = instant hard-tune snap; this **is** what "retune
+   speed" audibly means — the classic slow-Auto-Tune swoop is the glide
+   itself, not a side effect, so the glide starts from the *sung* pitch,
+   not from the target — getting this backwards was an actual bug caught
+   by the unit tests during development, worth remembering if this file
+   gets touched again). `humanizeAmount` layers a slow, smoothed random
+   walk (not white noise — that would sound like jitter, not natural
+   variation) on top. Unvoiced frames reset the glide so a new phrase
+   doesn't inherit a stale target from the previous one.
+5. **`psola.ts`** — TD-PSOLA-lite resynthesis. Two independent pitch-mark
+   sequences (standard PSOLA): analysis marks track the input's own
+   detected period; synthesis marks span the *same total duration* using
+   the target period, and each borrows its grain from the nearest analysis
+   mark **in time** (not matching mark index) — that decoupling is what
+   keeps duration independent of pitch shift. Grains are Hann-windowed,
+   overlap-added, and the accumulated window weight is used to normalize
+   output level (prevents overlap-add gain pumping).
+   **Explicit simplification:** no formant preservation — grains aren't
+   separated from a spectral envelope, so larger shifts can sound
+   thinner/more artificial than a commercial pitch corrector. For this
+   project that's an acceptable trade: small corrective shifts (tightening
+   an otherwise in-tune take) sound fine, and an artificial character on
+   large/instant shifts is the actual aesthetic "Hard Tune"/"Modern Trap"
+   modes want, not a flaw to hide. Proper formant-preserving PSOLA is a
+   real future improvement, documented here rather than silently missing.
+6. **`applyPitchCorrection.ts`** — ties the above together
+   (`analyzePitch` for detection+key, `correctPitchChannel`/
+   `correctPitchBuffer` for the full correct-and-resynthesize pass, run
+   independently per channel).
+
+Every piece from YIN through PSOLA is unit-tested against synthetic tones
+with known frequencies/keys — including an end-to-end test that runs the
+whole pipeline on a detuned tone and confirms the output, re-analyzed,
+actually lands near the target pitch. That's a meaningfully stronger bar
+than "it doesn't throw."
+
 ## What's deliberately not here yet
 
-- No pitch detection/correction (Phase 5).
+- No manual note editing (dragging individual detected notes) — the pitch
+  track is visualized (Pitch Studio's canvas) but not yet interactively
+  editable. A real feature to add later, not implied by what exists today.
+- No real-time/live pitch correction — see the architecture decision above.
+- No formant preservation in PSOLA — see `psola.ts` above.
 - No true spectral/ML noise reduction. What exists instead: the
   envelope-follower Noise Gate (Phase 3, silences gaps between phrases)
   and a gate-tuned auto-chain (Phase 4's `autoChain.ts`). Neither removes

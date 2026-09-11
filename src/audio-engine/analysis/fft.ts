@@ -54,7 +54,7 @@ export function fftInPlace(re: Float32Array, im: Float32Array): void {
 }
 
 /** Magnitude spectrum (bins 0..N/2-1) of a real-valued frame, normalized by frame length. */
-export function magnitudeSpectrum(frame: Float32Array): Float32Array {
+export function magnitudeSpectrum(frame: Float32Array): Float32Array<ArrayBuffer> {
   const n = frame.length;
   const re = Float32Array.from(frame);
   const im = new Float32Array(n);
@@ -66,7 +66,7 @@ export function magnitudeSpectrum(frame: Float32Array): Float32Array {
   return mag;
 }
 
-export function hannWindow(size: number): Float32Array {
+export function hannWindow(size: number): Float32Array<ArrayBuffer> {
   const w = new Float32Array(size);
   for (let i = 0; i < size; i++) {
     w[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (size - 1));
