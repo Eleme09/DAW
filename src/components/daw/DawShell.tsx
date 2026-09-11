@@ -9,6 +9,8 @@ import { Timeline } from "./Timeline/Timeline";
 import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { LivePitchMonitorPanel } from "./LivePitchMonitorPanel";
+import { FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
+import type { ComponentType } from "react";
 
 // Below the `md` breakpoint the desktop's three-pane row (Browser/Timeline/
 // EffectsRack) plus the docked Mixer can't coexist on screen at once, so on
@@ -17,11 +19,11 @@ import { LivePitchMonitorPanel } from "./LivePitchMonitorPanel";
 // exactly as before and this state is unused.
 type MobileView = "browser" | "timeline" | "mixer" | "effects";
 
-const MOBILE_VIEWS: { id: MobileView; label: string }[] = [
-  { id: "browser", label: "Browser" },
-  { id: "timeline", label: "Timeline" },
-  { id: "mixer", label: "Mixer" },
-  { id: "effects", label: "FX" },
+const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ className?: string }> }[] = [
+  { id: "browser", label: "Browser", Icon: FolderIcon },
+  { id: "timeline", label: "Timeline", Icon: TimelineIcon },
+  { id: "mixer", label: "Mixer", Icon: MixIcon },
+  { id: "effects", label: "FX", Icon: KnobIcon },
 ];
 
 export function DawShell() {
@@ -85,17 +87,18 @@ export function DawShell() {
         className="flex shrink-0 border-t border-neutral-800 bg-neutral-950 md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        {MOBILE_VIEWS.map((v) => (
+        {MOBILE_VIEWS.map(({ id, label, Icon }) => (
           <button
-            key={v.id}
-            onClick={() => setMobileView(v.id)}
-            className={`flex-1 border-t-2 py-2.5 text-[11px] font-medium uppercase tracking-wide transition-colors ${
-              mobileView === v.id
+            key={id}
+            onClick={() => setMobileView(id)}
+            className={`flex flex-1 flex-col items-center gap-0.5 border-t-2 py-2 text-[11px] font-medium uppercase tracking-wide transition-colors ${
+              mobileView === id
                 ? "border-orange-500 text-orange-400"
                 : "border-transparent text-neutral-500 hover:text-neutral-300"
             }`}
           >
-            {v.label}
+            <Icon className="h-5 w-5" />
+            {label}
           </button>
         ))}
       </nav>

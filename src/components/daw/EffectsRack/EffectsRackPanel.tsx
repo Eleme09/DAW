@@ -5,6 +5,7 @@ import { useProjectStore } from "@/state/projectStore";
 import { EFFECT_LABELS, type EffectType } from "@/types/effects";
 import { EffectCard } from "./EffectCard";
 import { Analyzer } from "./Analyzer";
+import { WaveformIcon, BusIcon } from "../icons";
 
 const EFFECT_TYPES = Object.keys(EFFECT_LABELS) as EffectType[];
 
@@ -22,27 +23,37 @@ export function EffectsRackPanel() {
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-l border-neutral-800 bg-neutral-950 md:w-80">
+      <div className="flex items-center gap-1.5 border-b border-neutral-800 px-3 py-2 text-xs font-semibold text-neutral-300">
+        <span className="text-neutral-500">Effects</span>
+        <span className="text-neutral-700">/</span>
+        <span className="truncate text-orange-300">{label}</span>
+      </div>
+
       <div className="flex border-b border-neutral-800 text-xs font-medium">
         <button
           onClick={() => setMode("track")}
-          className={`flex-1 px-3 py-2 uppercase tracking-wide ${
-            mode === "track" ? "bg-neutral-900 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
+          title="Effects on the selected track only"
+          className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
+            mode === "track"
+              ? "border-orange-500 bg-neutral-900 text-orange-400"
+              : "border-transparent text-neutral-500 hover:text-neutral-300"
           }`}
         >
+          <WaveformIcon className="h-3.5 w-3.5" />
           Track
         </button>
         <button
           onClick={() => setMode("master")}
-          className={`flex-1 px-3 py-2 uppercase tracking-wide ${
-            mode === "master" ? "bg-neutral-900 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
+          title="Effects on the master bus, applied to the full mix"
+          className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
+            mode === "master"
+              ? "border-orange-500 bg-neutral-900 text-orange-400"
+              : "border-transparent text-neutral-500 hover:text-neutral-300"
           }`}
         >
+          <BusIcon className="h-3.5 w-3.5" />
           Master
         </button>
-      </div>
-
-      <div className="border-b border-neutral-800 px-3 py-2">
-        <div className="truncate text-xs font-semibold text-neutral-300">{label}</div>
       </div>
 
       {mode === "master" && <Analyzer />}

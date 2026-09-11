@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ComponentType } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { putSample } from "@/lib/storage/sampleStore";
@@ -19,26 +19,41 @@ import { VocalEngineerPanel } from "./VocalEngineerPanel";
 import { MixAssistantPanel } from "./MixAssistantPanel";
 import { BeatGeneratorPanel } from "./BeatGeneratorPanel";
 import { AiAssistantPanel } from "./AiAssistantPanel";
+import { WaveformIcon, MatchIcon, MixIcon, BeatGridIcon, SparkleIcon, FolderIcon } from "./icons";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
 type Tab = "projects" | "audio" | "match" | "mix" | "generate" | "assistant";
+
+const TABS: { id: Tab; label: string; hint: string; Icon: ComponentType<{ className?: string }> }[] = [
+  { id: "audio", label: "Samples", hint: "Import audio and run per-sample tools", Icon: WaveformIcon },
+  { id: "match", label: "Vocal Match", hint: "Match a vocal take to a beat's key and tempo", Icon: MatchIcon },
+  { id: "mix", label: "AI Mix", hint: "AI-assisted mix balance across all tracks", Icon: MixIcon },
+  { id: "generate", label: "Beat Gen", hint: "Generate a new beat pattern", Icon: BeatGridIcon },
+  { id: "assistant", label: "AI Assistant", hint: "Ask for changes in plain language", Icon: SparkleIcon },
+  { id: "projects", label: "Projects", hint: "Open or save a project", Icon: FolderIcon },
+];
 
 export function BrowserPanel() {
   const [tab, setTab] = useState<Tab>("audio");
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-r border-neutral-800 bg-neutral-950 md:w-64">
-      <div className="grid grid-cols-3 border-b border-neutral-800 text-[10px] font-medium">
-        {(["audio", "match", "mix", "generate", "assistant", "projects"] as const).map((t) => (
+      <div className="grid grid-cols-3 border-b border-neutral-800">
+        {TABS.map(({ id, label, hint, Icon }) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-1 py-2 uppercase tracking-wide ${
-              tab === t ? "bg-neutral-900 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
+            key={id}
+            onClick={() => setTab(id)}
+            title={hint}
+            aria-current={tab === id}
+            className={`flex flex-col items-center gap-1 border-b-2 px-1 py-2 text-[10px] font-medium leading-tight ${
+              tab === id
+                ? "border-orange-500 bg-neutral-900 text-orange-400"
+                : "border-transparent text-neutral-500 hover:bg-neutral-900/60 hover:text-neutral-300"
             }`}
           >
-            {t}
+            <Icon className="h-4 w-4" />
+            {label}
           </button>
         ))}
       </div>

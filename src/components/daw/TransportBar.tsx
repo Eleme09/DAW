@@ -59,7 +59,8 @@ export function TransportBar() {
         <button
           onClick={() => (isPlaying ? pause() : play())}
           disabled={isRecording}
-          className="flex h-9 w-9 items-center justify-center rounded bg-orange-500 font-bold text-black hover:bg-orange-400 disabled:opacity-40"
+          title={isPlaying ? "Pause" : "Play"}
+          className="flex h-10 w-10 items-center justify-center rounded bg-orange-500 font-bold text-black hover:bg-orange-400 active:bg-orange-400 disabled:opacity-40 sm:h-9 sm:w-9"
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying && !isRecording ? "❚❚" : "▶"}
@@ -67,15 +68,18 @@ export function TransportBar() {
         <button
           onClick={stop}
           disabled={isRecording}
-          className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40"
+          title="Stop"
+          className="flex h-10 w-10 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-40 sm:h-9 sm:w-9"
           aria-label="Stop"
         >
           ■
         </button>
         <button
           onClick={() => (isRecording ? stopRecording() : startRecording())}
-          className={`flex h-9 w-9 items-center justify-center rounded text-lg ${
-            isRecording ? "animate-pulse bg-red-600 text-white" : "bg-neutral-800 text-red-500 hover:bg-neutral-700"
+          className={`flex h-10 w-10 items-center justify-center rounded text-lg sm:h-9 sm:w-9 ${
+            isRecording
+              ? "animate-pulse bg-red-600 text-white"
+              : "bg-neutral-800 text-red-500 hover:bg-neutral-700 active:bg-neutral-700"
           }`}
           aria-label={isRecording ? "Stop recording" : "Record"}
           title={isRecording ? "Stop recording" : "Record onto the armed track"}
@@ -84,15 +88,19 @@ export function TransportBar() {
         </button>
       </div>
 
-      <span className="font-mono text-base tabular-nums text-neutral-100">{formatTime(currentTime)}</span>
+      <span className="font-mono text-base tabular-nums text-neutral-100" title="Playhead position">
+        {formatTime(currentTime)}
+      </span>
       {recordingError && (
         <span className="max-w-xs truncate text-xs text-red-400" title={recordingError}>
           Mic error: {recordingError}
         </span>
       )}
 
-      <div className="flex items-center gap-1 text-xs text-neutral-400">
-        <label>BPM</label>
+      <span className="h-6 w-px bg-neutral-800" />
+
+      <div className="flex items-center gap-1 text-xs text-neutral-400" title="Tempo, in beats per minute">
+        <label className="font-medium">BPM</label>
         <input
           type="number"
           min={20}
@@ -103,7 +111,8 @@ export function TransportBar() {
         />
       </div>
 
-      <div className="flex items-center gap-1 text-xs text-neutral-400">
+      <div className="flex items-center gap-1 text-xs text-neutral-400" title="Time signature">
+        <label className="font-medium">TIME</label>
         <input
           type="number"
           min={1}
@@ -123,8 +132,11 @@ export function TransportBar() {
         />
       </div>
 
+      <span className="h-6 w-px bg-neutral-800" />
+
       <button
         onClick={() => setLoop({ enabled: !project.loop.enabled })}
+        title="Loop playback between the loop markers"
         className={`rounded px-2 py-1 text-xs font-medium ${
           project.loop.enabled ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-300"
         }`}
@@ -134,6 +146,7 @@ export function TransportBar() {
 
       <button
         onClick={toggleMetronome}
+        title="Metronome click while playing/recording"
         className={`rounded px-2 py-1 text-xs font-medium ${
           project.metronomeEnabled ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-300"
         }`}
