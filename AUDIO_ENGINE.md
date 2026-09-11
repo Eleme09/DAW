@@ -505,6 +505,92 @@ to analyze the actual summed mix, not per-track buffers in isolation, and
 `bounceProject` is exactly that summed signal, available before it ever
 reaches an output device.
 
+## AI Mix Assistant (Phase 10)
+
+`src/audio-engine/analysis/mixAnalysis.ts`, `mixDiagnostics.ts`,
+`mixSuggestions.ts`, and `src/types/mixAnalysis.ts`. Session-wide
+diagnostics — masking, mud/harshness/sibilance/low-end on the actual
+summed mix, and gain-staging — plus suggested (never auto-applied)
+corrections, built directly on top of the offline bounce infrastructure
+above. Same split as everywhere else in this codebase: the
+OfflineAudioContext-dependent rendering lives in one thin file
+(`mixAnalysis.ts`, not unit-tested, verified via Playwright — same reason
+as `bounce.ts`), and the actual detection/suggestion logic is pure,
+synchronous, and unit-tested against synthetic per-track profiles
+(`mixDiagnostics.test.ts`, `mixSuggestions.test.ts`) rather than real
+rendered audio.
+
+**Full-mix read**: literally reuses Phase 4's `analyzeVocalChannel` on the
+mono-mixed output of `bounceProject(project, ...)` — "extend Phase 4's
+single-track analysis pattern to session-wide," not a new detection
+paradigm, per ROADMAP.md's own note on this. Explicit caveat carried into
+`limitations`: those severity thresholds were calibrated by ear on solo
+vocal recordings, not multi-instrument mixes — treated as a rough read on
+the summed signal, not a mix-specific standard.
+
+**Per-track profiles**: `mixAnalysis.ts` renders each track *in isolation*
+(a throwaway copy of the project with only that track soloed, bounced
+through `bounceProject` again) to measure what that track actually
+contributes — its own RMS and a spectral-band-share profile (each
+`VOCAL_BANDS` band's power as a fraction of that track's own total power,
+not a relative-dB read like `spectralAnalysis.ts`'s `computeBandEnergies`,
+because band **shares** are what's directly comparable across tracks
+regardless of how loud each one is). Explicit cost tradeoff, stated
+up front rather than found the hard way: this means one full bounce per
+track plus one for the whole mix (N+1 offline renders), so run time scales
+with track count and project length — fine for this project's own track
+counts, not a design that would scale to a large multitrack session
+without changing the approach (e.g. analyzing pre-mix buffers directly
+instead of re-rendering each one).
+
+**Masking detection** (`mixDiagnostics.ts`): flags track pairs that both
+concentrate a significant share of their own energy in the same
+`VOCAL_BANDS` band (share ≥ 0.16, vs. a flat 1/8 ≈ 0.125 baseline across 8
+bands) — a plain, explainable heuristic for "these two are competing for
+the same sonic space," not a psychoacoustic masking model (no simultaneous
+masking threshold curves, no critical-band analysis). A broad,
+already-balanced source naturally keeps its per-band shares low and won't
+trigger this; two narrow, similarly-voiced sources (two vocal doubles, or
+a vocal and a bass-heavy 808 both loud in the same band) will — which is
+exactly the case a mixer actually needs flagged.
+
+**Gain-staging detection**: flags tracks whose rendered RMS sits ≥6dB from
+the session's median track RMS. A simple, explainable proxy for "this
+needs a fader move," not a loudness-matching or auto-gain algorithm.
+Silent/fully-muted tracks are excluded from both the median and the
+findings.
+
+**Suggestions** (`mixSuggestions.ts`), consistent with AI_FEATURES.md
+principle 3 (AI proposes, DSP executes) and this phase's own "suggested,
+not auto-applied" scope from ROADMAP.md: each masking finding produces
+*two* independent single-band peaking-EQ-cut suggestions (-3dB, Q 1.4, at
+the contested band's log-center frequency), one per track in the pair —
+deliberately not picking a "winner," since which track should yield is a
+musical decision this can't make. Each gain-staging finding produces one
+volume-trim suggestion sized to bring that track to the session median.
+Applying either goes through the exact same store actions manual edits
+use (`setEffectChain` appends the suggested EQ instance to that track's
+existing chain; `updateTrack` adjusts `volumeDb`) — no separate
+apply-suggestion code path to drift out of sync with the Effects Rack.
+
+**UI**: a new "Mix" tab in the Browser panel (`MixAssistantPanel.tsx`) —
+"Analyze Mix" hydrates every sample the project references, runs the
+above, and shows the full-mix read, masking/gain-staging findings, and
+suggestion buttons (each becomes "Applied" once clicked, never re-appliable
+twice by accident). Verified in-browser with three synthetic tracks (two
+tones concentrated at the same ~1kHz "mid" band, one quiet bass-band tone)
+via Playwright: masking correctly flagged between the two mid-band tracks,
+gain staging correctly flagged the quiet track as ~24dB below the median,
+both suggestion types applied correctly (a live-verified single-band EQ
+cut landed in the target track's Effects Rack; the gain trim moved that
+track's fader), and playback stayed glitch-free afterward with zero
+console errors.
+
+**Explicitly not attempted**: no true psychoacoustic masking model, no
+automatic (non-suggested) correction, no cross-track sidechain-style
+dynamic masking reduction, no mastering-stage LUFS targeting (that's
+Phase 13). Named here rather than implied by the feature's name.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch

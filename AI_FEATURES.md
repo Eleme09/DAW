@@ -167,9 +167,6 @@ playback path.
   of the offline one. See AUDIO_ENGINE.md.
 - **Formant preservation** in pitch correction (Phase 5's `psola.ts` — see
   AUDIO_ENGINE.md for why this was left out of the first pass).
-- **AI Mix/Mastering Assistant** (Phase 10/18): clipping/masking/mud
-  detection across the session, moderate correction suggestions, LUFS
-  targets per platform.
 - **Beat Generator / Reconstruction** (Phase 11-12): generative
   melody/chords/drums from BPM/key/genre/mood inputs; approximate
   MIDI reconstruction from an uploaded beat, confidence-scored per
@@ -177,6 +174,42 @@ playback path.
 - **AI Music Assistant** (Phase 13): natural-language commands ("make this
   vocal darker") that resolve to concrete project mutations (parameter
   changes via the same Zustand actions the UI uses), not just chat replies.
+
+## Built (Phase 10)
+
+- **AI Mix Assistant** (`src/audio-engine/analysis/mixAnalysis.ts` +
+  `mixDiagnostics.ts` + `mixSuggestions.ts`): session-wide diagnostics
+  across every track, not per-sample like Phases 4/9 — masking (track
+  pairs both concentrating energy in the same frequency band), gain
+  staging (tracks sitting well away from the session's median level), and
+  a full-mix mud/harshness/sibilance/low-end read that reuses Phase 4's
+  `analyzeVocalChannel` directly on the rendered mix (extending the
+  single-track pattern to session-wide, per principle 3, rather than a new
+  detection paradigm).
+- **Suggested, not auto-applied, corrections**: masking findings produce
+  single-band EQ-cut suggestions (one per track in the pair — this can't
+  know which track should yield, so it offers both and the user picks);
+  gain-staging findings produce a volume-trim suggestion. Every suggestion
+  is inert data until the user clicks Apply, at which point it goes
+  through the exact same `setEffectChain`/`updateTrack` store actions a
+  manual edit would use.
+- **"Mix" tab** in the Browser panel (`MixAssistantPanel.tsx`): Analyze
+  Mix hydrates every referenced sample, runs the above, and shows the
+  full-mix read, masking/gain-staging findings, and suggestion buttons
+  (each flips to "Applied" once used).
+- **No clipping detection at the mix level yet** — clipping is checked per
+  recording (Phase 4) and implicitly guarded by the master limiter, but
+  there's no explicit "the summed mix is clipping" diagnostic in this
+  pass; a real gap against the original Phase 10 scope, named here rather
+  than silently absent.
+- **Cost/scope limitation, stated plainly**: computing per-track profiles
+  renders the project once per track plus once for the full mix (N+1
+  offline bounces), so analysis time scales with track count and project
+  length — acceptable for this project's own scale, not something that
+  would hold up for a large multitrack session without a different
+  approach. See AUDIO_ENGINE.md "AI Mix Assistant (Phase 10)" for the full
+  design rationale, including why masking uses per-track band-energy
+  *shares* rather than the relative-dB metric Phase 4 uses.
 
 ## Open technical decisions (for whoever builds these)
 

@@ -15,10 +15,11 @@ import { PitchStudioPanel } from "./PitchStudioPanel";
 import { BeatAnalyzerPanel } from "./BeatAnalyzerPanel";
 import { VocalBeatMatchPanel } from "./VocalBeatMatchPanel";
 import { VocalEngineerPanel } from "./VocalEngineerPanel";
+import { MixAssistantPanel } from "./MixAssistantPanel";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
-type Tab = "projects" | "audio" | "match";
+type Tab = "projects" | "audio" | "match" | "mix";
 
 export function BrowserPanel() {
   const [tab, setTab] = useState<Tab>("audio");
@@ -26,7 +27,7 @@ export function BrowserPanel() {
   return (
     <div className="flex w-64 shrink-0 flex-col border-r border-neutral-800 bg-neutral-950">
       <div className="flex border-b border-neutral-800 text-xs font-medium">
-        {(["audio", "match", "projects"] as const).map((t) => (
+        {(["audio", "match", "mix", "projects"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -40,6 +41,7 @@ export function BrowserPanel() {
       </div>
       {tab === "audio" && <AudioTab />}
       {tab === "match" && <VocalBeatMatchPanel />}
+      {tab === "mix" && <MixAssistantPanel />}
       {tab === "projects" && <ProjectsTab />}
     </div>
   );

@@ -274,10 +274,45 @@ This is also the infrastructure Phase 10 (below) needs: analyzing the
 *actual summed mix* requires rendering it first, which is exactly what
 `bounceProject` now does.
 
-## Phase 10 — AI Mix Assistant ⬜
+## Phase 10 — AI Mix Assistant ✅
 
-Session-wide diagnostics (masking, mud, harshness, gain staging) with
-suggested (not auto-applied without confirmation) corrections.
+- ✅ Full-mix read (`mixAnalysis.ts`): reuses Phase 4's
+  `analyzeVocalChannel` directly on the rendered/summed mix (via
+  `bounceProject`) — mud/harshness/sibilance/low-end/dynamics/peak/RMS on
+  the actual mix, not a per-track guess
+- ✅ Masking detection (`mixDiagnostics.ts`): flags track pairs that both
+  concentrate energy in the same frequency band (measured per-track, in
+  isolation, via solo-rendering each track) — an explainable heuristic
+  (band-energy share ≥0.16 for both tracks), not a psychoacoustic model
+- ✅ Gain-staging detection: flags tracks sitting ≥6dB from the session's
+  median track level
+- ✅ Suggested corrections (`mixSuggestions.ts`), never auto-applied: a
+  masking finding produces one EQ-cut suggestion per track in the pair (a
+  -3dB peaking cut at the contested frequency); a gain-staging finding
+  produces a volume-trim suggestion sized to the session median. Applying
+  either uses the exact same store actions (`setEffectChain`/
+  `updateTrack`) manual edits use
+- ✅ New "Mix" tab in the Browser panel (`MixAssistantPanel.tsx`): Analyze
+  Mix, full-mix read, masking/gain-staging findings, suggestion buttons
+- ✅ Verified in-browser with Playwright: three synthetic tracks (two
+  ~1kHz tones on separate tracks, one quiet bass-band tone) correctly
+  produced a masking finding between the two mid-band tracks and a
+  gain-staging finding for the quiet track; applied both suggestion types
+  and confirmed the EQ cut landed in the target track's Effects Rack
+  (Peaking, 1000Hz, -3.0dB, Q 1.4) and the gain trim moved that track's
+  fader; playback stayed glitch-free afterward, zero console errors
+- ✅ 16 new unit tests (158 total) for the pure diagnostics/suggestion
+  logic, using synthetic per-track profiles (masking pair detection,
+  band-concentration vs. broadly-balanced-mix non-detection, ranking/
+  capping findings, gain-staging in both directions, silent-track
+  exclusion, suggestion generation for both finding types)
+
+Explicitly not attempted this phase (see AI_FEATURES.md/AUDIO_ENGINE.md):
+mix-level clipping detection, a true psychoacoustic masking model,
+cross-track sidechain-style masking reduction, per-platform LUFS
+mastering targets (Phase 13). Cost tradeoff named rather than hidden: this
+renders the project once per track plus once for the full mix, so it
+scales with track count/length, fine for this project's own scale.
 
 ## Phase 11 — Beat Generator ⬜
 
@@ -296,11 +331,13 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 10 (AI Mix Assistant) — next in PROJECT_SPEC.md's
-priority order (AI assistance, priority 5) and the last "AI improves an
-existing recording" phase before beat generation/reconstruction (priority
-6) starts building new content from scratch. Session-wide diagnostics
-(masking, mud, gain staging across tracks) is a natural extension of
-Phase 4's single-track analysis, not a new detection paradigm — and now
-has `bounceProject` (see "Project Export" above) to render the actual
-summed mix to analyze, instead of only ever seeing per-track buffers.
+**Next up:** Phase 11 (Beat Generator) — next in PROJECT_SPEC.md's
+priority order (priority 6) and the first phase that generates new
+content from scratch rather than analyzing/improving an existing
+recording. Every prior phase reused as much existing infrastructure as
+honestly possible (offline analysis pattern, effect chain, bounce engine);
+this one is a genuine architectural departure — worth deciding up front
+whether generation stays rule-based/parametric (matching this project's
+"AI proposes, DSP executes" principle and its no-mandatory-paid-API
+stance) or needs a different approach, per AI_FEATURES.md's open question
+on this.

@@ -78,6 +78,16 @@ src/
                      comparison logic wiring pitch/keyDetection.ts's result
                      for a vocal to beat/chromagram.ts's result for a beat.
                      No new detection — see AI_FEATURES.md "Built (Phase 8)".
+                     analysis/mixAnalysis.ts / mixDiagnostics.ts /
+                     mixSuggestions.ts (Phase 10, AI Mix Assistant):
+                     session-wide diagnostics (masking, gain staging) and
+                     suggested corrections across the whole project.
+                     mixAnalysis.ts is the OfflineAudioContext-dependent
+                     glue (renders via bounce.ts, not unit-tested, same
+                     reason as bounce.ts itself); mixDiagnostics.ts and
+                     mixSuggestions.ts are pure/unit-tested, same split as
+                     the rest of analysis/. See AUDIO_ENGINE.md "AI Mix
+                     Assistant (Phase 10)".
     audioBufferUtils.ts  Shared AudioBuffer helpers (mixToMono) used by
                      analysis/, pitch/, beat/, and matching/ alike.
     bounce.ts        Offline project rendering (OfflineAudioContext) —
@@ -96,6 +106,9 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
     match.ts          VocalBeatMatchResult — Phase 8's comparison result.
+    mixAnalysis.ts     MixAnalysisResult and friends (TrackBandProfile,
+                      MaskingFinding, GainStagingFinding, MixSuggestion) —
+                      Phase 10's session-wide diagnostics shapes.
     vocalStyle.ts     VocalStyleParams + the VocalCharacter/GenreStyle
                       preset-key unions — Phase 9's style presets.
     beat.ts           TempoResult, OnsetEvent, DrumHit, BassNote,
@@ -128,7 +141,8 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      unset — the app must keep working local-only.
   components/daw/    UI. TransportBar, BrowserPanel, Timeline/*, Mixer/*,
                      EffectsRack/* (per-track/master insert chain UI +
-                     Analyzer).
+                     Analyzer), MixAssistantPanel.tsx (Phase 10, the "Mix"
+                     tab in BrowserPanel).
   hooks/             Small reusable hooks (useRafLoop for meters/clocks).
 app/                 Next.js App Router shell (layout, page, globals.css).
 supabase/migrations/ SQL schema, NOT applied to any live project (see below).
