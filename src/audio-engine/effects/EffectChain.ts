@@ -8,6 +8,12 @@ import { ClipperEffect } from "./ClipperEffect";
 import { ReverbEffect } from "./ReverbEffect";
 import { DelayEffect } from "./DelayEffect";
 import { NoiseGateEffect } from "./NoiseGateEffect";
+import { MultibandCompressorEffect } from "./MultibandCompressorEffect";
+import { ChorusEffect } from "./ChorusEffect";
+import { FlangerEffect } from "./FlangerEffect";
+import { ExciterEffect } from "./ExciterEffect";
+import { AutoPanEffect } from "./AutoPanEffect";
+import { StereoWidthEffect } from "./StereoWidthEffect";
 import type { EffectInstance, EffectType } from "@/types/effects";
 
 export interface EffectChainDeps {
@@ -53,6 +59,18 @@ function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unkno
       return new DelayEffect(ctx) as unknown as Effect<unknown>;
     case "noiseGate":
       return new NoiseGateEffect(ctx) as unknown as Effect<unknown>;
+    case "multibandCompressor":
+      return new MultibandCompressorEffect(ctx) as unknown as Effect<unknown>;
+    case "chorus":
+      return new ChorusEffect(ctx) as unknown as Effect<unknown>;
+    case "flanger":
+      return new FlangerEffect(ctx) as unknown as Effect<unknown>;
+    case "exciter":
+      return new ExciterEffect(ctx) as unknown as Effect<unknown>;
+    case "autoPan":
+      return new AutoPanEffect(ctx) as unknown as Effect<unknown>;
+    case "stereoWidth":
+      return new StereoWidthEffect(ctx) as unknown as Effect<unknown>;
   }
 }
 

@@ -82,9 +82,10 @@ Mic permission/device errors surface inline in the transport bar
   response decay envelope, loudness math)
 
 Deferred on purpose (not gaps, scope decisions — see `AUDIO_ENGINE.md`
-"What's deliberately not here yet"): multiband compressor, expander,
-exciter, chorus/flanger/phaser, auto-pan, stereo width, true spectral/ML
-noise reduction (→ Phase 4), certified LUFS.
+"What's deliberately not here yet"): expander, phaser, true spectral/ML
+noise reduction (→ Phase 4), certified LUFS. Multiband compressor,
+exciter, chorus/flanger, auto-pan, and stereo width were deferred here
+too but have since been built — see "Additional effects" below.
 
 ## Phase 4 — Phone Mic Enhancement ✅
 
@@ -224,6 +225,45 @@ real gated-integrated measurement.
   not a claim of bit-exact match to a certified reference meter. Also
   mono-only, consistent with the rest of this project's analysis
   pipeline.
+
+## Additional effects ✅ (built after the original 13-phase roadmap)
+
+The six effect types Phase 3 deferred as "eventually" (see that phase's
+notes above) — multiband compressor, chorus, flanger, exciter, auto-pan,
+stereo width. Same "build everything you told me isn't done" pass as the
+real-time pitch monitor and BS.1770 upgrade above.
+
+- ✅ `MultibandCompressorEffect.ts`: 3-band parallel split (standard
+  2nd-order 12dB/oct crossover, not phase-corrected Linkwitz-Riley — a
+  named simplification), each band its own `DynamicsCompressorNode` +
+  makeup gain, summed back together
+- ✅ `ChorusEffect.ts`/`FlangerEffect.ts`: LFO-modulated `DelayNode`s —
+  chorus uses a longer delay with no feedback (thickening), flanger a
+  much shorter delay with feedback (the resonant sweep)
+- ✅ `ExciterEffect.ts`: highpass + the same saturation curve
+  `SaturationEffect` already uses, blended additively on top of the dry
+  signal (not a dry/wet crossfade — it adds harmonic "air")
+- ✅ `AutoPanEffect.ts`: LFO drives a `StereoPannerNode` directly
+- ✅ `StereoWidthEffect.ts`: mid-side processing from a channel
+  splitter/merger + plain `GainNode` arithmetic (`mid = 0.5(L+R)`,
+  `side = 0.5(L-R)`, scaled by `width`, recombined)
+- ✅ All 6 wired through the same fully-generic Effects Rack UI as every
+  other effect — no UI-specific code needed beyond the params editor,
+  since the rack is data-driven off `EFFECT_LABELS`/`EffectType`
+- ✅ Verified via Playwright: UI smoke test (added all 6 to a track and
+  master, tweaked params, toggled bypass, played back, zero console
+  errors) PLUS numeric verification against exported WAV output, since
+  these are custom node-graph wiring (not simple node wrappers) and
+  carry the same "looks right but silently does nothing" risk class the
+  real-time pitch worklet's zero-net-shift bug turned out to be:
+  Stereo Width's L-R difference measured exactly 0.000 at width=0 and
+  scaled linearly with width; Auto-Pan's L/R balance measured actually
+  swinging -0.86 to +0.65 over time; Chorus/Flanger/Exciter's
+  active-vs-bypassed exports differ by a real margin with sane
+  non-clipping levels and no NaN; Multiband Compressor's aggressive
+  low-band settings measurably dropped output RMS vs. a neutral
+  baseline on a tone routed into that band. See AUDIO_ENGINE.md
+  "Additional effects (post-launch)" for the full writeup.
 
 ## Phase 6 — Beat Analyzer ✅
 

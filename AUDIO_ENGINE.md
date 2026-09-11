@@ -955,6 +955,86 @@ very first render quantum, with no such race.
   clamp also keeps the delay-drift math working within the buffer's safe
   bounds.
 
+## Additional effects (post-launch)
+
+Six effect types from the original "eventually" list (see Phase 3's
+priority notes), built after the 13-phase roadmap + real-time pitch
+monitor were done: `src/audio-engine/effects/MultibandCompressorEffect.ts`,
+`ChorusEffect.ts`, `FlangerEffect.ts`, `ExciterEffect.ts`,
+`AutoPanEffect.ts`, `StereoWidthEffect.ts`. Same pattern as every other
+effect — implements `Effect<Params>`, registered in `EffectChain`'s
+`createEffectNode` factory, params type in `types/effects.ts`, editor UI
+in `EffectParamsEditor.tsx` — no changes needed anywhere else, since the
+Effects Rack UI is fully generic over `EFFECT_LABELS`/`EffectType`.
+
+- **Multiband Compressor** (`MultibandCompressorEffect.ts`): 3-band
+  parallel split via standard 2nd-order (12dB/oct) highpass/lowpass
+  `BiquadFilterNode`s, not a phase-corrected Linkwitz-Riley crossover —
+  a known simplification (some band overlap/coloration right at the
+  crossover points), documented in `types/effects.ts`'s doc comment
+  rather than hidden. Each band gets its own `DynamicsCompressorNode` +
+  makeup gain; the three sum back together (multiple `AudioNode`
+  connections into one `GainNode` *is* the sum). Attack/release are
+  shared across bands, threshold/ratio/makeup are per-band.
+- **Chorus** / **Flanger** (`ChorusEffect.ts`/`FlangerEffect.ts`):
+  modulated `DelayNode`s — an `OscillatorNode` LFO drives `delayTime`
+  directly (an `AudioParam` connection adds the LFO's output on top of
+  the node's static `.value`, standard Web Audio modulation routing).
+  Chorus uses a longer base delay (~20ms) with no feedback (simple
+  doubling/thickening); Flanger uses a much shorter base delay (~3ms)
+  with a feedback loop (the resonant comb-filter sweep that's actually
+  "flanging," vs. chorus's plain thickening). Both start their LFO
+  oscillator once at construction and run it for the node's lifetime,
+  the same pattern `AutoPanEffect` uses.
+- **Exciter** (`ExciterEffect.ts`): highpass-isolates the top end,
+  drives it through the *same* saturation curve `SaturationEffect`
+  already uses (`curves.ts`'s `makeSaturationCurve("bright")`, reused
+  rather than inventing a second waveshaping curve), and blends the
+  result back on top of the untouched dry signal — additive, not a
+  dry/wet crossfade, matching how a real hardware/plugin exciter
+  actually behaves (it adds harmonic "air," it doesn't replace the
+  source).
+- **Auto-Pan** (`AutoPanEffect.ts`): an LFO drives a `StereoPannerNode`'s
+  `pan` param directly — `depth` scales the LFO output before it reaches
+  `pan`, so depth=1 sweeps hard-left to hard-right and depth=0 sits
+  silently at center (by design, not a bug).
+- **Stereo Width** (`StereoWidthEffect.ts`): mid-side processing built
+  from a `ChannelSplitterNode`/`ChannelMergerNode` plus plain `GainNode`
+  arithmetic (Web Audio sums multiple connections into one node — that's
+  the "+"; a negative gain is the "-"): `mid = 0.5(L+R)`,
+  `side = 0.5(L-R)`, scaled by `width` and recombined as
+  `mid ± width*side`. Only audibly does anything on genuinely stereo
+  material (panned tracks summed on the master, or a stereo import) — a
+  single dead-center mono source has no side signal to widen, which is
+  correct behavior for mono input, not a bug.
+
+**Verified via Playwright** (not unit-tested — these are pure
+`AudioNode`-graph wiring, same "AudioContext-dependent code isn't unit
+tested" split as every other effect in this file): added all 6 to both a
+track and the master bus, tweaked params, toggled bypass, played back —
+zero console errors. Beyond that baseline, each effect's actual DSP
+correctness was checked numerically against exported WAV output (the
+same rigor used for the pitch worklet and BS.1770, since these are
+custom-wired node graphs, not simple node wrappers, and carry the same
+"looks right but silently does nothing" risk class):
+- Stereo Width: L-R difference RMS measured 0.000 at width=0 (exact mono
+  collapse), and scaled linearly with `width` (0.252 at width=1, 0.504 at
+  width=2) — confirms the mid-side sign/scaling math is exactly right,
+  not just "roughly stereo-ish."
+- Auto-Pan: per-window L/R balance measured swinging from -0.86 to +0.65
+  over a 2-second render at 4Hz/100% depth — confirms the panner is
+  actually oscillating, not stuck at a static value.
+- Chorus/Flanger/Exciter: each effect's active-vs-bypassed export
+  differs by a real margin (not near-zero, which is exactly the class of
+  "wired but the wet path never reaches output" bug the real-time pitch
+  worklet's zero-net-shift bug turned out to be), with sane non-clipping
+  peak levels and no NaN/Infinity in the rendered output.
+- Multiband Compressor: pushing the low band's threshold/ratio hard on a
+  tone routed into that band measurably dropped the exported RMS vs. a
+  neutral setting — confirms the crossover actually routes signal into
+  the right band's compressor, not just passing everything through
+  unprocessed.
+
 ## What's deliberately not here yet
 
 - No manual note editing (dragging individual detected notes) — the pitch
@@ -971,14 +1051,11 @@ very first render quantum, with no such race.
   subtraction or a trained model (e.g. an RNNoise-style WASM module),
   still not built. `vocalAnalysis.ts` says so explicitly when a
   recording's noise floor is high, instead of implying the gate fixes it.
-- No multiband compressor, expander, exciter, chorus/flanger/phaser,
-  auto-pan, or stereo-width tool. These were in the original effects list
-  as "eventually" — the Phase 3 priority was getting EQ/compressor/
-  de-esser/saturation/limiter/clipper/gate/reverb/delay solid first (see
-  PROJECT_SPEC.md's priority order: vocal quality first). Add them the same
-  way as the existing effects: a new `*Effect.ts` implementing `Effect<T>`,
-  a new params type in `types/effects.ts`, a case in `EffectChain`'s
-  `createEffectNode` factory.
+- Multiband compressor, chorus, flanger, exciter, auto-pan, and stereo
+  width now exist (see "Additional effects" below) — built after the
+  original Phase 3 priority list (vocal quality first) was done. No
+  expander or phaser yet — genuinely not built, not implied by anything
+  above.
 - The live Analyzer meter's "LUFS (approx.)" (see "Master bus loudness
   tap" above) stays a fast approximation, by necessity — it can't buffer
   the whole signal. The Mix Assistant's "Integrated LUFS" now uses the

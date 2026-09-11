@@ -1,6 +1,6 @@
 "use client";
 
-import type { EffectInstance, EqBand } from "@/types/effects";
+import type { EffectInstance, EqBand, MultibandBandParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
 
 interface EffectParamsEditorProps {
@@ -123,6 +123,80 @@ export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps
           <ParamSlider label="Tone" value={p.filterFreq} min={500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, filterFreq: v })} />
           <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
         </>
+      );
+    }
+
+    case "multibandCompressor": {
+      const p = effect.params;
+      const bandEditor = (label: string, band: MultibandBandParams, key: "low" | "mid" | "high") => (
+        <div key={key} className="rounded border border-neutral-800 p-1.5">
+          <div className="mb-1 text-[10px] font-semibold uppercase text-neutral-500">{label}</div>
+          <ParamSlider label="Threshold" value={band.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, [key]: { ...band, thresholdDb: v } })} />
+          <ParamSlider label="Ratio" value={band.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...p, [key]: { ...band, ratio: v } })} />
+          <ParamSlider label="Makeup" value={band.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, [key]: { ...band, makeupDb: v } })} />
+        </div>
+      );
+      return (
+        <>
+          <ParamSlider label="Low/Mid" value={p.lowMidFreq} min={40} max={1000} step={10} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, lowMidFreq: v })} />
+          <ParamSlider label="Mid/High" value={p.midHighFreq} min={500} max={10000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, midHighFreq: v })} />
+          <ParamSlider label="Attack" value={p.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
+          <ParamSlider label="Release" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
+          {bandEditor("Low", p.low, "low")}
+          {bandEditor("Mid", p.mid, "mid")}
+          {bandEditor("High", p.high, "high")}
+        </>
+      );
+    }
+
+    case "chorus": {
+      const p = effect.params;
+      return (
+        <>
+          <ParamSlider label="Rate" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
+          <ParamSlider label="Depth" value={p.depthMs} min={0.5} max={15} step={0.5} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
+          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+        </>
+      );
+    }
+
+    case "flanger": {
+      const p = effect.params;
+      return (
+        <>
+          <ParamSlider label="Rate" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
+          <ParamSlider label="Depth" value={p.depthMs} min={0.2} max={10} step={0.2} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
+          <ParamSlider label="Feedback" value={p.feedback * 100} min={0} max={90} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, feedback: v / 100 })} />
+          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+        </>
+      );
+    }
+
+    case "exciter": {
+      const p = effect.params;
+      return (
+        <>
+          <ParamSlider label="Freq" value={p.freq} min={1500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, freq: v })} />
+          <ParamSlider label="Drive" value={p.driveDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, driveDb: v })} />
+          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+        </>
+      );
+    }
+
+    case "autoPan": {
+      const p = effect.params;
+      return (
+        <>
+          <ParamSlider label="Rate" value={p.rateHz} min={0.05} max={8} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
+          <ParamSlider label="Depth" value={p.depth * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, depth: v / 100 })} />
+        </>
+      );
+    }
+
+    case "stereoWidth": {
+      const p = effect.params;
+      return (
+        <ParamSlider label="Width" value={p.width * 100} min={0} max={200} step={5} unit="%" decimals={0} onChange={(v) => onChange({ ...p, width: v / 100 })} />
       );
     }
   }
