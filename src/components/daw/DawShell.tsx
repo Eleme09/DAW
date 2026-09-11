@@ -17,6 +17,19 @@ export function DawShell() {
     getAudioEngine().syncTracks(tracks);
   }, [tracks]);
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        useProjectStore.getState().splitClipAtPlayhead();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-neutral-100">
       <TransportBar />

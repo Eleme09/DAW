@@ -1,4 +1,5 @@
 import { dbToGain } from "./dbUtils";
+import { encodeWav } from "./wavEncoder";
 import type { AudioClip, LoopRegion, Track, TrackId } from "@/types/project";
 
 /**
@@ -24,10 +25,30 @@ interface ScheduledSource {
   clipId: string;
 }
 
+interface RecordingSession {
+  stream: MediaStream;
+  source: MediaStreamAudioSourceNode;
+  worklet: AudioWorkletNode;
+  analyser: AnalyserNode;
+  silentSink: GainNode;
+  chunks: Float32Array[][]; // chunks[channel][block]
+  /** Timeline position (seconds) where the resulting clip should start. */
+  startTime: number;
+}
+
+export interface RecordingResult {
+  blob: Blob;
+  durationSec: number;
+  startTime: number;
+}
+
+export type StartRecordingResult = { ok: true } | { ok: false; error: string };
+
 export type TransportListener = (currentTime: number) => void;
 
 const METRONOME_LOOKAHEAD_SEC = 0.1;
 const METRONOME_INTERVAL_MS = 25;
+const RECORDER_WORKLET_URL = "/worklets/recorder-processor.js";
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
@@ -49,6 +70,9 @@ export class AudioEngine {
   private metronomeTimer: ReturnType<typeof setInterval> | null = null;
   private nextClickTime = 0;
   private nextClickBeat = 0;
+
+  private recording: RecordingSession | null = null;
+  private recorderWorkletLoaded = false;
 
   /** Must be called from a user-gesture handler (click) before any playback. */
   ensureContext(): AudioContext {
@@ -368,6 +392,152 @@ export class AudioEngine {
       clearInterval(this.metronomeTimer);
       this.metronomeTimer = null;
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Recording
+  //
+  // Captures raw Float32 PCM through an AudioWorklet (see
+  // public/worklets/recorder-processor.js) instead of MediaRecorder, so the
+  // take is never touched by a lossy codec before reaching the DSP chain.
+  // The mic is deliberately never routed to the output — monitoring is
+  // visual only (see getRecordingAnalyser) to avoid feedback, since this
+  // app's whole premise is phone/earbud recording setups.
+  // ---------------------------------------------------------------------
+
+  isRecording(): boolean {
+    return this.recording !== null;
+  }
+
+  getRecordingAnalyser(): AnalyserNode | null {
+    return this.recording?.analyser ?? null;
+  }
+
+  /**
+   * Starts capturing mic input and, simultaneously, plays back existing
+   * tracks from `fromTime` so the take can be recorded over a beat.
+   */
+  async startRecording(
+    tracks: Track[],
+    loop: LoopRegion,
+    bpm: number,
+    fromTime: number
+  ): Promise<StartRecordingResult> {
+    if (this.recording) return { ok: false, error: "Already recording" };
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return { ok: false, error: "Microphone access is not available in this browser/context" };
+    }
+
+    const ctx = this.ensureContext();
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 1,
+        },
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Microphone permission denied",
+      };
+    }
+
+    if (!this.recorderWorkletLoaded) {
+      await ctx.audioWorklet.addModule(RECORDER_WORKLET_URL);
+      this.recorderWorkletLoaded = true;
+    }
+
+    const source = ctx.createMediaStreamSource(stream);
+    const worklet = new AudioWorkletNode(ctx, "recorder-processor");
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    const silentSink = ctx.createGain();
+    silentSink.gain.value = 0;
+
+    source.connect(worklet);
+    source.connect(analyser);
+    worklet.connect(silentSink);
+    analyser.connect(silentSink);
+    silentSink.connect(ctx.destination);
+
+    const chunks: Float32Array[][] = [];
+    worklet.port.onmessage = (event: MessageEvent<Float32Array[]>) => {
+      for (let ch = 0; ch < event.data.length; ch++) {
+        (chunks[ch] ??= []).push(event.data[ch]);
+      }
+    };
+
+    this.recording = { stream, source, worklet, analyser, silentSink, chunks, startTime: fromTime };
+
+    // Play existing material under the take, same machinery as play().
+    this.stopSources();
+    this.syncTracks(tracks);
+    this.playheadAtPlay = fromTime;
+    this.contextTimeAtPlay = ctx.currentTime;
+    this.playing = true;
+    this.scheduleClips(tracks, fromTime, ctx.currentTime);
+    if (this.metronomeEnabled) this.startMetronome(fromTime, bpm);
+    this.startClock(tracks, loop, bpm);
+
+    return { ok: true };
+  }
+
+  /** Stops capture + playback and returns the encoded take, or null if nothing was recording. */
+  stopRecording(): RecordingResult | null {
+    if (!this.recording || !this.ctx) return null;
+    const { stream, source, worklet, analyser, silentSink, chunks, startTime } = this.recording;
+
+    worklet.port.onmessage = null;
+    source.disconnect();
+    worklet.disconnect();
+    analyser.disconnect();
+    silentSink.disconnect();
+    stream.getTracks().forEach((track) => track.stop());
+    this.recording = null;
+
+    this.playheadAtPlay = this.getCurrentTime();
+    this.playing = false;
+    this.stopSources();
+    this.stopMetronome();
+    this.stopClock();
+    this.emitTime();
+
+    const numChannels = Math.max(1, chunks.length);
+    const channelArrays: Float32Array[] = [];
+    for (let ch = 0; ch < numChannels; ch++) {
+      const blocks = chunks[ch] ?? [];
+      const totalLength = blocks.reduce((sum, block) => sum + block.length, 0);
+      const merged = new Float32Array(totalLength);
+      let offset = 0;
+      for (const block of blocks) {
+        merged.set(block, offset);
+        offset += block.length;
+      }
+      channelArrays.push(merged);
+    }
+
+    const durationSec = channelArrays[0] ? channelArrays[0].length / this.ctx.sampleRate : 0;
+    const blob = encodeWav(channelArrays, this.ctx.sampleRate);
+    return { blob, durationSec, startTime };
+  }
+
+  /** Aborts recording without producing a clip (permission errors, user cancel, etc). */
+  discardRecording(): void {
+    if (!this.recording) return;
+    const { stream, source, worklet, analyser, silentSink } = this.recording;
+    worklet.port.onmessage = null;
+    source.disconnect();
+    worklet.disconnect();
+    analyser.disconnect();
+    silentSink.disconnect();
+    stream.getTracks().forEach((track) => track.stop());
+    this.recording = null;
+    this.stop();
   }
 }
 

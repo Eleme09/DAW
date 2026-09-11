@@ -30,14 +30,33 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
   project, sample rehydration after reload
 
 Known gaps carried forward on purpose (see `ARCHITECTURE.md` "Known Phase 1
-limitations"): no clip trim/split, no timeline zoom, arm button is a UI
-placeholder, scheduler doesn't reschedule live edits mid-playback.
+limitations"): no timeline zoom, scheduler doesn't reschedule live edits
+mid-playback. (Clip trim/split and the arm button are no longer gaps —
+closed in Phase 2.)
 
-## Phase 2 — Recording ⬜
+## Phase 2 — Recording ✅
 
-Microphone input, recording to a clip, waveform during capture, basic
-non-destructive editing (trim/split — also closes the Phase 1 gap above),
-save/load already covered by Phase 1's persistence layer.
+- ✅ Microphone capture via `AudioWorkletNode` (raw PCM, no lossy codec) —
+  `public/worklets/recorder-processor.js` + `wavEncoder.ts`
+- ✅ REC transport control; recording plays back existing tracks in sync so
+  you can record a vocal over a beat
+- ✅ Live input level meter on the armed track (visual monitoring only —
+  mic is never routed to output, to avoid feedback on phone/earbud setups)
+- ✅ Exclusive track arming, locked while a take is in progress
+- ✅ Recorded takes go through the same sample pipeline as imports
+  (IndexedDB blob + localStorage metadata + engine buffer cache) — save/load
+  works identically for recorded and imported clips
+- ✅ Clip trim: drag either edge to adjust in/out points against the
+  underlying buffer (closes the Phase 1 "no trim" gap)
+- ✅ Split clip at playhead (toolbar button + "S" shortcut)
+- ✅ Verified in-browser with Playwright's fake mic device: arm -> record
+  -> stop -> clip appears with correct duration -> split produces two
+  contiguous clips
+- ✅ Unit tests for the WAV encoder and the split/arm store logic (21 tests
+  total)
+
+Mic permission/device errors surface inline in the transport bar
+(`recordingError`) instead of failing silently.
 
 ## Phase 3 — Vocal Engine ⬜
 

@@ -12,6 +12,7 @@ export function Timeline() {
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
   const seek = useProjectStore((s) => s.seek);
   const addTrack = useProjectStore((s) => s.addTrack);
+  const splitClipAtPlayhead = useProjectStore((s) => s.splitClipAtPlayhead);
 
   const clipEnd = project.tracks.reduce(
     (max, t) => Math.max(max, ...t.clips.map((c) => c.startTime + c.duration), 0),
@@ -49,12 +50,19 @@ export function Timeline() {
         </div>
       </div>
 
-      <div className="border-t border-neutral-800 p-2">
+      <div className="flex items-center gap-2 border-t border-neutral-800 p-2">
         <button
           onClick={() => addTrack()}
           className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
           + Add Track
+        </button>
+        <button
+          onClick={splitClipAtPlayhead}
+          title="Split the selected track's clip at the playhead (shortcut: S)"
+          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+        >
+          ✂ Split
         </button>
       </div>
     </div>

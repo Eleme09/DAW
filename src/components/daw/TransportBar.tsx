@@ -15,9 +15,13 @@ export function TransportBar() {
   const project = useProjectStore((s) => s.project);
   const currentTime = useProjectStore((s) => s.currentTime);
   const isPlaying = useProjectStore((s) => s.isPlaying);
+  const isRecording = useProjectStore((s) => s.isRecording);
+  const recordingError = useProjectStore((s) => s.recordingError);
   const play = useProjectStore((s) => s.play);
   const pause = useProjectStore((s) => s.pause);
   const stop = useProjectStore((s) => s.stop);
+  const startRecording = useProjectStore((s) => s.startRecording);
+  const stopRecording = useProjectStore((s) => s.stopRecording);
   const setBpm = useProjectStore((s) => s.setBpm);
   const setTimeSignature = useProjectStore((s) => s.setTimeSignature);
   const setLoop = useProjectStore((s) => s.setLoop);
@@ -36,21 +40,38 @@ export function TransportBar() {
       <div className="flex items-center gap-1">
         <button
           onClick={() => (isPlaying ? pause() : play())}
-          className="flex h-9 w-9 items-center justify-center rounded bg-orange-500 font-bold text-black hover:bg-orange-400"
+          disabled={isRecording}
+          className="flex h-9 w-9 items-center justify-center rounded bg-orange-500 font-bold text-black hover:bg-orange-400 disabled:opacity-40"
           aria-label={isPlaying ? "Pause" : "Play"}
         >
-          {isPlaying ? "❚❚" : "▶"}
+          {isPlaying && !isRecording ? "❚❚" : "▶"}
         </button>
         <button
           onClick={stop}
-          className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700"
+          disabled={isRecording}
+          className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 disabled:opacity-40"
           aria-label="Stop"
         >
           ■
         </button>
+        <button
+          onClick={() => (isRecording ? stopRecording() : startRecording())}
+          className={`flex h-9 w-9 items-center justify-center rounded text-lg ${
+            isRecording ? "animate-pulse bg-red-600 text-white" : "bg-neutral-800 text-red-500 hover:bg-neutral-700"
+          }`}
+          aria-label={isRecording ? "Stop recording" : "Record"}
+          title={isRecording ? "Stop recording" : "Record onto the armed track"}
+        >
+          ●
+        </button>
       </div>
 
       <span className="font-mono text-base tabular-nums text-neutral-100">{formatTime(currentTime)}</span>
+      {recordingError && (
+        <span className="max-w-xs truncate text-xs text-red-400" title={recordingError}>
+          Mic error: {recordingError}
+        </span>
+      )}
 
       <div className="flex items-center gap-1 text-xs text-neutral-400">
         <label>BPM</label>

@@ -72,6 +72,43 @@ under UI jank. The `requestAnimationFrame` loop in `startClock` only exists
 to push that computed time into the UI (and to check loop boundaries); it
 is not the timing source itself.
 
+## Recording
+
+`AudioEngine.startRecording`/`stopRecording` (Phase 2) capture mic input via
+an `AudioWorkletNode` (`public/worklets/recorder-processor.js`), not
+`MediaRecorder` — the worklet posts raw Float32 blocks straight to the main
+thread, which concatenates them and encodes a PCM16 WAV
+(`wavEncoder.ts`) once recording stops. No lossy codec (Opus/AAC) ever
+touches a take before it reaches the DSP chain — this matters specifically
+because the whole project's premise is compensating for a cheap source, and
+throwing away signal to compression first would work against that.
+
+`getUserMedia` is requested with `echoCancellation`, `noiseSuppression`,
+and `autoGainControl` all **off**. Two reasons: (1) the mic is never routed
+to the output (see below), so echo cancellation has nothing to cancel; (2)
+the whole point of Phase 3+ is that *our* DSP decides how to clean up the
+signal, based on analysis — letting the browser's black-box AGC/NS touch it
+first would fight that and can't be un-done afterward.
+
+The mic is **never connected to `ctx.destination`** — recording is visual
+monitoring only (`getRecordingAnalyser()` feeds a level meter), specifically
+because this app assumes phone/earbud recording setups where routing input
+back to output risks feedback. `startRecording` also starts playback of the
+existing tracks from the same timeline position, so you can record a vocal
+over a beat; both use the same `AudioContext.currentTime` reference so
+they stay in sync.
+
+The worklet node and its analyser are kept "live" in the graph by
+connecting them to a zero-gain `GainNode` -> `destination` (`silentSink`).
+This isn't cosmetic: per the Web Audio spec, a node with no path toward
+`destination` isn't guaranteed to be pulled for processing at all — leaving
+this out means the worklet may simply stop receiving `process()` calls.
+
+Recording always targets whichever track has `armed: true`; arming is
+exclusive (`projectStore.armTrack`) and locked while a take is in progress,
+because the recorded clip is created for a specific track id when the take
+finishes — re-arming mid-take would silently misattribute the clip.
+
 ## Metronome
 
 Runs on a `setInterval(25ms)` lookahead scheduler (the standard "Chris

@@ -1,11 +1,14 @@
 import { create } from "zustand";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { saveProject } from "@/lib/storage/projectStore";
+import { putSample } from "@/lib/storage/sampleStore";
+import { addSampleAsset } from "@/lib/storage/sampleIndex";
 import {
   createEmptyProject,
   createTrack,
   type AudioClip,
   type Project,
+  type SampleAsset,
   type Track,
   type TrackId,
 } from "@/types/project";
@@ -15,13 +18,17 @@ interface ProjectState {
   currentTime: number;
   isPlaying: boolean;
   selectedTrackId: TrackId | null;
+  isRecording: boolean;
+  recordingError: string | null;
 
   addTrack: (name?: string) => Track;
   removeTrack: (trackId: TrackId) => void;
   updateTrack: (trackId: TrackId, patch: Partial<Track>) => void;
+  armTrack: (trackId: TrackId) => void;
   addClip: (clip: AudioClip) => void;
   updateClip: (trackId: TrackId, clipId: string, patch: Partial<AudioClip>) => void;
   removeClip: (trackId: TrackId, clipId: string) => void;
+  splitClipAtPlayhead: () => void;
   selectTrack: (trackId: TrackId | null) => void;
 
   setBpm: (bpm: number) => void;
@@ -34,6 +41,9 @@ interface ProjectState {
   stop: () => void;
   seek: (time: number) => void;
 
+  startRecording: () => Promise<void>;
+  stopRecording: () => Promise<void>;
+
   renameProject: (name: string) => void;
   loadProject: (project: Project) => void;
   newProject: () => void;
@@ -43,6 +53,8 @@ interface ProjectState {
 function touch(project: Project): Project {
   return { ...project, updatedAt: new Date().toISOString() };
 }
+
+const MIN_CLIP_SEC = 0.05;
 
 export const useProjectStore = create<ProjectState>((set, get) => {
   let unsubscribeTime: (() => void) | null = null;
@@ -58,6 +70,8 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     currentTime: 0,
     isPlaying: false,
     selectedTrackId: null,
+    isRecording: false,
+    recordingError: null,
 
     addTrack: (name) => {
       const project = get().project;
@@ -83,6 +97,19 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         }),
       });
       getAudioEngine().syncTracks(get().project.tracks);
+    },
+
+    armTrack: (trackId) => {
+      // Only one track records at a time - keep arming exclusive.
+      const project = get().project;
+      const target = project.tracks.find((t) => t.id === trackId);
+      const nextArmed = !target?.armed;
+      set({
+        project: touch({
+          ...project,
+          tracks: project.tracks.map((t) => ({ ...t, armed: t.id === trackId ? nextArmed : false })),
+        }),
+      });
     },
 
     addClip: (clip) => {
@@ -123,6 +150,38 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       });
     },
 
+    splitClipAtPlayhead: () => {
+      const { project, selectedTrackId, currentTime } = get();
+      const track = project.tracks.find((t) => t.id === selectedTrackId);
+      if (!track) return;
+      const clip = track.clips.find(
+        (c) => currentTime > c.startTime + MIN_CLIP_SEC && currentTime < c.startTime + c.duration - MIN_CLIP_SEC
+      );
+      if (!clip) return;
+
+      const splitAt = currentTime - clip.startTime;
+      const left: AudioClip = { ...clip, duration: splitAt, fadeOutSec: 0 };
+      const right: AudioClip = {
+        ...clip,
+        id: crypto.randomUUID(),
+        startTime: currentTime,
+        duration: clip.duration - splitAt,
+        sourceOffset: clip.sourceOffset + splitAt,
+        fadeInSec: 0,
+      };
+
+      set({
+        project: touch({
+          ...project,
+          tracks: project.tracks.map((t) =>
+            t.id !== track.id
+              ? t
+              : { ...t, clips: t.clips.flatMap((c) => (c.id === clip.id ? [left, right] : [c])) }
+          ),
+        }),
+      });
+    },
+
     selectTrack: (trackId) => set({ selectedTrackId: trackId }),
 
     setBpm: (bpm) => set({ project: touch({ ...get().project, bpm }) }),
@@ -154,6 +213,79 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       const { project } = get();
       getAudioEngine().seek(time, project.tracks, project.loop, project.bpm);
       set({ currentTime: time });
+    },
+
+    startRecording: async () => {
+      const state = get();
+      if (state.isRecording) return;
+
+      let project = state.project;
+      let armedTrack = project.tracks.find((t) => t.armed);
+      if (!armedTrack) {
+        armedTrack =
+          project.tracks.find((t) => t.id === state.selectedTrackId) ??
+          createTrack(`Vocal ${project.tracks.length + 1}`, project.tracks.length);
+        if (!project.tracks.some((t) => t.id === armedTrack!.id)) {
+          project = touch({ ...project, tracks: [...project.tracks, armedTrack] });
+        }
+        project = touch({
+          ...project,
+          tracks: project.tracks.map((t) => (t.id === armedTrack!.id ? { ...t, armed: true } : t)),
+        });
+        set({ project, selectedTrackId: armedTrack.id });
+      }
+
+      set({ recordingError: null });
+      const result = await getAudioEngine().startRecording(
+        project.tracks,
+        project.loop,
+        project.bpm,
+        get().currentTime
+      );
+      if (!result.ok) {
+        set({ recordingError: result.error });
+        return;
+      }
+      set({ isRecording: true, isPlaying: true });
+    },
+
+    stopRecording: async () => {
+      if (!get().isRecording) return;
+      const result = getAudioEngine().stopRecording();
+      set({ isRecording: false, isPlaying: false, currentTime: getAudioEngine().getCurrentTime() });
+      if (!result || result.durationSec <= 0) return;
+
+      const project = get().project;
+      const armedTrack = project.tracks.find((t) => t.armed);
+      if (!armedTrack) return;
+
+      const sampleId = crypto.randomUUID();
+      await getAudioEngine().decodeAndCache(sampleId, await result.blob.arrayBuffer());
+      await putSample(sampleId, `${armedTrack.name} take`, result.blob);
+      const asset: SampleAsset = {
+        id: sampleId,
+        name: `${armedTrack.name} take ${new Date().toLocaleTimeString()}`,
+        durationSec: result.durationSec,
+        sampleRate: getAudioEngine().getContext()?.sampleRate ?? 44100,
+        channels: 1,
+        createdAt: new Date().toISOString(),
+      };
+      addSampleAsset(asset);
+
+      const clip: AudioClip = {
+        id: crypto.randomUUID(),
+        trackId: armedTrack.id,
+        sampleId,
+        name: asset.name,
+        startTime: result.startTime,
+        duration: result.durationSec,
+        sourceOffset: 0,
+        gainDb: 0,
+        fadeInSec: 0,
+        fadeOutSec: 0,
+        color: armedTrack.color,
+      };
+      get().addClip(clip);
     },
 
     renameProject: (name) => set({ project: touch({ ...get().project, name }) }),

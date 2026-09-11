@@ -36,6 +36,11 @@ src/
   audio-engine/     Real-time audio graph + transport (see AUDIO_ENGINE.md).
                      No React, no Next.js imports here — must stay usable
                      from a Worker or a test file with zero DOM.
+                     wavEncoder.ts has no AudioContext dependency either —
+                     it's pure Float32 -> WAV Blob, testable in Node.
+public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
+                     (ctx.audioWorklet.addModule), so they must stay plain
+                     JS served as static files, not bundled TS.
   types/project.ts   Shared data model: Project / Track / AudioClip / etc.
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
@@ -112,13 +117,12 @@ to this app, run the migration, set the env vars, and replace the
 function signatures (or add a sync layer — either is reasonable, pick when
 you get there).
 
-## Known Phase 1 limitations (intentional, not bugs)
+## Known limitations (intentional, not bugs)
 
-- No clip trimming/splitting — a clip's duration is always the full sample
-  length. Trim handles are Phase 2/3 work.
 - No zoom control on the timeline (fixed 80px/second).
-- "Arm" button on tracks is a UI-only toggle; recording isn't implemented
-  yet (Phase 2).
+- Single-track recording only — one armed track at a time, matching a
+  solo-vocalist workflow. Multi-track simultaneous recording (e.g. a live
+  band take) isn't a goal right now.
 - The transport scheduler schedules all clips at `play()`/`seek()` time; it
   does not reschedule if you add/move a clip mid-playback on a different
   track's future region. Fine for Phase 1's edit-then-play workflow; a
