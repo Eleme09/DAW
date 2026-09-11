@@ -217,10 +217,31 @@ whoever reads it next.
 - ✅ 7 new unit tests (134 total): same-key match, relative major/minor
   match, incompatible-key message format, scale-membership checks
 
-## Phase 9 — AI Vocal Engineer ⬜
+## Phase 9 — AI Vocal Engineer ✅
 
-"Make Vocal Professional": analysis-driven parameters applied to the Phase
-3 chain. See `AI_FEATURES.md` principle 3 — AI proposes, DSP executes.
+- ✅ "Make Vocal Professional" chain builder
+  (`vocalEngineerChain.ts`): extends Phase 4's corrective logic (same
+  analysis -> noise gate/EQ/de-esser reasoning) with an always-present
+  baseline compressor and a stylistic layer (tone tilt, presence,
+  saturation, reverb, delay) from a selected preset
+- ✅ 13 vocal character presets (Clean/Natural/Bright/Dark/Aggressive/
+  Melodic/Trap/Rage/Cinematic/Radio/Lead/Adlib/Double) — matches the
+  brief's list exactly
+- ✅ 8 genre-inspired presets (Yeat/rage, Travis Scott/atmospheric trap,
+  Kanye/experimental, Hades 66/dark cinematic, Clarent/aggressive,
+  Yovngchimi/hard, Kris R/modern Latin, Luar La L/dark melodic) —
+  characteristics only, no literal chain copying (see AI_FEATURES.md)
+- ✅ "Engineer" panel per sample (Audio browser tab): style picker with
+  description, "Make Vocal Professional" applies the chain to a track
+- ✅ Pitch correction intentionally excluded from this chain — it's Phase
+  5's separate offline render; the UI points to the Pitch tab instead
+- ✅ Verified in-browser: a noisy/muddy test recording + "Rage-inspired"
+  produced Noise Gate -> EQ (corrective + stylistic bands) -> ... ->
+  Limiter, applied to a track, played back clean with zero console errors
+- ✅ 8 new unit tests (142 total): minimal chain for a clean recording,
+  full signal-flow order when everything is flagged, compressor ratio
+  taking whichever is stronger (corrective vs. stylistic), EQ tilt math,
+  skip-when-zero-mix logic, every preset producing a valid chain
 
 ## Phase 10 — AI Mix Assistant ⬜
 
@@ -244,8 +265,9 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 9 (AI Vocal Engineer) — the most central phase left to
-the project's #1 priority (vocal quality). Builds on Phase 4's rule-based
-Phone Mic Enhance the same way Phase 6 built on Phase 5's key detection:
-extend the existing analysis -> chain pipeline with the fuller effect set
-(dynamic EQ, saturation shaping) rather than starting over.
+**Next up:** Phase 10 (AI Mix Assistant) — next in PROJECT_SPEC.md's
+priority order (AI assistance, priority 5) and the last "AI improves an
+existing recording" phase before beat generation/reconstruction (priority
+6) starts building new content from scratch. Session-wide diagnostics
+(masking, mud, gain staging across tracks) is a natural extension of
+Phase 4's single-track analysis, not a new detection paradigm.

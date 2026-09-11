@@ -45,10 +45,16 @@ src/
                      or the master bus's declarative insert list into real
                      nodes. See AUDIO_ENGINE.md "Effect chain".
     analysis/         Offline vocal analysis (fft.ts, spectralAnalysis.ts,
-                     dynamicsAnalysis.ts, vocalAnalysis.ts, autoChain.ts).
+                     dynamicsAnalysis.ts, vocalAnalysis.ts, autoChain.ts,
+                     vocalEngineerChain.ts, vocalStylePresets.ts).
                      Runs once on a full AudioBuffer, never during
                      playback — no AudioContext dependency, pure math,
                      unit-tested. See AUDIO_ENGINE.md "Offline analysis".
+                     autoChain.ts (Phase 4, phone-mic-specific corrective
+                     chain) and vocalEngineerChain.ts (Phase 9, the same
+                     corrective logic plus a stylistic preset layer) are
+                     deliberately separate functions, not one collapsed
+                     into the other — see AI_FEATURES.md "Built (Phase 9)".
     pitch/            Pitch detection, key detection, and pitch correction
                      (pitchDetection.ts, keyDetection.ts, noteUtils.ts,
                      correctionCurve.ts, psola.ts, applyPitchCorrection.ts).
@@ -82,6 +88,8 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
     match.ts          VocalBeatMatchResult — Phase 8's comparison result.
+    vocalStyle.ts     VocalStyleParams + the VocalCharacter/GenreStyle
+                      preset-key unions — Phase 9's style presets.
     beat.ts           TempoResult, OnsetEvent, DrumHit, BassNote,
                       ChordSegment, SectionBoundary, BeatAnalysisResult —
                       the beat pipeline's shared shapes.

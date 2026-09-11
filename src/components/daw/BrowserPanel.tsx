@@ -14,6 +14,7 @@ import { VocalAnalysisPanel } from "./VocalAnalysisPanel";
 import { PitchStudioPanel } from "./PitchStudioPanel";
 import { BeatAnalyzerPanel } from "./BeatAnalyzerPanel";
 import { VocalBeatMatchPanel } from "./VocalBeatMatchPanel";
+import { VocalEngineerPanel } from "./VocalEngineerPanel";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
@@ -52,6 +53,7 @@ function AudioTab() {
   const [enhancingId, setEnhancingId] = useState<string | null>(null);
   const [pitchOpenId, setPitchOpenId] = useState<string | null>(null);
   const [beatOpenId, setBeatOpenId] = useState<string | null>(null);
+  const [engineerOpenId, setEngineerOpenId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const project = useProjectStore((s) => s.project);
@@ -176,23 +178,29 @@ function AudioTab() {
               <div className="truncate font-medium text-neutral-200">{s.name}</div>
               <div className="text-neutral-500">{s.durationSec.toFixed(1)}s</div>
             </button>
-            <div className="mt-1 flex gap-1">
+            <div className="mt-1 grid grid-cols-2 gap-1">
               <button
                 onClick={() => analyzeSample(s)}
                 disabled={analyzingId === s.id}
-                className="flex-1 rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
               >
                 {analyzingId === s.id ? "Analyzing…" : "Analyze"}
               </button>
               <button
+                onClick={() => setEngineerOpenId((prev) => (prev === s.id ? null : s.id))}
+                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+              >
+                Engineer
+              </button>
+              <button
                 onClick={() => setPitchOpenId((prev) => (prev === s.id ? null : s.id))}
-                className="flex-1 rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
               >
                 Pitch
               </button>
               <button
                 onClick={() => setBeatOpenId((prev) => (prev === s.id ? null : s.id))}
-                className="flex-1 rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
               >
                 Beat
               </button>
@@ -204,6 +212,7 @@ function AudioTab() {
                 enhancing={enhancingId === s.id}
               />
             )}
+            {engineerOpenId === s.id && <VocalEngineerPanel sample={s} />}
             {pitchOpenId === s.id && (
               <PitchStudioPanel sample={s} onNewSample={() => setSamples(listSampleAssets())} />
             )}

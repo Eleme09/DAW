@@ -129,14 +129,37 @@ playback path.
   Messages match the brief's own example phrasing exactly, no
   music-theory explanation layered on top.
 
-## Planned surfaces (not built)
+## Built (Phase 9)
 
-- **Auto Vocal Engineer** (Phase 9): broader than Phase 4's rule-based
-  Phone Mic Enhance — analysis -> derived parameters for a fuller chain
-  (dynamic EQ, saturation, tone shaping, pitch correction) and likely
-  AI/ML-assisted parameter suggestions, not just fixed thresholds.
-  Parameters must come from the analysis, not a fixed preset — see
-  principle 3.
+- **Auto Vocal Engineer / "Make Vocal Professional"**
+  (`src/audio-engine/analysis/vocalEngineerChain.ts`): extends Phase 4's
+  Phone Mic Enhance rather than replacing it — same corrective logic
+  (noise gate, EQ cuts, de-esser, all still driven by the measured
+  analysis, per principle 3), plus a compressor that's now always present
+  (baseline "professional" glue, not just a fix for flagged-uncontrolled
+  dynamics), plus a **stylistic** layer that does NOT come from analysis:
+  the selected preset's EQ tilt, presence boost, saturation, reverb, and
+  delay. Two preset tables
+  (`src/audio-engine/analysis/vocalStylePresets.ts`):
+  - **13 vocal character presets** (Clean/Natural/Bright/Dark/Aggressive/
+    Melodic/Trap/Rage/Cinematic/Radio/Lead/Adlib/Double), matching the
+    brief's list exactly.
+  - **8 genre-inspired presets** (Rage/Yeat-, atmospheric trap/Travis
+    Scott-, experimental/Kanye-, dark cinematic/Hades 66-, aggressive/
+    Clarent-, hard/Yovngchimi-, modern Latin/Kris R-, dark melodic/Luar La
+    L-inspired) — each hand-picked to capture the *characteristics* the
+    brief described (tonality, aggression, presence, saturation,
+    ambiance, dynamics), never a literal copy of any artist's or plugin's
+    actual chain, which this project has no access to and wouldn't use if
+    it did. Every value is original, not reverse-engineered from a
+    reference track.
+  Pitch correction is deliberately NOT part of this chain — it's Phase
+  5's separate offline render, architecturally incompatible with an
+  insert-effect list (see AUDIO_ENGINE.md). The UI points to the Pitch
+  tab instead of pretending to include it.
+  Still fully rule-based, not ML — same principle-3 reasoning as Phase 4:
+  deterministic, inspectable, and every result stays editable afterward
+  in the Effects Rack like any manually-built chain.
 - **Real-time pitch correction** (monitor live while singing): the offline
   Phase 5 pipeline above handles "record then correct"; live correction
   needs a streaming pitch tracker and an `AudioWorklet`-based shifter with
