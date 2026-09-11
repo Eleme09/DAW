@@ -1,6 +1,8 @@
 import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
+import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import type { AudioClip, LoopRegion, Track, TrackId } from "@/types/project";
+import type { EffectInstance } from "@/types/effects";
 
 /**
  * Real-time audio engine: owns the single AudioContext, the per-track mixer
@@ -12,7 +14,8 @@ import type { AudioClip, LoopRegion, Track, TrackId } from "@/types/project";
  */
 
 interface TrackGraph {
-  input: GainNode; // future insert point (Phase 3 effects chain attaches here)
+  input: GainNode; // insert chain attaches here, see EffectChain
+  effectChain: EffectChain;
   volume: GainNode;
   pan: StereoPannerNode;
   muteGain: GainNode; // 0/1, driven by mute+solo logic
@@ -49,11 +52,16 @@ export type TransportListener = (currentTime: number) => void;
 const METRONOME_LOOKAHEAD_SEC = 0.1;
 const METRONOME_INTERVAL_MS = 25;
 const RECORDER_WORKLET_URL = "/worklets/recorder-processor.js";
+const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
+  private loudnessAnalyser: AnalyserNode | null = null;
+  private masterChain: EffectChain | null = null;
+  private noiseGateWorkletPromise: Promise<void> | null = null;
+  private noiseGateWorkletLoaded = false;
 
   private tracks = new Map<TrackId, TrackGraph>();
   private soloedTracks = new Set<TrackId>();
@@ -81,11 +89,37 @@ export class AudioEngine {
       const master = ctx.createGain();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
-      master.connect(analyser);
+      const masterChain = new EffectChain(ctx, this.effectChainDeps());
+      master.connect(masterChain.inputNode);
+      masterChain.outputNode.connect(analyser);
       analyser.connect(ctx.destination);
+
+      // Loudness tap: approximate K-weighting (perceptual, not exact BS.1770
+      // coefficients — see loudness.ts) feeding a dedicated analyser. Needs
+      // its own silent path to destination or it won't be pulled at all
+      // (same reasoning as the recording silentSink — see AUDIO_ENGINE.md).
+      const kShelf = ctx.createBiquadFilter();
+      kShelf.type = "highshelf";
+      kShelf.frequency.value = 1500;
+      kShelf.gain.value = 4;
+      const kHighpass = ctx.createBiquadFilter();
+      kHighpass.type = "highpass";
+      kHighpass.frequency.value = 60;
+      const loudnessAnalyser = ctx.createAnalyser();
+      loudnessAnalyser.fftSize = 2048;
+      const loudnessSink = ctx.createGain();
+      loudnessSink.gain.value = 0;
+      analyser.connect(kShelf);
+      kShelf.connect(kHighpass);
+      kHighpass.connect(loudnessAnalyser);
+      loudnessAnalyser.connect(loudnessSink);
+      loudnessSink.connect(ctx.destination);
+
       this.ctx = ctx;
       this.master = master;
       this.masterAnalyser = analyser;
+      this.loudnessAnalyser = loudnessAnalyser;
+      this.masterChain = masterChain;
     }
     if (this.ctx.state === "suspended") {
       void this.ctx.resume();
@@ -101,6 +135,33 @@ export class AudioEngine {
     return this.masterAnalyser;
   }
 
+  getLoudnessAnalyser(): AnalyserNode | null {
+    return this.loudnessAnalyser;
+  }
+
+  syncMasterInserts(inserts: EffectInstance[]): void {
+    this.ensureContext();
+    this.masterChain?.setInserts(inserts);
+  }
+
+  private effectChainDeps(): EffectChainDeps {
+    return {
+      isNoiseGateWorkletLoaded: () => this.noiseGateWorkletLoaded,
+      ensureNoiseGateWorklet: () => this.ensureNoiseGateWorklet(),
+    };
+  }
+
+  private ensureNoiseGateWorklet(): Promise<void> {
+    if (this.noiseGateWorkletLoaded) return Promise.resolve();
+    if (!this.noiseGateWorkletPromise) {
+      const ctx = this.ensureContext();
+      this.noiseGateWorkletPromise = ctx.audioWorklet.addModule(NOISE_GATE_WORKLET_URL).then(() => {
+        this.noiseGateWorkletLoaded = true;
+      });
+    }
+    return this.noiseGateWorkletPromise;
+  }
+
   // ---------------------------------------------------------------------
   // Track graph
   // ---------------------------------------------------------------------
@@ -113,6 +174,7 @@ export class AudioEngine {
     for (const [id, graph] of this.tracks) {
       if (!liveIds.has(id)) {
         graph.input.disconnect();
+        graph.effectChain.dispose();
         this.tracks.delete(id);
       }
     }
@@ -123,19 +185,22 @@ export class AudioEngine {
       let graph = this.tracks.get(track.id);
       if (!graph) {
         const input = ctx.createGain();
+        const effectChain = new EffectChain(ctx, this.effectChainDeps());
         const volume = ctx.createGain();
         const pan = ctx.createStereoPanner();
         const muteGain = ctx.createGain();
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 1024;
-        input.connect(volume);
+        input.connect(effectChain.inputNode);
+        effectChain.outputNode.connect(volume);
         volume.connect(pan);
         pan.connect(muteGain);
         muteGain.connect(analyser);
         analyser.connect(master);
-        graph = { input, volume, pan, muteGain, analyser };
+        graph = { input, effectChain, volume, pan, muteGain, analyser };
         this.tracks.set(track.id, graph);
       }
+      graph.effectChain.setInserts(track.inserts);
       graph.volume.gain.value = dbToGain(track.volumeDb);
       graph.pan.pan.value = track.pan;
       const audible = !track.muted && (this.soloedTracks.size === 0 || track.solo);

@@ -7,15 +7,21 @@ import { TransportBar } from "./TransportBar";
 import { BrowserPanel } from "./BrowserPanel";
 import { Timeline } from "./Timeline/Timeline";
 import { MixerPanel } from "./Mixer/MixerPanel";
+import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 
 export function DawShell() {
   const tracks = useProjectStore((s) => s.project.tracks);
+  const masterInserts = useProjectStore((s) => s.project.masterInserts);
 
   // Keep the audio graph in sync with track state even before the user hits
   // play, so mixer meters/pan/volume are live immediately.
   useEffect(() => {
     getAudioEngine().syncTracks(tracks);
   }, [tracks]);
+
+  useEffect(() => {
+    getAudioEngine().syncMasterInserts(masterInserts);
+  }, [masterInserts]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -36,6 +42,7 @@ export function DawShell() {
       <div className="flex flex-1 overflow-hidden">
         <BrowserPanel />
         <Timeline />
+        <EffectsRackPanel />
       </div>
       <MixerPanel />
     </div>

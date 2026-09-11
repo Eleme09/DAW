@@ -1,3 +1,5 @@
+import type { EffectInstance } from "./effects";
+
 export type TrackId = string;
 export type ClipId = string;
 export type ProjectId = string;
@@ -33,6 +35,8 @@ export interface Track {
   armed: boolean;
   clips: AudioClip[];
   order: number;
+  /** Insert effect chain, applied in array order at the track's input point. */
+  inserts: EffectInstance[];
 }
 
 export interface LoopRegion {
@@ -56,6 +60,8 @@ export interface Project {
   loop: LoopRegion;
   markers: Marker[];
   metronomeEnabled: boolean;
+  /** Master bus insert effect chain, applied after all tracks are summed. */
+  masterInserts: EffectInstance[];
   createdAt: string;
   updatedAt: string;
 }
@@ -81,6 +87,7 @@ export function createEmptyProject(name = "Untitled Project"): Project {
     loop: { enabled: false, startTime: 0, endTime: 8 },
     markers: [],
     metronomeEnabled: false,
+    masterInserts: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -114,5 +121,6 @@ export function createTrack(name: string, order: number): Track {
     armed: false,
     clips: [],
     order,
+    inserts: [],
   };
 }

@@ -12,6 +12,9 @@ import {
   type Track,
   type TrackId,
 } from "@/types/project";
+import { createEffectInstance, type EffectInstance, type EffectType } from "@/types/effects";
+
+export type EffectTarget = TrackId | "master";
 
 interface ProjectState {
   project: Project;
@@ -30,6 +33,12 @@ interface ProjectState {
   removeClip: (trackId: TrackId, clipId: string) => void;
   splitClipAtPlayhead: () => void;
   selectTrack: (trackId: TrackId | null) => void;
+
+  addEffect: (target: EffectTarget, type: EffectType) => void;
+  removeEffect: (target: EffectTarget, effectId: string) => void;
+  moveEffect: (target: EffectTarget, effectId: string, direction: -1 | 1) => void;
+  updateEffectParams: (target: EffectTarget, effectId: string, params: EffectInstance["params"]) => void;
+  toggleEffectBypass: (target: EffectTarget, effectId: string) => void;
 
   setBpm: (bpm: number) => void;
   setTimeSignature: (num: number, den: number) => void;
@@ -64,6 +73,25 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     unsubscribeTime = getAudioEngine().onTimeUpdate((t) => set({ currentTime: t }));
   };
   attachEngineClock();
+
+  function mutateInserts(
+    target: EffectTarget,
+    updater: (inserts: EffectInstance[]) => EffectInstance[]
+  ): void {
+    const project = get().project;
+    if (target === "master") {
+      const nextProject = touch({ ...project, masterInserts: updater(project.masterInserts) });
+      set({ project: nextProject });
+      getAudioEngine().syncMasterInserts(nextProject.masterInserts);
+      return;
+    }
+    const nextProject = touch({
+      ...project,
+      tracks: project.tracks.map((t) => (t.id === target ? { ...t, inserts: updater(t.inserts) } : t)),
+    });
+    set({ project: nextProject });
+    getAudioEngine().syncTracks(nextProject.tracks);
+  }
 
   return {
     project: createEmptyProject(),
@@ -183,6 +211,34 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     },
 
     selectTrack: (trackId) => set({ selectedTrackId: trackId }),
+
+    addEffect: (target, type) => {
+      const instance = createEffectInstance(type);
+      mutateInserts(target, (inserts) => [...inserts, instance]);
+    },
+    removeEffect: (target, effectId) => {
+      mutateInserts(target, (inserts) => inserts.filter((e) => e.id !== effectId));
+    },
+    moveEffect: (target, effectId, direction) => {
+      mutateInserts(target, (inserts) => {
+        const index = inserts.findIndex((e) => e.id === effectId);
+        const newIndex = index + direction;
+        if (index === -1 || newIndex < 0 || newIndex >= inserts.length) return inserts;
+        const next = [...inserts];
+        [next[index], next[newIndex]] = [next[newIndex], next[index]];
+        return next;
+      });
+    },
+    updateEffectParams: (target, effectId, params) => {
+      mutateInserts(target, (inserts) =>
+        inserts.map((e) => (e.id === effectId ? ({ ...e, params } as EffectInstance) : e))
+      );
+    },
+    toggleEffectBypass: (target, effectId) => {
+      mutateInserts(target, (inserts) =>
+        inserts.map((e) => (e.id === effectId ? { ...e, bypassed: !e.bypassed } : e))
+      );
+    },
 
     setBpm: (bpm) => set({ project: touch({ ...get().project, bpm }) }),
     setTimeSignature: (num, den) =>

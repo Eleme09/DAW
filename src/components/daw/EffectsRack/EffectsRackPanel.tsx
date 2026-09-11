@@ -1,0 +1,97 @@
+"use client";
+
+import { useState } from "react";
+import { useProjectStore } from "@/state/projectStore";
+import { EFFECT_LABELS, type EffectType } from "@/types/effects";
+import { EffectCard } from "./EffectCard";
+import { Analyzer } from "./Analyzer";
+
+const EFFECT_TYPES = Object.keys(EFFECT_LABELS) as EffectType[];
+
+export function EffectsRackPanel() {
+  const [mode, setMode] = useState<"track" | "master">("track");
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
+  const selectedTrack = useProjectStore((s) => s.project.tracks.find((t) => t.id === s.selectedTrackId));
+  const masterInserts = useProjectStore((s) => s.project.masterInserts);
+  const addEffect = useProjectStore((s) => s.addEffect);
+
+  const target = mode === "master" ? "master" : selectedTrackId;
+  const inserts = mode === "master" ? masterInserts : (selectedTrack?.inserts ?? []);
+  const label = mode === "master" ? "Master Bus" : (selectedTrack?.name ?? "No track selected");
+
+  return (
+    <div className="flex w-80 shrink-0 flex-col border-l border-neutral-800 bg-neutral-950">
+      <div className="flex border-b border-neutral-800 text-xs font-medium">
+        <button
+          onClick={() => setMode("track")}
+          className={`flex-1 px-3 py-2 uppercase tracking-wide ${
+            mode === "track" ? "bg-neutral-900 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
+          }`}
+        >
+          Track
+        </button>
+        <button
+          onClick={() => setMode("master")}
+          className={`flex-1 px-3 py-2 uppercase tracking-wide ${
+            mode === "master" ? "bg-neutral-900 text-orange-400" : "text-neutral-500 hover:text-neutral-300"
+          }`}
+        >
+          Master
+        </button>
+      </div>
+
+      <div className="border-b border-neutral-800 px-3 py-2">
+        <div className="truncate text-xs font-semibold text-neutral-300">{label}</div>
+      </div>
+
+      {mode === "master" && <Analyzer />}
+
+      {!target ? (
+        <p className="p-4 text-center text-xs text-neutral-600">Select a track to edit its effects.</p>
+      ) : (
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-2 overflow-y-auto p-2">
+            {inserts.length === 0 && (
+              <p className="mt-4 text-center text-xs text-neutral-600">No effects yet.</p>
+            )}
+            {inserts.map((effect, i) => (
+              <EffectCard
+                key={effect.id}
+                target={target}
+                effect={effect}
+                isFirst={i === 0}
+                isLast={i === inserts.length - 1}
+              />
+            ))}
+          </div>
+
+          <div className="relative border-t border-neutral-800 p-2">
+            <button
+              onClick={() => setShowAddMenu((v) => !v)}
+              className="w-full rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400"
+            >
+              + Add Effect
+            </button>
+            {showAddMenu && (
+              <div className="absolute bottom-full left-2 right-2 mb-1 max-h-64 overflow-y-auto rounded border border-neutral-700 bg-neutral-900 shadow-lg">
+                {EFFECT_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      addEffect(target, type);
+                      setShowAddMenu(false);
+                    }}
+                    className="block w-full px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+                  >
+                    {EFFECT_LABELS[type]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

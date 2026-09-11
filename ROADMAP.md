@@ -58,12 +58,33 @@ closed in Phase 2.)
 Mic permission/device errors surface inline in the transport bar
 (`recordingError`) instead of failing silently.
 
-## Phase 3 — Vocal Engine ⬜
+## Phase 3 — Vocal Engine ✅
 
-Real DSP effects as Web Audio nodes/AudioWorklets, attached at each track's
-`input` node (see `AUDIO_ENGINE.md`): EQ, compressor, de-esser, noise
-reduction, saturation, limiter, reverb, delay. Plus an analyzer view
-(spectrum, LUFS/peak/RMS).
+- ✅ Declarative effect-chain model (`Track.inserts` / `Project.masterInserts`,
+  `src/types/effects.ts`) rendered by `EffectChain` — param tweaks never
+  reconnect the graph, structural changes (add/remove/reorder/bypass) do
+- ✅ Nine effect types: EQ (multi-band, rebuildable), Compressor, De-Esser
+  (split-band technique, native nodes only), Saturation (warm/neutral/bright
+  waveshaping curves), Limiter (compressor + hard-clip safety stage),
+  Clipper (standalone), Reverb (algorithmically generated IR — room/hall/
+  plate, no external files), Delay (feedback + damping filter), Noise Gate
+  (real envelope-follower `AudioWorklet` — a gate, explicitly not spectral
+  noise reduction)
+- ✅ Effects Rack UI: per-track and master-bus insert chains, add/remove/
+  reorder/bypass, full param editors for every effect type
+- ✅ Analyzer: real-time spectrum (log-scale bars), peak/RMS readout, an
+  approximate K-weighted loudness meter explicitly labeled "LUFS (approx.)"
+  — not certified BS.1770 (see `AUDIO_ENGINE.md`)
+- ✅ Verified in-browser: added all 9 effect types across a track and the
+  master bus, toggled bypass, reordered, played back — meters and spectrum
+  stayed live throughout, zero console errors
+- ✅ 41 unit tests total (added: saturation/clip curve shape, impulse
+  response decay envelope, loudness math)
+
+Deferred on purpose (not gaps, scope decisions — see `AUDIO_ENGINE.md`
+"What's deliberately not here yet"): multiband compressor, expander,
+exciter, chorus/flanger/phaser, auto-pan, stereo width, true spectral/ML
+noise reduction (→ Phase 4), certified LUFS.
 
 ## Phase 4 — Phone Mic Enhancement ⬜
 
@@ -116,7 +137,9 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 2 (recording) is the natural next step — it's the
-remaining piece of "mobile workflow" (record -> import -> analyze) that
-Phase 1 didn't cover, and everything from Phase 3 onward assumes you can
-get a vocal into the DAW without leaving it.
+**Next up:** Phase 4 (Phone Mic Enhancement) — the DSP building blocks
+from Phase 3 (EQ, compressor, de-esser, saturation, gate) are what a
+phone/earbud-tuned auto-chain would configure and apply; this is also
+where true noise reduction belongs (deferred out of Phase 3 on purpose).
+Phase 5 (pitch/autotune) is the other unblocked option if that's a higher
+priority to use first.

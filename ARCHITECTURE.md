@@ -36,14 +36,24 @@ src/
   audio-engine/     Real-time audio graph + transport (see AUDIO_ENGINE.md).
                      No React, no Next.js imports here — must stay usable
                      from a Worker or a test file with zero DOM.
-                     wavEncoder.ts has no AudioContext dependency either —
-                     it's pure Float32 -> WAV Blob, testable in Node.
+                     wavEncoder.ts, loudness.ts, effects/curves.ts and
+                     effects/impulseResponse.ts have no AudioContext
+                     dependency — pure math, testable in Node.
+    effects/         One file per effect type (EqEffect.ts, CompressorEffect
+                     .ts, ...), all implementing the small Effect<Params>
+                     interface, plus EffectChain.ts which renders a track's
+                     or the master bus's declarative insert list into real
+                     nodes. See AUDIO_ENGINE.md "Effect chain".
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
-  types/project.ts   Shared data model: Project / Track / AudioClip / etc.
+  types/
+    project.ts       Shared data model: Project / Track / AudioClip / etc.
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
+    effects.ts        Effect-chain data model: the EffectInstance
+                      discriminated union + one params type per effect type.
+                      Track.inserts / Project.masterInserts are EffectInstance[].
   state/             Zustand store. Bridges UI <-> audio-engine. Owns the
                      in-memory Project and mirrors transport state
                      (currentTime, isPlaying) from the engine's clock.
@@ -59,7 +69,9 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      only).
   lib/supabase/      Supabase client factory. Returns null if env vars are
                      unset — the app must keep working local-only.
-  components/daw/    UI. TransportBar, BrowserPanel, Timeline/*, Mixer/*.
+  components/daw/    UI. TransportBar, BrowserPanel, Timeline/*, Mixer/*,
+                     EffectsRack/* (per-track/master insert chain UI +
+                     Analyzer).
   hooks/             Small reusable hooks (useRafLoop for meters/clocks).
 app/                 Next.js App Router shell (layout, page, globals.css).
 supabase/migrations/ SQL schema, NOT applied to any live project (see below).
