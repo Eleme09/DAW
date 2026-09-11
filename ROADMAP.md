@@ -197,12 +197,25 @@ as-is against a beat's chromagram. No separate Phase 7 work was needed —
 this entry stays only so the roadmap's phase numbering isn't confusing to
 whoever reads it next.
 
-## Phase 8 — Vocal + Beat Matching ⬜
+## Phase 8 — Vocal + Beat Matching ✅
 
-Compares vocal pitch center to detected beat key, reports compatibility.
-Unblocked now — both detectors it needs (Phase 5's vocal key/pitch, Phase
-6's beat key) already exist. What's left is the comparison logic and a UI
-surface for it, not new detection work.
+- ✅ Comparison logic (`src/audio-engine/matching/vocalBeatMatch.ts`):
+  wires Phase 5's vocal pitch/key detection to Phase 6's beat key
+  detection — no new DSP, just the comparison the brief asked for
+- ✅ Compatible means same key **or relative major/minor** (e.g. C major
+  and A minor share every note — correctly treated as compatible, not a
+  mismatch)
+- ✅ Plain-language messages matching the brief's own example format
+  ("Your vocal (X) matches the beat (Y)." / "The beat appears to be X,
+  while the vocal is centered around Y.") — no music-theory essay
+- ✅ Notes-outside-scale check: which pitch classes the vocal actually sang
+  that fall outside the beat's key/scale
+- ✅ New "Match" tab in the Audio browser panel: pick a vocal sample and a
+  beat sample, Compare, see the result
+- ✅ Verified in-browser: a C-major vocal melody against a C-major beat
+  correctly read as matching (89%/87% confidence)
+- ✅ 7 new unit tests (134 total): same-key match, relative major/minor
+  match, incompatible-key message format, scale-membership checks
 
 ## Phase 9 — AI Vocal Engineer ⬜
 
@@ -231,9 +244,8 @@ assistant with per-platform LUFS targets.
 
 ---
 
-**Next up:** Phase 8 (Vocal + Beat Matching) is the cheapest next win —
-both detectors it needs already exist, it's comparison logic and a UI
-surface, not new DSP. Phase 9 (AI Vocal Engineer) is the other reasonable
-option and more central to the project's #1 priority (vocal quality) — it
-builds on Phase 4's rule-based Phone Mic Enhance the same way Phase 6
-built on Phase 5's key detection: extend, don't reimplement.
+**Next up:** Phase 9 (AI Vocal Engineer) — the most central phase left to
+the project's #1 priority (vocal quality). Builds on Phase 4's rule-based
+Phone Mic Enhance the same way Phase 6 built on Phase 5's key detection:
+extend the existing analysis -> chain pipeline with the fuller effect set
+(dynamic EQ, saturation shaping) rather than starting over.

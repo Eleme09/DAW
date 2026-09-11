@@ -68,8 +68,12 @@ src/
                      chord relative-major/minor confusion) were caught by
                      testing during this phase and are documented there,
                      not papered over.
+    matching/         Vocal + Beat Match (vocalBeatMatch.ts): pure
+                     comparison logic wiring pitch/keyDetection.ts's result
+                     for a vocal to beat/chromagram.ts's result for a beat.
+                     No new detection — see AI_FEATURES.md "Built (Phase 8)".
     audioBufferUtils.ts  Shared AudioBuffer helpers (mixToMono) used by
-                     analysis/, pitch/, and beat/ alike.
+                     analysis/, pitch/, beat/, and matching/ alike.
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
@@ -77,6 +81,7 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
     project.ts       Shared data model: Project / Track / AudioClip / etc.
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
+    match.ts          VocalBeatMatchResult — Phase 8's comparison result.
     beat.ts           TempoResult, OnsetEvent, DrumHit, BassNote,
                       ChordSegment, SectionBoundary, BeatAnalysisResult —
                       the beat pipeline's shared shapes.

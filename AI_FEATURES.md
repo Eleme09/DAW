@@ -118,6 +118,17 @@ playback path.
   can't tell you that). Named here so nobody mistakes their absence for an
   oversight.
 
+## Built (Phase 8)
+
+- **Vocal + Beat Match** (`src/audio-engine/matching/vocalBeatMatch.ts`):
+  wires Phase 5's vocal pitch/key detection to Phase 6's beat key detection
+  — no new detection, just comparison logic and a UI surface (the "Match"
+  tab in the Audio browser panel). Compatible means same key **or**
+  relative major/minor (C major and A minor share every note — treating
+  that as a mismatch would have been actively wrong, not just imprecise).
+  Messages match the brief's own example phrasing exactly, no
+  music-theory explanation layered on top.
+
 ## Planned surfaces (not built)
 
 - **Auto Vocal Engineer** (Phase 9): broader than Phase 4's rule-based
@@ -133,11 +144,6 @@ playback path.
   of the offline one. See AUDIO_ENGINE.md.
 - **Formant preservation** in pitch correction (Phase 5's `psola.ts` — see
   AUDIO_ENGINE.md for why this was left out of the first pass).
-- **Vocal + Beat Match** (Phase 8): compares detected vocal center (Phase
-  5's pitch/key detection) to a beat's detected key (Phase 6's beat
-  analyzer) and reports compatibility plainly (no music-theory essay, per
-  the brief). Both pieces it needs already exist — this is now just
-  wiring the comparison and the UI, not new detection work.
 - **AI Mix/Mastering Assistant** (Phase 10/18): clipping/masking/mud
   detection across the session, moderate correction suggestions, LUFS
   targets per platform.
