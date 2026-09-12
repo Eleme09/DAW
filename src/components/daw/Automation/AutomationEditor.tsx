@@ -107,14 +107,14 @@ export function AutomationEditor() {
                   key={p}
                   onClick={() => setParam(p)}
                   className={`rounded px-2 py-1 ${
-                    param === p ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
+                    param === p ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
                   }`}
                 >
                   {PARAM_LABEL[p]}
                 </button>
               ))}
             </div>
-            <label className="ml-auto flex items-center gap-1.5 text-neutral-400">
+            <label className="ml-auto flex items-center gap-1.5 text-bone-2">
               <input
                 type="checkbox"
                 checked={lane.enabled}
@@ -123,12 +123,12 @@ export function AutomationEditor() {
               Activada
             </label>
           </div>
-          <p className="text-[10px] text-neutral-600">
+          <p className="text-[10px] text-bone-3">
             Toca un espacio vacío para agregar un punto, arrastra un punto para moverlo, doble clic
             sobre un punto para quitarlo.
             {!lane.enabled && points.length > 0 && " Desactivada - la reproducción usa el valor estático hasta activarla."}
           </p>
-          <div className="max-h-[50vh] overflow-auto rounded border border-neutral-800 bg-neutral-950">
+          <div className="max-h-[50vh] overflow-auto rounded border border-line bg-ink">
             <div
               className="relative"
               style={{ width, height: HEIGHT }}
@@ -137,7 +137,7 @@ export function AutomationEditor() {
               onPointerUp={onPointerUp}
             >
               <div
-                className="pointer-events-none absolute inset-x-0 border-t border-neutral-800"
+                className="pointer-events-none absolute inset-x-0 border-t border-line"
                 style={{ top: valueToY(0) }}
               />
               <svg width={width} height={HEIGHT} className="pointer-events-none absolute inset-0">
@@ -153,7 +153,7 @@ export function AutomationEditor() {
                     removePoint(track.id, param, p.id);
                   }}
                   title={`${p.value.toFixed(range.decimals)}${range.unit} @ ${p.time.toFixed(2)}s`}
-                  className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-neutral-950 active:cursor-grabbing"
+                  className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-ink active:cursor-grabbing"
                   style={{ left: p.time * PIXELS_PER_SECOND, top: valueToY(p.value), background: track.color }}
                 />
               ))}

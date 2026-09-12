@@ -62,13 +62,13 @@ export function PianoRoll() {
     >
       {track && clip && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-neutral-400">
+          <div className="flex items-center justify-between text-xs text-bone-2">
             <span>{clip.notes.length} notas</span>
             <div className="flex items-center gap-1">
               <span>Longitud</span>
               <button
                 onClick={() => updateMidiClip(track.id, clip.id, { duration: Math.max(bar, clip.duration - bar) })}
-                className="h-6 w-6 rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                className="h-6 w-6 rounded bg-surf-2 text-bone-2 hover:bg-surf-3"
                 title="Quitar un compás"
               >
                 −
@@ -76,7 +76,7 @@ export function PianoRoll() {
               <span className="w-16 text-center tabular-nums">{(clip.duration / bar).toFixed(2)} compases</span>
               <button
                 onClick={() => updateMidiClip(track.id, clip.id, { duration: clip.duration + bar })}
-                className="h-6 w-6 rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                className="h-6 w-6 rounded bg-surf-2 text-bone-2 hover:bg-surf-3"
                 title="Agregar un compás"
               >
                 +
@@ -84,13 +84,13 @@ export function PianoRoll() {
             </div>
           </div>
 
-          <div className="max-h-[55vh] overflow-auto rounded border border-neutral-800">
+          <div className="max-h-[55vh] overflow-auto rounded border border-line">
             <div style={{ width: gridWidth + 40 }}>
               {Array.from({ length: HIGH_PITCH - LOW_PITCH + 1 }, (_, i) => HIGH_PITCH - i).map((pitch) => (
-                <div key={pitch} className="flex border-b border-neutral-900" style={{ height: ROW_HEIGHT }}>
+                <div key={pitch} className="flex border-b border-surf" style={{ height: ROW_HEIGHT }}>
                   <div
                     className={`sticky left-0 z-10 flex w-10 shrink-0 items-center justify-end pr-1 font-mono text-[9px] ${
-                      pitch % 12 === 0 ? "bg-neutral-800 text-neutral-300" : "bg-neutral-900 text-neutral-600"
+                      pitch % 12 === 0 ? "bg-surf-2 text-bone-2" : "bg-surf text-bone-3"
                     }`}
                   >
                     {pitchName(pitch)}
@@ -112,7 +112,7 @@ export function PianoRoll() {
                           key={i}
                           onClick={() => toggleCell(pitch, i)}
                           title={`${pitchName(pitch)} @ ${snapToGrid(cellStart, bpm, timeSignature, resolution).toFixed(2)}s`}
-                          className="absolute top-0 h-full border-r border-neutral-900/60 hover:bg-white/5"
+                          className="absolute top-0 h-full border-r border-surf/60 hover:bg-white/5"
                           style={{
                             left: i * step * PX_PER_SECOND,
                             width: step * PX_PER_SECOND,
@@ -126,7 +126,7 @@ export function PianoRoll() {
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-neutral-600">Toca una celda para agregar una nota, tócala de nuevo para quitarla.</p>
+          <p className="text-[10px] text-bone-3">Toca una celda para agregar una nota, tócala de nuevo para quitarla.</p>
         </div>
       )}
     </BottomSheet>
