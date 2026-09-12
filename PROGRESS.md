@@ -89,6 +89,20 @@ Deliberadamente diferido (para no dejarlo a medias):
 - [ ] Split/Duplicate-at-playhead (los atajos S/D existentes) no se extendieron a `MidiClip` — por ahora solo operan sobre clips de audio.
 - [ ] Un limitador de voces/polifonía — cada nota agenda su propio oscilador/buffer sin límite; una progresión muy densa en muchos tracks de instrumento simultáneos podría acumular nodos. No es un problema con el uso típico de este proyecto, pero no hay un techo explícito.
 
-## FASE 5–8
+## FASE 5 — Grabación y voz
+
+Status: **comping y Live Tune real ya cumplidos; vocal chain presets ya existían de una sesión anterior**
+
+Auditoría antes de tocar nada: "vocal chain presets" y "Live Tune real" ya estaban sustancialmente hechos de trabajo previo a esta sesión (no se re-hicieron, solo se verificaron y se cerró el único pendiente que quedaba abierto):
+- [x] **Vocal chain presets** — ya existía: `VocalEngineerPanel.tsx` analiza la toma y aplica una cadena de efectos real de un tap ("Make Vocal Professional") con presets por carácter (Clean/Natural/Bright...) y por género. Verificado que sigue funcionando, sin cambios.
+- [x] **Live Tune real** — ya existía: corrección de tono en vivo genuina vía `realtime-pitch-processor.js` (no un placeholder), con selector de tonalidad/escala, 4 modos (natural/hardTune/modernTrap/extreme) y lectura Sung→Target en vivo. Lo único pendiente de FASE 1 era el emoji 🎤 explícitamente señalado en el prompt maestro ("elimina el emoji 🎤 de Live Tune") — **corregido**: reemplazado por un `MicIcon` propio del set de iconos (`icons.tsx`), consistente con el resto de la barra de transporte.
+- [x] **Comping** (lo único genuinamente faltante) — implementado a nivel de toma completa (no a nivel de fragmento, ver diferido abajo): grabar/agregar un clip que se superpone en tiempo con uno existente en el mismo track ya no apila audio simultáneo silenciosamente — `addClip` en el store detecta el solapamiento, agrupa ambos clips con un `takeGroupId` compartido, y silencia (`muted: true`, campo nuevo en `AudioClip`) todas las tomas salvo la más reciente. `AudioEngine.scheduleClip` omite clips silenciados; `TrackLane` no renderiza las tomas inactivas (siguen en los datos, no se pierden). El bloque de la toma activa muestra un selector "Take N/M" para volver a cualquier toma anterior (`selectTake`, nueva acción). Borrar la toma activa promueve automáticamente la toma remanente más reciente en vez de dejar la región muda.
+
+Verificado: `tsc`/`eslint`/`vitest` (278 tests, +5 nuevos de comping) limpios. En navegador: emoji reemplazado por el ícono confirmado visualmente, resto de la app sin regresiones ni errores de consola. La lógica de comping (la parte con riesgo real) se verificó con 5 tests unitarios directos sobre el store — grabar/agregar dos tomas solapadas agrupa y silencia correctamente, clips que no se solapan no se agrupan, `selectTake` cambia cuál sea la activa, borrar la activa promueve otra, y una tercera toma se une al mismo grupo existente — en vez de intentar simular una grabación de micrófono real en este entorno de navegador sandboxeado, que no es fiable para eso.
+
+Deliberadamente diferido (no a medias):
+- [ ] Comping a nivel de fragmento (combinar partes de distintas tomas dentro de una misma región, estilo lanes de Pro Tools) — hoy el comping es de toma completa: eliges cuál toma entera suena, no mezclas mitades de dos tomas distintas. Requeriría una vista de carriles dedicada; se deja para una sesión propia si hace falta ese nivel de control.
+
+## FASE 6–8
 
 Status: **no iniciadas**

@@ -198,6 +198,95 @@ describe("undo/redo", () => {
   });
 });
 
+function makeClip(overrides: Partial<AudioClip> & Pick<AudioClip, "id" | "trackId">): AudioClip {
+  return {
+    sampleId: "sample-1",
+    name: "take",
+    startTime: 0,
+    duration: 5,
+    sourceOffset: 0,
+    gainDb: 0,
+    fadeInSec: 0,
+    fadeOutSec: 0,
+    color: "#fff",
+    ...overrides,
+  };
+}
+
+describe("comping (overlapping re-recorded takes)", () => {
+  beforeEach(resetStore);
+
+  it("addClip groups an overlapping clip as an alternate take instead of stacking audio", () => {
+    const { addTrack, addClip } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    addClip(makeClip({ id: "take-1", trackId: track.id, startTime: 0, duration: 5 }));
+    addClip(makeClip({ id: "take-2", trackId: track.id, startTime: 1, duration: 5 })); // overlaps take-1
+
+    const clips = useProjectStore.getState().project.tracks[0].clips;
+    expect(clips).toHaveLength(2);
+    const take1 = clips.find((c) => c.id === "take-1")!;
+    const take2 = clips.find((c) => c.id === "take-2")!;
+    expect(take1.takeGroupId).toBeDefined();
+    expect(take2.takeGroupId).toBe(take1.takeGroupId);
+    expect(take1.muted).toBe(true);
+    expect(take2.muted).toBe(false);
+  });
+
+  it("does not group clips on the same track that don't overlap in time", () => {
+    const { addTrack, addClip } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    addClip(makeClip({ id: "clip-1", trackId: track.id, startTime: 0, duration: 5 }));
+    addClip(makeClip({ id: "clip-2", trackId: track.id, startTime: 10, duration: 5 }));
+
+    const clips = useProjectStore.getState().project.tracks[0].clips;
+    expect(clips.every((c) => !c.takeGroupId)).toBe(true);
+    expect(clips.every((c) => !c.muted)).toBe(true);
+  });
+
+  it("selectTake switches which take is active", () => {
+    const { addTrack, addClip, selectTake } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    addClip(makeClip({ id: "take-1", trackId: track.id, startTime: 0, duration: 5 }));
+    addClip(makeClip({ id: "take-2", trackId: track.id, startTime: 0, duration: 5 }));
+    const groupId = useProjectStore.getState().project.tracks[0].clips[0].takeGroupId!;
+
+    selectTake(track.id, groupId, "take-1");
+
+    const clips = useProjectStore.getState().project.tracks[0].clips;
+    expect(clips.find((c) => c.id === "take-1")?.muted).toBe(false);
+    expect(clips.find((c) => c.id === "take-2")?.muted).toBe(true);
+  });
+
+  it("removeClip promotes another take when the active one is deleted", () => {
+    const { addTrack, addClip, removeClip } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    addClip(makeClip({ id: "take-1", trackId: track.id, startTime: 0, duration: 5 }));
+    addClip(makeClip({ id: "take-2", trackId: track.id, startTime: 0, duration: 5 })); // take-2 is active
+
+    removeClip(track.id, "take-2");
+
+    const clips = useProjectStore.getState().project.tracks[0].clips;
+    expect(clips).toHaveLength(1);
+    expect(clips[0].id).toBe("take-1");
+    expect(clips[0].muted).toBe(false); // promoted, not left silent
+  });
+
+  it("a third overlapping recording joins the same existing take group", () => {
+    const { addTrack, addClip } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    addClip(makeClip({ id: "take-1", trackId: track.id, startTime: 0, duration: 5 }));
+    addClip(makeClip({ id: "take-2", trackId: track.id, startTime: 0, duration: 5 }));
+    const groupId = useProjectStore.getState().project.tracks[0].clips[0].takeGroupId!;
+
+    addClip(makeClip({ id: "take-3", trackId: track.id, startTime: 0, duration: 5 }));
+
+    const clips = useProjectStore.getState().project.tracks[0].clips;
+    expect(clips.every((c) => c.takeGroupId === groupId)).toBe(true);
+    expect(clips.filter((c) => !c.muted)).toHaveLength(1);
+    expect(clips.find((c) => c.id === "take-3")?.muted).toBe(false);
+  });
+});
+
 describe("instrument tracks and patterns", () => {
   beforeEach(resetStore);
 

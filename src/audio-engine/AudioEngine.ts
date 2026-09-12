@@ -451,6 +451,7 @@ export class AudioEngine {
     fromTime: number,
     ctxStartTime: number
   ): void {
+    if (clip.muted) return; // an inactive take in a comp group - see PROGRESS.md "comping"
     const buffer = this.bufferCache.get(clip.sampleId);
     if (!buffer || !this.ctx) return;
 

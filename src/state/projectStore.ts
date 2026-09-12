@@ -63,6 +63,8 @@ interface ProjectState {
   addClip: (clip: AudioClip) => void;
   updateClip: (trackId: TrackId, clipId: string, patch: Partial<AudioClip>) => void;
   removeClip: (trackId: TrackId, clipId: string) => void;
+  /** Makes one take in a group the active (audible) one, muting its siblings. */
+  selectTake: (trackId: TrackId, takeGroupId: string, activeClipId: string) => void;
   splitClipAtPlayhead: () => void;
   /** Duplicates the clip under the playhead on the selected track, placing
    * the copy immediately after the original. */
@@ -301,11 +303,43 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     addClip: (clip) => {
       const project = get().project;
+      const track = project.tracks.find((t) => t.id === clip.trackId);
+      const newEnd = clip.startTime + clip.duration;
+      const overlapping =
+        track?.clips.filter((c) => clip.startTime < c.startTime + c.duration && c.startTime < newEnd) ?? [];
+
+      if (overlapping.length === 0) {
+        setProject(
+          touch({
+            ...project,
+            tracks: project.tracks.map((t) => (t.id === clip.trackId ? { ...t, clips: [...t.clips, clip] } : t)),
+          })
+        );
+        return;
+      }
+
+      // Overlapping an existing clip on the same track means this is an
+      // alternate take of the same region (e.g. re-recording a vocal punch-
+      // in), not two clips meant to play at once - group them as takes and
+      // make the new one the active (audible) one instead of silently
+      // stacking simultaneous audio. See PROGRESS.md "comping".
+      const takeGroupId = overlapping.find((c) => c.takeGroupId)?.takeGroupId ?? crypto.randomUUID();
+      const activeClip: AudioClip = { ...clip, takeGroupId, muted: false };
       setProject(
         touch({
           ...project,
           tracks: project.tracks.map((t) =>
-            t.id === clip.trackId ? { ...t, clips: [...t.clips, clip] } : t
+            t.id !== clip.trackId
+              ? t
+              : {
+                  ...t,
+                  clips: [
+                    ...t.clips.map((c) =>
+                      overlapping.some((o) => o.id === c.id) ? { ...c, takeGroupId, muted: true } : c
+                    ),
+                    activeClip,
+                  ],
+                }
           ),
         })
       );
@@ -328,11 +362,45 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     removeClip: (trackId, clipId) => {
       const project = get().project;
+      const track = project.tracks.find((t) => t.id === trackId);
+      const removed = track?.clips.find((c) => c.id === clipId);
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) => {
+            if (t.id !== trackId) return t;
+            let clips = t.clips.filter((c) => c.id !== clipId);
+            // Deleting the active take of a group would otherwise silently
+            // drop that region from the arrangement - promote the most
+            // recent remaining take instead of leaving it with nothing audible.
+            if (removed?.takeGroupId && !removed.muted) {
+              const siblings = clips.filter((c) => c.takeGroupId === removed.takeGroupId);
+              const stillHasActive = siblings.some((c) => !c.muted);
+              if (!stillHasActive && siblings.length > 0) {
+                const promoteId = siblings[siblings.length - 1].id;
+                clips = clips.map((c) => (c.id === promoteId ? { ...c, muted: false } : c));
+              }
+            }
+            return { ...t, clips };
+          }),
+        })
+      );
+    },
+
+    selectTake: (trackId, takeGroupId, activeClipId) => {
+      const project = get().project;
       setProject(
         touch({
           ...project,
           tracks: project.tracks.map((t) =>
-            t.id !== trackId ? t : { ...t, clips: t.clips.filter((c) => c.id !== clipId) }
+            t.id !== trackId
+              ? t
+              : {
+                  ...t,
+                  clips: t.clips.map((c) =>
+                    c.takeGroupId !== takeGroupId ? c : { ...c, muted: c.id !== activeClipId }
+                  ),
+                }
           ),
         })
       );

@@ -11,6 +11,7 @@ import {
   type PitchMode,
   type ScaleName,
 } from "@/types/pitch";
+import { MicIcon } from "./icons";
 
 /**
  * Real-time pitch monitor: hear your own voice corrected toward the
@@ -86,11 +87,12 @@ export function LivePitchMonitorPanel() {
       <button
         onClick={toggle}
         disabled={starting}
-        className={`rounded px-2 py-1 font-semibold disabled:opacity-50 ${
+        className={`flex items-center gap-1.5 rounded px-2 py-1 font-semibold disabled:opacity-50 ${
           active ? "animate-pulse bg-red-600 text-white" : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
         }`}
       >
-        {starting ? "…" : active ? "🎤 Live Tune ON" : "🎤 Live Tune"}
+        <MicIcon className="h-3.5 w-3.5" />
+        {starting ? "…" : active ? "Live Tune ON" : "Live Tune"}
       </button>
 
       {active && (

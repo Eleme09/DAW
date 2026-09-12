@@ -136,6 +136,17 @@ export function MoreIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function MicIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M6 11a6 6 0 0 0 12 0" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+    </svg>
+  );
+}
+
 export function BusIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

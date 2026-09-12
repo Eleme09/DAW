@@ -21,6 +21,13 @@ export interface AudioClip {
   fadeInSec: number;
   fadeOutSec: number;
   color: string;
+  /** Set when this clip overlaps another take of the same region (see
+   * `addClip` in the store) - all clips sharing a takeGroupId are
+   * alternate takes, exactly one of which has `muted` false/undefined. */
+  takeGroupId?: string;
+  /** Per-clip mute, distinct from the track's own mute - used to hide
+   * non-active takes within a group without deleting them. */
+  muted?: boolean;
 }
 
 export interface Note {

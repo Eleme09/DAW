@@ -31,9 +31,17 @@ export function ClipView({ clip }: ClipViewProps) {
   const updateClip = useProjectStore((s) => s.updateClip);
   const removeClip = useProjectStore((s) => s.removeClip);
   const selectTrack = useProjectStore((s) => s.selectTrack);
+  const selectTake = useProjectStore((s) => s.selectTake);
   const bpm = useProjectStore((s) => s.project.bpm);
   const timeSignature = useProjectStore((s) => s.project.timeSignature);
   const snapResolution = useProjectStore((s) => s.snapResolution);
+  // Selecting the raw (stable) clips array, not a filtered derivative, so
+  // this doesn't force a re-render on every playhead tick - `project` only
+  // changes reference on an actual edit, `currentTime` lives outside it.
+  const trackClips = useProjectStore((s) => s.project.tracks.find((t) => t.id === clip.trackId)?.clips);
+  // Recording order, not display order - clips are always appended, so
+  // array position doubles as "which take came Nth" without a separate field.
+  const takes = clip.takeGroupId ? (trackClips?.filter((c) => c.takeGroupId === clip.takeGroupId) ?? []) : [];
   const [buffer, setBuffer] = useState<AudioBuffer | null>(() => getAudioEngine().getBuffer(clip.sampleId) ?? null);
   const dragState = useRef<DragState | null>(null);
 
@@ -140,10 +148,26 @@ export function ClipView({ clip }: ClipViewProps) {
       className="group cursor-grab select-none overflow-hidden rounded border active:cursor-grabbing"
     >
       <div
-        className="truncate px-1 text-[10px] font-medium text-neutral-100"
+        className="flex items-center justify-between gap-1 px-1"
         style={{ background: clip.color + "aa" }}
       >
-        {clip.name}
+        <span className="truncate text-[10px] font-medium text-neutral-100">{clip.name}</span>
+        {takes.length > 1 && (
+          <select
+            value={clip.id}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => selectTake(clip.trackId, clip.takeGroupId!, e.target.value)}
+            title="This region has multiple takes recorded over it - pick which one plays"
+            className="shrink-0 rounded bg-black/40 text-[9px] text-neutral-100 outline-none"
+          >
+            {takes.map((t, i) => (
+              <option key={t.id} value={t.id}>
+                Take {i + 1}/{takes.length}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       <Waveform buffer={buffer} width={width} height={contentHeight - 16} color="rgba(255,255,255,0.85)" />
 
