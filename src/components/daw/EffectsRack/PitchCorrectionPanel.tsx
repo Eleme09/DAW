@@ -25,7 +25,7 @@ const SCALE_OPTIONS: { value: PitchCorrectionScale; label: string }[] = [
   { value: "naturalMinor", label: "Menor nat." },
   { value: "harmonicMinor", label: "Menor arm." },
   { value: "chromatic", label: "Cromática" },
-  { value: "custom", label: "Custom" },
+  { value: "custom", label: "Personalizada" },
 ];
 
 const KEY_OPTIONS = NOTE_NAMES.map((name, i) => ({ value: String(i), label: name }));
@@ -230,7 +230,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           <Picker
             value={String(params.key)}
             options={KEY_OPTIONS}
-            title="Key"
+            title="Tonalidad"
             onChange={(v) => onChange({ ...params, key: Number(v) })}
           />
         </div>
@@ -252,7 +252,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
             <button
               key={pc}
               onClick={() => togglePitchClass(pc)}
-              title={`${NOTE_NAMES[pc]}${isActive ? " (in scale)" : " (excluded)"}`}
+              title={`${NOTE_NAMES[pc]}${isActive ? " (en la escala)" : " (excluida)"}`}
               className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded text-[9px] font-medium ${
                 isActive ? (isBlack ? "bg-neutral-700 text-neutral-100" : "bg-neutral-200 text-black") : "bg-neutral-950 text-neutral-700"
               } ${isRoot ? "ring-2 ring-inset ring-cyan-500" : ""}`}
@@ -285,7 +285,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           defaultValue={100}
           decimals={0}
           unit="%"
-          label="Mix"
+          label="Mezcla"
           onChange={(v) => onChange({ ...params, mix: v / 100 })}
         />
         <Knob
@@ -295,7 +295,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           defaultValue={30}
           decimals={0}
           unit="%"
-          label="Humanize"
+          label="Humanizar"
           onChange={(v) => onChange({ ...params, humanize: v / 100 })}
         />
         <Knob
@@ -316,7 +316,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           defaultValue={70}
           decimals={0}
           unit="Hz"
-          label="Detect min"
+          label="Detección mín"
           size={36}
           onChange={(v) => onChange({ ...params, detectMinHz: Math.min(v, params.detectMaxHz - 10) })}
         />
@@ -327,7 +327,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           defaultValue={1000}
           decimals={0}
           unit="Hz"
-          label="Detect max"
+          label="Detección máx"
           size={36}
           onChange={(v) => onChange({ ...params, detectMaxHz: Math.max(v, params.detectMinHz + 10) })}
         />
