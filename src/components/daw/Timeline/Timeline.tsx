@@ -40,34 +40,34 @@ export function Timeline() {
   const tracksHeight = RULER_HEIGHT + project.tracks.length * TRACK_HEIGHT;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-neutral-950">
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-neutral-950">
       <div className="relative flex-1 overflow-auto">
         {project.tracks.length === 0 && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
             <div>
-              <p className="text-sm font-medium text-neutral-400">No tracks yet</p>
-              <p className="text-xs text-neutral-600">Start with one of these, or import a sample from the Samples tab</p>
+              <p className="text-sm font-medium text-neutral-400">Todavía no hay pistas</p>
+              <p className="text-xs text-neutral-600">Empieza con una de estas opciones, o importa un sample desde la pestaña Biblioteca</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <button
                 onClick={() => addTrack()}
                 className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
               >
-                + Add Track
+                + Nueva pista
               </button>
               <button
                 onClick={() => addTrack(undefined, "instrument")}
-                title="A track with a synth/sampler instrument, playable from programmed patterns"
+                title="Una pista con un instrumento synth/sampler, reproducible desde patrones programados"
                 className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
               >
-                + Add Instrument
+                + Nuevo instrumento
               </button>
               <button
                 onClick={goToBeatGen}
-                title="Generate a full drum/bass/chords/melody sketch to start from"
+                title="Genera un boceto completo de batería/bajo/acordes/melodía para empezar"
                 className="rounded bg-cyan-500 min-h-11 px-3 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
               >
-                Generate a Beat
+                Generar un beat
               </button>
             </div>
           </div>
@@ -100,52 +100,56 @@ export function Timeline() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-neutral-800 p-2">
-        <button
-          onClick={() => addTrack()}
-          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
-        >
-          + Add Track
-        </button>
-        <button
-          onClick={() => addTrack(undefined, "instrument")}
-          title="Add a track with a synth/sampler instrument, playable from programmed patterns"
-          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
-        >
-          + Add Instrument
-        </button>
+        {project.tracks.length > 0 && (
+          <>
+            <button
+              onClick={() => addTrack()}
+              className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+            >
+              + Nueva pista
+            </button>
+            <button
+              onClick={() => addTrack(undefined, "instrument")}
+              title="Agrega una pista con un instrumento synth/sampler, reproducible desde patrones programados"
+              className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+            >
+              + Nuevo instrumento
+            </button>
+          </>
+        )}
         <button
           onClick={addPatternAtPlayhead}
           disabled={!canAddPattern}
           title={
             canAddPattern
-              ? "Add a one-bar pattern to the selected instrument track at the playhead"
-              : "Select an instrument track first"
+              ? "Agrega un patrón de un compás a la pista de instrumento seleccionada en el playhead"
+              : "Selecciona primero una pista de instrumento"
           }
           className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-30"
         >
-          + Add Pattern
+          + Nuevo patrón
         </button>
         <button
           onClick={splitClipAtPlayhead}
-          title="Split the selected track's clip at the playhead (shortcut: S)"
+          title="Divide el clip de la pista seleccionada en el playhead (atajo: S)"
           className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
-          ✂ Split
+          ✂ Dividir
         </button>
         <button
           onClick={duplicateClipAtPlayhead}
-          title="Duplicate the selected track's clip at the playhead (shortcut: D)"
+          title="Duplica el clip de la pista seleccionada en el playhead (atajo: D)"
           className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
-          ⧉ Duplicate
+          ⧉ Duplicar
         </button>
-        <div className="ml-auto flex items-center gap-1.5 text-xs text-neutral-400" title="Snap clips to the musical grid">
-          <span className="font-medium">Snap</span>
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-neutral-400" title="Ajustar clips a la rejilla musical">
+          <span className="font-medium">Ajuste</span>
           <div className="w-24">
             <Picker<GridResolution>
               value={snapResolution}
-              options={GRID_RESOLUTIONS.map((r) => ({ value: r, label: r === "off" ? "Off" : r }))}
-              title="Snap resolution"
+              options={GRID_RESOLUTIONS.map((r) => ({ value: r, label: r === "off" ? "Desactivado" : r }))}
+              title="Resolución de ajuste"
               onChange={setSnapResolution}
             />
           </div>
