@@ -27,7 +27,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
   const setMobileView = useProjectStore((s) => s.setMobileView);
 
   function askAi() {
-    setAssistantDraftMessage(`${EFFECT_LABELS[effect.type]} on ${targetName}: `);
+    setAssistantDraftMessage(`${EFFECT_LABELS[effect.type]} en ${targetName}: `);
     setBrowserTab("assistant");
     setMobileView("browser");
   }
@@ -37,7 +37,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
       <div className="flex items-center gap-0.5 px-2 py-1.5">
         <button
           onClick={() => setExpanded((v) => !v)}
-          title={expanded ? "Collapse" : "Expand"}
+          title={expanded ? "Contraer" : "Expandir"}
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300"
         >
           {expanded ? "▾" : "▸"}
@@ -45,7 +45,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         <span className="flex-1 truncate text-xs font-medium text-neutral-200">{EFFECT_LABELS[effect.type]}</span>
         <button
           onClick={askAi}
-          title="Ask AI about this effect"
+          title="Preguntar a la IA sobre este efecto"
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300"
         >
           <SparkleIcon className="h-3.5 w-3.5" />
@@ -54,7 +54,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           onClick={() => moveEffect(target, effect.id, -1)}
           disabled={isFirst}
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300 disabled:opacity-20"
-          title="Move up"
+          title="Subir"
         >
           ↑
         </button>
@@ -62,7 +62,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           onClick={() => moveEffect(target, effect.id, 1)}
           disabled={isLast}
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300 disabled:opacity-20"
-          title="Move down"
+          title="Bajar"
         >
           ↓
         </button>
@@ -77,7 +77,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         </button>
         <button
           onClick={() => removeEffect(target, effect.id)}
-          title="Remove effect"
+          title="Eliminar efecto"
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-600 hover:text-red-400"
         >
           ✕
