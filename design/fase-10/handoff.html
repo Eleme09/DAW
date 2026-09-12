@@ -1,0 +1,237 @@
+<title>Traspaso Cabina</title>
+<meta name="description" content="Estado del proyecto DAW «Cabina» y lo que un agente nuevo necesita para retomarlo desde cero.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F2EDE4; --surf:#FBF9F4; --surf-2:#EDE6D9; --line:#DDD4C4; --line-2:#C9BEA9;
+  --text:#171410; --text-2:#5E5B57; --text-3:#8B8579;
+  --done:#3F7350; --partial:#8A6412; --todo:#8B8579; --critical:#A31C2C; --live:#3F7350;
+  --disp:'Bricolage Grotesque',Georgia,serif;
+  --ui:'Instrument Sans',system-ui,-apple-system,sans-serif;
+  --mono:'DM Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A0A0B; --surf:#111112; --surf-2:#18181A; --line:#26262A; --line-2:#34343A;
+    --text:#F2EDE4; --text-2:#9A968E; --text-3:#5E5B57;
+    --done:#8FB89A; --partial:#E8C15C; --todo:#6E6E74; --critical:#E5677A; --live:#8FB89A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A0A0B; --surf:#111112; --surf-2:#18181A; --line:#26262A; --line-2:#34343A;
+  --text:#F2EDE4; --text-2:#9A968E; --text-3:#5E5B57;
+  --done:#8FB89A; --partial:#E8C15C; --todo:#6E6E74; --critical:#E5677A; --live:#8FB89A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);font-size:15px;line-height:1.55}
+.page{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+::selection{background:var(--done);color:var(--bg)}
+a{color:inherit}
+code,.mono{font-family:var(--mono)}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin:0 0 10px}
+h1{font-family:var(--disp);font-weight:800;font-size:clamp(34px,7vw,52px);line-height:.98;letter-spacing:-.03em;margin:0 0 12px;text-wrap:balance}
+h1 em{font-style:normal;color:var(--text-3)}
+.lede{max-width:62ch;color:var(--text-2);font-size:16px;line-height:1.6;margin:0 0 6px}
+.lede b{color:var(--text);font-weight:600}
+.meta{font-family:var(--mono);font-size:12px;color:var(--text-3);margin:18px 0 0}
+
+h2{font-family:var(--disp);font-weight:700;font-size:22px;letter-spacing:-.015em;margin:0 0 4px}
+.sec{margin-top:52px;padding-top:28px;border-top:1px solid var(--line)}
+.sec-sub{color:var(--text-2);font-size:14px;max-width:60ch;margin:0 0 20px;line-height:1.55}
+
+/* status board */
+.board{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--surf)}
+.row{display:grid;grid-template-columns:100px 1fr auto;gap:14px;align-items:start;padding:13px 16px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row.sub{grid-template-columns:100px 1fr auto;background:var(--surf);padding-left:16px}
+.row.sub .rowname{padding-left:14px;position:relative}
+.row.sub .rowname::before{content:"";position:absolute;left:0;top:.55em;width:8px;height:1px;background:var(--line-2)}
+.rowid{font-family:var(--mono);font-size:12px;color:var(--text-3);padding-top:2px}
+.rowname{font-weight:600;font-size:14px}
+.rowname .d{display:block;font-weight:400;color:var(--text-2);font-size:12.5px;margin-top:2px;line-height:1.5}
+.chip{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.04em;padding:3px 8px;border-radius:3px;white-space:nowrap;height:fit-content}
+.chip.done{background:color-mix(in srgb, var(--done) 16%, transparent);color:var(--done)}
+.chip.partial{background:color-mix(in srgb, var(--partial) 18%, transparent);color:var(--partial)}
+.chip.todo{background:color-mix(in srgb, var(--todo) 14%, transparent);color:var(--text-2)}
+
+/* access cards */
+.access{display:grid;gap:10px}
+.acard{border:1px solid var(--line);border-radius:4px;padding:14px 16px;background:var(--surf);display:flex;gap:14px;align-items:flex-start}
+.acard .ic{flex:0 0 auto;width:30px;height:30px;border-radius:3px;display:grid;place-items:center;background:var(--surf-2);color:var(--text-2)}
+.acard h3{margin:0 0 3px;font-size:14px;font-weight:700}
+.acard p{margin:0;color:var(--text-2);font-size:13px;line-height:1.55}
+.acard .tag{display:inline-block;margin-left:8px;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 6px;border-radius:2px;vertical-align:middle}
+.tag.need{background:color-mix(in srgb, var(--critical) 16%, transparent);color:var(--critical)}
+.tag.optional{background:color-mix(in srgb, var(--todo) 14%, transparent);color:var(--text-3)}
+.acard code{background:var(--surf-2);padding:1px 5px;border-radius:2px;font-size:12px}
+
+/* rule callout */
+.rule{border-left:2px solid var(--partial);background:var(--surf);border-radius:0 4px 4px 0;padding:14px 18px;margin:0}
+.rule p{margin:0 0 8px;font-size:13.5px;color:var(--text-2);line-height:1.6}
+.rule p:last-child{margin-bottom:0}
+.rule b{color:var(--text)}
+
+/* file map */
+.files{border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--surf)}
+.frow{display:flex;gap:16px;padding:10px 16px;border-bottom:1px solid var(--line);align-items:baseline}
+.frow:last-child{border-bottom:0}
+.fpath{font-family:var(--mono);font-size:12.5px;color:var(--text);flex:0 0 auto;white-space:nowrap}
+.fdesc{color:var(--text-2);font-size:13px;line-height:1.5}
+
+/* checklist */
+.check{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--surf)}
+.check li{display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--text-2)}
+.check li:last-child{border-bottom:0}
+.check li b{color:var(--text)}
+.check li .n{font-family:var(--mono);font-size:11px;color:var(--text-3);padding-top:1px}
+
+.cmdblock{background:var(--surf-2);border:1px solid var(--line);border-radius:4px;padding:12px 14px;font-family:var(--mono);font-size:12.5px;color:var(--text);overflow-x:auto;white-space:pre}
+
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--text-3);font-size:12px;font-family:var(--mono)}
+</style>
+
+<div class="page">
+  <div class="eyebrow">Traspaso de proyecto · agente entrante</div>
+  <h1>Cabina<em>.</em></h1>
+  <p class="lede">DAW personal enfocado en voz, con mezcla asistida por IA. Este documento reemplaza cualquier instrucción suelta dada antes en conversación — si algo de lo que sigue contradice algo dicho anteriormente, <b>esto es lo vigente</b>.</p>
+  <p class="meta">Estado al 12/09/2026 · repo <code>Eleme09/DAW</code> · rama <code>claude/personal-ai-daw-s9v97w</code></p>
+
+  <div class="sec" style="margin-top:36px;border-top:0;padding-top:0">
+    <h2>Acceso necesario</h2>
+    <p class="sec-sub">Tres servicios mencionados; solo uno es realmente necesario para trabajar.</p>
+    <div class="access">
+      <div class="acard">
+        <div class="ic">◧</div>
+        <div>
+          <h3>GitHub <span class="tag need">Necesario</span></h3>
+          <p>Repo <code>github.com/Eleme09/DAW</code>. <b>No existe rama <code>main</code></b> — <code>claude/personal-ai-daw-s9v97w</code> es la rama por defecto del repo (así lo confirma <code>origin/HEAD</code>). Cloná esa rama directamente, no busques otra.</p>
+        </div>
+      </div>
+      <div class="acard">
+        <div class="ic">▤</div>
+        <div>
+          <h3>Vercel <span class="tag need">Necesario para deploy</span></h3>
+          <p>Hay un deploy en producción (mencionado en <code>design/fase-10/fase-10-reconstruccion-interfaz.md</code>), pero no pude confirmar el nombre exacto del proyecto desde esta sesión. Pedile la URL o el nombre del proyecto directamente al usuario antes de asumir cuál es.</p>
+        </div>
+      </div>
+      <div class="acard">
+        <div class="ic">◫</div>
+        <div>
+          <h3>Supabase <span class="tag optional">No hace falta</span></h3>
+          <p>Está en <code>package.json</code> pero <b>sin usar</b> — <code>lib/supabase/</code> devuelve <code>null</code> si no hay variables de entorno, y el proyecto entero funciona 100% local (localStorage + IndexedDB). No es necesario darle acceso para seguir trabajando.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Qué es esto</h2>
+    <p class="sec-sub" style="margin-bottom:0">De <code>PROJECT_SPEC.md</code>, sin resumir de más: un DAW de un solo usuario para grabar voz desde el teléfono (a menudo por auriculares), llevarla a una cadena DSP real, corregir tono, encajarla con un beat, mezclar y masterizar — sin estudio profesional. Enfoque de género: urbano/trap y estilos cercanos. <b>Restricción dura que respeta todo el proyecto:</b> el DSP puede compensar las limitaciones de un micrófono barato, pero no puede convertirlo en un micrófono de estudio — cada función debe ser honesta sobre eso.</p>
+  </div>
+
+  <div class="sec">
+    <h2>Dónde está parado</h2>
+    <p class="sec-sub">Fases 0-13 del roadmap original y fases 0-9 de <code>PROMPT_MAESTRO.md</code>: cerradas. Se está trabajando la reconstrucción visual (FASE 10), que <b>reemplaza y bloquea</b> a la FASE 9.</p>
+    <div class="board">
+      <div class="row">
+        <span class="rowid">10A</span>
+        <span class="rowname">Higiene<span class="d">Overflow horizontal corregido · interfaz 100% en español · duplicados eliminados</span></span>
+        <span class="chip done">Completa</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10B</span>
+        <span class="rowname">Sistema<span class="d">Tipografía real · tokens de color · paleta de 6 colores de pista · 13 iconos SVG nuevos</span></span>
+        <span class="chip done">Completa</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10C</span>
+        <span class="rowname">Sesión<span class="d">Migración de color grafito/hueso: completa en toda la app. Barra contextual y layout exacto: sin empezar</span></span>
+        <span class="chip partial">Parcial</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10D</span>
+        <span class="rowname">Grabación<span class="d">Medidor de entrada con saturación, cuenta atrás, compensación de latencia, aviso de feedback</span></span>
+        <span class="chip todo">Sin empezar</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10E</span>
+        <span class="rowname">Clip y hojas<span class="d">Hoja contextual estilo BandLab al tocar un clip</span></span>
+        <span class="chip todo">Sin empezar</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10F</span>
+        <span class="rowname">Efectos<span class="d">Visualización propia para 14 de los 15 efectos (EQ y Afinación ya la tienen)</span></span>
+        <span class="chip todo">Sin empezar</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10G</span>
+        <span class="rowname">Afinación<span class="d">10 modos del brief; hoy solo existe un subconjunto</span></span>
+        <span class="chip todo">Sin empezar</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10H</span>
+        <span class="rowname">Mezcla y nueva pista<span class="d">Estructura exacta de esas dos pantallas contra la referencia</span></span>
+        <span class="chip todo">Sin empezar</span>
+      </div>
+      <div class="row">
+        <span class="rowid">10I</span>
+        <span class="rowname">Auditoría<span class="d">Pantalla por pantalla, en dispositivo real</span></span>
+        <span class="chip todo">Sin empezar</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Regla de desempate</h2>
+    <p class="sec-sub" style="margin-bottom:14px">La más importante para no repetir trabajo ya revertido una vez.</p>
+    <div class="rule">
+      <p>Si el texto de <code>fase-10-reconstruccion-interfaz.md</code> o <code>REFERENCIAS-VISUALES.md</code> contradice el archivo <code>estudio-ui.html</code> — por ejemplo, el doc menciona la tipografía "Archivo + JetBrains Mono" pero el archivo usa Bricolage Grotesque + Instrument Sans + DM Mono — <b>gana el archivo</b>. Así lo pide el brief original: "no es inspiración, es el destino". Ya se implementó con la tipografía del archivo.</p>
+      <p>Esta misma página usa esa tipografía y esos tres colores base (grafito/hueso/verde-señal) a propósito, para que se sienta como una extensión del propio sistema del proyecto, no un documento aparte.</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Dónde leer cada cosa</h2>
+    <p class="sec-sub">En este orden si es la primera vez que se toca el repo.</p>
+    <div class="files">
+      <div class="frow"><span class="fpath">design/fase-10/PROGRESS-FASE-10.md</span><span class="fdesc">Estado exacto de cada subfase — léelo primero, completo.</span></div>
+      <div class="frow"><span class="fpath">design/fase-10/estudio-ui.html</span><span class="fdesc">La referencia obligatoria — seis pantallas construidas, ábrelo en un navegador.</span></div>
+      <div class="frow"><span class="fpath">design/fase-10/fase-10-reconstruccion-interfaz.md</span><span class="fdesc">El brief original de la fase, sin editar.</span></div>
+      <div class="frow"><span class="fpath">design/fase-10/REFERENCIAS-VISUALES.md</span><span class="fdesc">Qué tomar de BandLab/Pro Tools/FL Studio y qué no.</span></div>
+      <div class="frow"><span class="fpath">PROJECT_SPEC.md</span><span class="fdesc">Prioridades y no-objetivos del proyecto entero.</span></div>
+      <div class="frow"><span class="fpath">ARCHITECTURE.md · AUDIO_ENGINE.md · AI_FEATURES.md</span><span class="fdesc">Arquitectura real — no asumir, leer antes de tocar estructura.</span></div>
+      <div class="frow"><span class="fpath">AGENTS.md</span><span class="fdesc">Reglas de convivencia entre agentes/modelos distintos trabajando el mismo repo.</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Cómo se verifica cada cambio</h2>
+    <p class="sec-sub">El estándar ya establecido en 46 sesiones anteriores — no bajarlo.</p>
+    <ul class="check">
+      <li><span class="n">01</span><span><b>Nunca "debería andar".</b> Todo cambio visual se confirma con captura de pantalla o lectura real de la página en un navegador, después de recargar el dev server.</span></li>
+      <li><span class="n">02</span><span><code>tsc --noEmit</code>, <code>eslint</code> y <code>vitest run</code> (289 tests) limpios antes de cada commit. Un test que falla una vez y pasa al repetir es flaky, no una regresión — pero confirmalo repitiendo, no asumiendo.</span></li>
+      <li><span class="n">03</span><span>Un subfase = un commit con mensaje que explica el <i>porqué</i>, no solo el qué. Push a <code>claude/personal-ai-daw-s9v97w</code> después de cada uno — no acumular cambios sin subir.</span></li>
+      <li><span class="n">04</span><span>Si algo del archivo de referencia no se puede reproducir, decirlo con el motivo técnico concreto. Nunca sustituirlo en silencio por una versión más simple.</span></li>
+    </ul>
+  </div>
+
+  <div class="sec">
+    <h2>Un límite legal real</h2>
+    <p class="sec-sub" style="margin-bottom:0">Se replica <b>cómo funciona y qué muestra</b> un plugin de referencia (FabFilter, iZotope, Soundtoys...), nunca su apariencia de marca. Prohibido copiar el aspecto distintivo, los colores propios, los logotipos o los nombres comerciales — ya se corrigió un caso real: el efecto de corrección de tono se llamaba "Auto-Tune" en la interfaz y se cambió a "Afinación".</p>
+  </div>
+
+  <div class="sec">
+    <h2>Primer paso recomendado</h2>
+    <p class="sec-sub" style="margin-bottom:14px">Clonar y confirmar que el estado local coincide con lo descrito acá antes de escribir una sola línea.</p>
+    <div class="cmdblock">git clone https://github.com/Eleme09/DAW.git
+cd DAW
+npm install
+npm run dev      <span style="color:var(--text-3)"># confirma que levanta antes de tocar nada</span>
+npx vitest run    <span style="color:var(--text-3)"># confirma 289/289 antes de tocar nada</span></div>
+  </div>
+
+  <footer>Cabina · registro de traspaso · generado por Claude Sonnet 5</footer>
+</div>
