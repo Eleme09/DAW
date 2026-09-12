@@ -3,8 +3,15 @@
 import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
+import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/AudioEngine";
 import { UndoIcon, RedoIcon, MoreIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
+
+const CONSTRAINT_LABELS: Record<keyof MonitorInputConstraints, string> = {
+  echoCancellation: "Echo cancellation",
+  noiseSuppression: "Noise suppression",
+  autoGainControl: "Auto-gain",
+};
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -41,7 +48,16 @@ export function TransportBar() {
   const [isExportingStems, setIsExportingStems] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [micConstraints, setMicConstraints] = useState<MonitorInputConstraints>(() => getAudioEngine().getMonitorConstraints());
   const hasAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
+
+  function toggleMicConstraint(key: keyof MonitorInputConstraints) {
+    const next = { ...micConstraints, [key]: !micConstraints[key] };
+    setMicConstraints(next);
+    void getAudioEngine().setMonitorConstraints({ [key]: next[key] });
+  }
+
+  const latencySec = getAudioEngine().getLatencySec();
 
   async function handleExport() {
     setExportError(null);
@@ -108,7 +124,7 @@ export function TransportBar() {
     <button
       onClick={() => setLoop({ enabled: !project.loop.enabled })}
       title="Loop playback between the loop markers"
-      className={`rounded px-2 py-1 text-xs font-medium ${
+      className={`min-h-11 rounded px-2 text-xs font-medium ${
         project.loop.enabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
       }`}
     >
@@ -120,7 +136,7 @@ export function TransportBar() {
     <button
       onClick={toggleMetronome}
       title="Metronome click while playing/recording"
-      className={`rounded px-2 py-1 text-xs font-medium ${
+      className={`min-h-11 rounded px-2 text-xs font-medium ${
         project.metronomeEnabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
       }`}
     >
@@ -280,6 +296,31 @@ export function TransportBar() {
         <div className="flex gap-2">
           {loopButton}
           {clickButton}
+        </div>
+
+        <div className="space-y-1.5 border-t border-neutral-800 pt-3">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+            Mic input {latencySec !== null && <span className="normal-case text-neutral-600">— {Math.round(latencySec * 1000)}ms measured latency</span>}
+          </span>
+          <p className="text-xs text-neutral-600">
+            Off by default for both — they degrade a music signal designed for a phone/earbud recording
+            setup, not a phone call. Turn them on only if the room is genuinely noisy and you have no
+            other option.
+          </p>
+          <div className="flex flex-col gap-2">
+            {(Object.keys(CONSTRAINT_LABELS) as (keyof MonitorInputConstraints)[]).map((key) => (
+              <button
+                key={key}
+                onClick={() => toggleMicConstraint(key)}
+                className={`flex h-11 items-center justify-between rounded px-3 text-sm font-medium ${
+                  micConstraints[key] ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+                }`}
+              >
+                {CONSTRAINT_LABELS[key]}
+                <span>{micConstraints[key] ? "On" : "Off"}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {(recordingError || exportError) && (

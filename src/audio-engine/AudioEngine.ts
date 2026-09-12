@@ -120,7 +120,11 @@ export class AudioEngine {
   /** Must be called from a user-gesture handler (click) before any playback. */
   ensureContext(): AudioContext {
     if (!this.ctx) {
-      const ctx = new AudioContext();
+      // Explicit per the FASE 9 addendum, even though "interactive" is
+      // already the spec default - a recording/monitoring app should never
+      // silently end up on "playback" latency (larger buffers, worse for
+      // hearing yourself in time) if a browser's default ever changes.
+      const ctx = new AudioContext({ latencyHint: "interactive" });
       const master = ctx.createGain();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
@@ -167,6 +171,17 @@ export class AudioEngine {
 
   getContext(): AudioContext | null {
     return this.ctx;
+  }
+
+  /** Real measured round-trip latency, not a guess - `outputLatency` is the
+   * actual current hardware+driver figure where the browser exposes it
+   * (falls back to the nominal `baseLatency` where it doesn't, e.g.
+   * Firefox). Null before the context exists (nothing to measure yet). Per
+   * the FASE 9 addendum's "reportar la latencia real medida", not offered
+   * as a fixed/assumed number. */
+  getLatencySec(): number | null {
+    if (!this.ctx) return null;
+    return this.ctx.outputLatency || this.ctx.baseLatency || null;
   }
 
   getMasterAnalyser(): AnalyserNode | null {
