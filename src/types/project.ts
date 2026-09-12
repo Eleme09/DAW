@@ -167,7 +167,7 @@ export interface SampleAsset {
   createdAt: string;
 }
 
-export function createEmptyProject(name = "Untitled Project"): Project {
+export function createEmptyProject(name = "Sin título"): Project {
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),

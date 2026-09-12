@@ -290,7 +290,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     addTrack: (name, type = "audio") => {
       const project = get().project;
-      const defaultName = type === "instrument" ? "Instrument" : "Track";
+      const defaultName = type === "instrument" ? "Instrumento" : "Pista";
       const track = createTrack(name ?? `${defaultName} ${project.tracks.length + 1}`, project.tracks.length, type);
       setProject(touch({ ...project, tracks: [...project.tracks, track] }), {
         extra: { selectedTrackId: track.id },
