@@ -101,6 +101,12 @@ export interface TrackAutomation {
   pan: AutomationLane;
 }
 
+/** Input monitoring while armed - "off" never routes the mic to the output,
+ * "auto" only while stopped or actively recording (so playback of already-
+ * recorded material isn't doubled with live input), "on" always while
+ * armed regardless of transport state. See AudioEngine's refreshMonitoring. */
+export type MonitorMode = "off" | "auto" | "on";
+
 export interface Track {
   id: TrackId;
   name: string;
@@ -111,6 +117,7 @@ export interface Track {
   muted: boolean;
   solo: boolean;
   armed: boolean;
+  monitorMode: MonitorMode;
   clips: AudioClip[];
   /** Only used when type === "instrument". */
   midiClips: MidiClip[];
@@ -179,7 +186,7 @@ export function createEmptyProject(name = "Untitled Project"): Project {
 }
 
 const TRACK_COLORS = [
-  "#f97316",
+  "#ec4899",
   "#22c55e",
   "#38bdf8",
   "#a855f7",
@@ -204,6 +211,7 @@ export function createTrack(name: string, order: number, type: Track["type"] = "
     muted: false,
     solo: false,
     armed: false,
+    monitorMode: "auto",
     clips: [],
     midiClips: [],
     instrument: type === "instrument" ? createDefaultInstrument() : null,

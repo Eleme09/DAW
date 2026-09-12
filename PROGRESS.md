@@ -164,3 +164,48 @@ Deliberadamente diferido (no a medias):
 - [ ] **Service worker / offline real** — ver nota arriba; necesita una estrategia de cache diseñada a propósito, no uno genérico.
 - [ ] **Pruebas en dispositivo real (Android/iOS), medición de fps y CPU de audio** — no soy capaz de hacer esto desde este entorno (no tengo acceso a hardware físico); necesita que el usuario lo pruebe en sus propios dispositivos.
 - [ ] **Gestión de memoria / descarga de buffers no usados** — el cache de buffers decodificados (`AudioEngine.bufferCache`) crece sin límite ni desalojo; no es un problema con el uso típico de un proyecto personal, pero no hay techo. Se deja para cuando haga falta en la práctica.
+
+## FASE 9 — Capa gráfica (bloqueante) + adenda de interacción/voz
+
+Status: **ABIERTA — en curso, con progreso medido real. No se declara cumplida mientras sigan pendientes los puntos listados abajo.**
+
+Esta fase se declaró explícitamente bloqueante para el resto del proyecto ("no se declara terminada ninguna fase anterior mientras esta no se cumpla"). Este apartado se actualiza con **valores medidos** (conteos DOM reales en el navegador a 375-529px de ancho), no afirmaciones, por instrucción explícita del documento de fase.
+
+**9A — Componentes base (hecho):**
+- [x] `Knob.tsx` — control rotatorio (arco SVG, arrastre vertical, doble-click resetea, mantener presionado abre edición numérica), hit-area ≥44px aunque el dial visual sea menor (`Math.max(44, size)`).
+- [x] `SegmentedControl.tsx`, `Picker.tsx` (reemplazo de `<select>` vía `BottomSheet`), `XYPad.tsx`.
+- [x] `CurveEditor.tsx` — editor de curva/nodos en canvas, compartido por EQ (ADSR/compresor pendientes de adoptarlo). Modelo de interacción verificado contra el texto exacto de la fase: doble-tap en vacío crea banda, arrastrar un nodo >40px fuera del canvas lo elimina (además doble-tap sobre un nodo también lo elimina, como vía adicional).
+- [x] `MeterBar.tsx` reescrito a canvas (antes divs) con escala de dB dibujada, peak-hold, clip-LED persistente (click para resetear).
+- [x] `Fader.tsx` con escala de dB real dibujada (+6/0/-6/-12/-24/-48/-∞).
+
+**EQ (único plugin con visualización completa por ahora):**
+- [x] `EqPanel.tsx` — canvas con analizador de espectro en vivo (`getMasterAnalyser`), respuesta combinada **matemáticamente exacta** (un `BiquadFilterNode.getFrequencyResponse()` real por banda, sumado en dB — no una aproximación visual), nodos de banda arrastrables en X (frecuencia, escala log) / Y (ganancia), rejilla de frecuencia (100/1k/10k) y dB (-12/0/+12) dibujada. Por banda: toggle ON/OFF (44×44), tipo vía `SegmentedControl` (HP/LS/PK/HS/LP), Q vía `Knob`, eliminar (44×44).
+- [x] **Verificado en navegador, no solo compilado**: canvas real 300×170 presente y visible; lectura de píxeles (`getImageData`) confirma contenido real dibujado (grid + curva cian, no un canvas en blanco); la curva muestra el roll-off real de un highpass en 80Hz (no una línea plana); arrastrar un nodo vía eventos de puntero sintéticos cambia el contenido del canvas (confirma el flujo completo: pointermove → `onPointsChange` → `freq`/`gainDb` → redibujado).
+
+**TrackHeader, Mixer, TransportBar, Timeline — controles nativos y botones <44px (hecho esta pasada):**
+- [x] `TrackHeader.tsx` rediseñado — antes 2 `<input type=range>` nativos + 5 botones de 20×20px en 192px de ancho (geométricamente no cabían 5 botones de 44px). Ahora: fila de M/S/Arm/Monitor de 44×44px real (medido: ~45×44px cada uno), volumen y pan movidos a `Knob`s dentro de una hoja "⋯" contextual (no tab-switch, es un bottom sheet anclado) junto con Automation/Ask AI/Delete. `TRACK_HEIGHT` 76→118px para acomodarlo (constante única, cascada limpia a `TrackLane`/`ClipView`/`MidiClipView`/`Ruler`).
+- [x] **Monitor de entrada — nuevo, con audio real, no solo visual** (pedido explícito de la adenda): campo `Track.monitorMode: "off"|"auto"|"on"` (default `"auto"`), botón de 3 estados con color/ícono distintos en `TrackHeader` y en `MixerPanel` (grid 2×2 de 44×44, antes 4 botones de 36px de ancho que tampoco cumplían). `AudioEngine`: nuevo `MonitorSession` — un único `getUserMedia` compartido, conectado directamente a `graph.input` de cada track armado elegible (el mismo punto de entrada real que usan clips/instrumentos), así que monitorear pasa de verdad por la cadena de efectos de ese track (autotune/reverb ya aplicados, no una copia seca aparte). `refreshMonitoring()` recalcula la conexión en cada `syncTracks` (arm/monitorMode/play/pause cambian por ahí). Medidor de entrada en vivo (`MeterBar`) junto al botón Arm, alimentado por `getMonitorAnalyser()`/`getRecordingAnalyser()` según corresponda.
+- [x] `MixerPanel.tsx` — botones M/S/Arm ya existentes medían 44×36px (altura sí, ancho no); ahora grid 2×2 de 44×44 reales + el nuevo Monitor. Botones "FX" de 32px de alto → 44px. Flechas mover-canal-izq/der (24×24) llevadas a hit-area real de 44×44 vía padding negativo compensado (el visual no cambia, el área táctil sí — mismo truco que ya usa `Knob` con su dial pequeño en una caja de ≥44px), verificado que NO están dentro de ningún ancestro `overflow-hidden` (si lo estuvieran este truco no serviría — se comprobó caso por caso, ver nota de "Open piano roll" abajo).
+- [x] `TransportBar.tsx` — Play/Stop/Record eran 40×40 en móvil (contra el objetivo de medición de 375px) y encima *más chicos* en pantallas mayores (`sm:h-9 sm:w-9`); ahora 44×44 uniforme. Undo/Redo y el botón "More" también.
+- [x] Barra inferior del Timeline (+ Add Track/+ Add Instrument/+ Add Pattern/✂ Split/⧉ Duplicate) y el CTA de estado vacío: 28px de alto → ≥44px real.
+- [x] `BottomSheet.tsx`: botón de cerrar 32×32 → 44×44.
+- [x] Color: `TRACK_COLORS[0]` era `#f97316` (naranja, el acento descartado en FASE 1) → `#ec4899`. Proyectos ya guardados conservan el color que tenían asignado (es un dato persistido por track, no derivado en cada render) — no se reescribe retroactivamente.
+
+**Medido en navegador (375-529px, tabs Timeline y Mixer, con un track de instrumento + un efecto EQ activo):**
+- `document.querySelectorAll('input[type=range]').length` → **0** (antes: 2, ambos en `TrackHeader`)
+- `document.querySelectorAll('select').length` → **0**
+- Botones con `width<44 || height<44` visibles: **1** restante en ambos tabs — el botón global "Live Tune" (90×24px), que la adenda pide **eliminar por completo**, no arreglar (ver Pitch Correction abajo) — se deja intencionalmente así, no es un descuido.
+- `tsc --noEmit` / `eslint src` / `vitest run` (289 tests) limpios después de cada cambio de esta sección.
+
+**Deliberadamente NO arreglado esta pasada (para no fingir cumplimiento con un truco):**
+- [ ] Ícono "Open piano roll" dentro de `MidiClipView.tsx` (12×12px) — intenté el mismo truco de hit-area ampliada que usé en Mixer, pero este botón vive dentro de un contenedor con `overflow-hidden` (recorta las notas del patrón a los bordes del clip), así que un área táctil agrandada por margen negativo queda recortada y no funciona de verdad — habría pasado la medición de `getBoundingClientRect()` sin dar un área táctil real, que es exactamente el tipo de "cumplimiento falso" que esta fase prohíbe. Arreglo real pendiente: agrandar la fila de cabecera del clip (hoy ~16px) o resolverlo como parte del rediseño de piano roll / interacción de clips (adenda punto 1), no como parche aislado.
+
+**Pendiente real, todavía abierto (la fase NO se declara cumplida):**
+- [ ] Efecto **Pitch Correction** (adenda punto 2) — el botón global "Live Tune" sigue existiendo tal cual, no se ha creado el efecto de inserción todavía.
+- [ ] Configuración de entrada completa (adenda punto 3): toggles de echo-cancellation/noise-suppression expuestos al usuario (el motor ya soporta `setMonitorConstraints`, falta la UI), selección de dispositivo, medición/compensación de latencia real, advertencia de feedback con altavoz.
+- [ ] Hoja contextual de clip estilo BandLab (adenda punto 1) — tap-para-abrir, long-press, doble-tap a editor completo.
+- [ ] Visualización propia para los otros 14 efectos (Compressor, Multiband, Limiter, Clipper, Noise Gate, De-Esser, Reverb, Delay, Saturation, Exciter, Chorus, Flanger, AutoPan, Stereo Width) y rediseño de Synth/Sampler.
+- [ ] Rediseño completo del piano roll (hoy sigue siendo la rejilla de casillas de FASE 4).
+- [ ] Waveforms reales de timeline con cache de picos (verificar/actualizar `Waveform.tsx` contra el estándar de esta fase).
+- [ ] `<select>`/`<input type=range>` nativos restantes fuera de Timeline/Mixer/EQ: `MixAssistantPanel`, `VocalBeatMatchPanel`, `VocalEngineerPanel`, `PitchStudioPanel`, `DenoisePanel`, `BeatGeneratorPanel`, `LivePitchMonitorPanel` (este último se elimina, no se arregla, junto con Live Tune).
+- [ ] `Analyzer.tsx` todavía usa `#f97316` (naranja) para las barras del espectro.

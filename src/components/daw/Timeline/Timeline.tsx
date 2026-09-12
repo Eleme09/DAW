@@ -1,7 +1,8 @@
 "use client";
 
 import { useProjectStore } from "@/state/projectStore";
-import { GRID_RESOLUTIONS } from "@/lib/timing/grid";
+import { GRID_RESOLUTIONS, type GridResolution } from "@/lib/timing/grid";
+import { Picker } from "../ui/Picker";
 import { HEADER_WIDTH, MIN_TIMELINE_SECONDS, PIXELS_PER_SECOND, RULER_HEIGHT, TRACK_HEIGHT } from "./constants";
 import { Ruler } from "./Ruler";
 import { TrackHeader } from "./TrackHeader";
@@ -50,21 +51,21 @@ export function Timeline() {
             <div className="flex flex-wrap justify-center gap-2">
               <button
                 onClick={() => addTrack()}
-                className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+                className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
               >
                 + Add Track
               </button>
               <button
                 onClick={() => addTrack(undefined, "instrument")}
                 title="A track with a synth/sampler instrument, playable from programmed patterns"
-                className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+                className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
               >
                 + Add Instrument
               </button>
               <button
                 onClick={goToBeatGen}
                 title="Generate a full drum/bass/chords/melody sketch to start from"
-                className="rounded bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
+                className="rounded bg-cyan-500 min-h-11 px-3 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
               >
                 Generate a Beat
               </button>
@@ -101,14 +102,14 @@ export function Timeline() {
       <div className="flex flex-wrap items-center gap-2 border-t border-neutral-800 p-2">
         <button
           onClick={() => addTrack()}
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
           + Add Track
         </button>
         <button
           onClick={() => addTrack(undefined, "instrument")}
           title="Add a track with a synth/sampler instrument, playable from programmed patterns"
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
           + Add Instrument
         </button>
@@ -120,38 +121,35 @@ export function Timeline() {
               ? "Add a one-bar pattern to the selected instrument track at the playhead"
               : "Select an instrument track first"
           }
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-30"
+          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-30"
         >
           + Add Pattern
         </button>
         <button
           onClick={splitClipAtPlayhead}
           title="Split the selected track's clip at the playhead (shortcut: S)"
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
           ✂ Split
         </button>
         <button
           onClick={duplicateClipAtPlayhead}
           title="Duplicate the selected track's clip at the playhead (shortcut: D)"
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
           ⧉ Duplicate
         </button>
-        <label className="ml-auto flex items-center gap-1.5 text-xs text-neutral-400" title="Snap clips to the musical grid">
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-neutral-400" title="Snap clips to the musical grid">
           <span className="font-medium">Snap</span>
-          <select
-            value={snapResolution}
-            onChange={(e) => setSnapResolution(e.target.value as (typeof GRID_RESOLUTIONS)[number])}
-            className="rounded bg-neutral-900 px-1.5 py-1 text-neutral-200"
-          >
-            {GRID_RESOLUTIONS.map((r) => (
-              <option key={r} value={r}>
-                {r === "off" ? "Off" : r}
-              </option>
-            ))}
-          </select>
-        </label>
+          <div className="w-24">
+            <Picker<GridResolution>
+              value={snapResolution}
+              options={GRID_RESOLUTIONS.map((r) => ({ value: r, label: r === "off" ? "Off" : r }))}
+              title="Snap resolution"
+              onChange={setSnapResolution}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

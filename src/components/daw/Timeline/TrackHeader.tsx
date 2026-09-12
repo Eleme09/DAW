@@ -1,16 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
-import type { Track } from "@/types/project";
+import type { MonitorMode, Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
-import { AutomationIcon, SparkleIcon } from "../icons";
+import { Knob } from "../ui/Knob";
+import { BottomSheet } from "../BottomSheet";
+import { AutomationIcon, SparkleIcon, MoreIcon, MicIcon } from "../icons";
 import { HEADER_WIDTH, TRACK_HEIGHT } from "./constants";
 
 interface TrackHeaderProps {
   track: Track;
   selected: boolean;
 }
+
+const MONITOR_NEXT: Record<MonitorMode, MonitorMode> = { off: "auto", auto: "on", on: "off" };
+const MONITOR_LABEL: Record<MonitorMode, string> = {
+  off: "Monitor: off (never hear input)",
+  auto: "Monitor: auto (hear input while stopped or recording)",
+  on: "Monitor: on (always hear input while armed)",
+};
+const MONITOR_CLASS: Record<MonitorMode, string> = {
+  off: "bg-neutral-800 text-neutral-500",
+  auto: "bg-cyan-950 text-cyan-400",
+  on: "bg-green-500 text-black",
+};
 
 export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const updateTrack = useProjectStore((s) => s.updateTrack);
@@ -24,62 +39,46 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const isLiveInput = track.armed && isRecording;
+  const [moreOpen, setMoreOpen] = useState(false);
+  const engine = getAudioEngine();
 
   return (
     <div
       onClick={() => selectTrack(track.id)}
       style={{ width: HEADER_WIDTH, height: TRACK_HEIGHT }}
-      className={`sticky left-0 z-10 flex shrink-0 flex-col justify-between border-b border-r border-neutral-800 bg-neutral-950 p-2 ${
+      className={`sticky left-0 z-10 flex shrink-0 flex-col gap-1 border-b border-r border-neutral-800 bg-neutral-950 p-1.5 ${
         selected ? "ring-1 ring-inset ring-cyan-500" : ""
       } ${isLiveInput ? "ring-1 ring-inset ring-red-500" : ""}`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: track.color }} />
         <input
           value={track.name}
           onChange={(e) => updateTrack(track.id, { name: e.target.value })}
           onClick={(e) => e.stopPropagation()}
-          className="w-full truncate bg-transparent text-xs font-medium text-neutral-200 outline-none"
+          className="w-full min-w-0 truncate bg-transparent text-xs font-medium text-neutral-200 outline-none"
         />
         <button
           onClick={(e) => {
             e.stopPropagation();
-            removeTrack(track.id);
+            setMoreOpen(true);
           }}
-          disabled={isLiveInput}
-          title="Delete track"
-          className="shrink-0 text-neutral-600 hover:text-red-400 disabled:opacity-30"
+          title="More track options"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-500 hover:text-neutral-200"
         >
-          ✕
+          <MoreIcon className="h-4 w-4" />
         </button>
       </div>
 
-      {isLiveInput ? (
-        <div className="flex h-1.5 items-center gap-1">
-          <MeterBar analyser={getAudioEngine().getRecordingAnalyser()} vertical={false} />
-        </div>
-      ) : (
-        <input
-          type="range"
-          min={-60}
-          max={6}
-          step={0.5}
-          value={track.volumeDb}
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => updateTrack(track.id, { volumeDb: Number(e.target.value) })}
-          className="w-full accent-cyan-500"
-        />
-      )}
-
-      <div className="flex items-center gap-1">
+      <div className="flex overflow-hidden rounded-lg">
         <button
           onClick={(e) => {
             e.stopPropagation();
             updateTrack(track.id, { muted: !track.muted });
           }}
           title={track.muted ? "Unmute" : "Mute"}
-          className={`h-5 w-5 rounded text-[10px] font-bold ${
-            track.muted ? "bg-red-500 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+          className={`min-h-11 flex-1 text-[11px] font-bold ${
+            track.muted ? "bg-red-500 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
           }`}
         >
           M
@@ -90,8 +89,8 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             updateTrack(track.id, { solo: !track.solo });
           }}
           title={track.solo ? "Unsolo" : "Solo"}
-          className={`h-5 w-5 rounded text-[10px] font-bold ${
-            track.solo ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+          className={`min-h-11 flex-1 text-[11px] font-bold ${
+            track.solo ? "bg-yellow-400 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
           }`}
         >
           S
@@ -103,8 +102,8 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }}
           disabled={isRecording}
           title="Arm for recording"
-          className={`h-5 w-5 rounded text-[10px] font-bold disabled:opacity-30 ${
-            track.armed ? "bg-red-600 text-white" : "bg-neutral-800 text-neutral-400"
+          className={`min-h-11 flex-1 text-[11px] font-bold disabled:opacity-30 ${
+            track.armed ? "bg-red-600 text-white" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
           }`}
         >
           ●
@@ -112,39 +111,79 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setAutomationTrackId(track.id);
+            updateTrack(track.id, { monitorMode: MONITOR_NEXT[track.monitorMode] });
           }}
-          title="Automation"
-          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-            hasAutomation ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
-          }`}
+          title={MONITOR_LABEL[track.monitorMode]}
+          className={`flex min-h-11 flex-1 items-center justify-center ${MONITOR_CLASS[track.monitorMode]}`}
         >
-          <AutomationIcon className="h-3 w-3" />
+          <MicIcon className="h-4 w-4" />
         </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setAssistantDraftMessage(`${track.name}: `);
-            setBrowserTab("assistant");
-            setMobileView("browser");
-          }}
-          title="Ask AI about this track"
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-neutral-800 text-neutral-400 hover:text-neutral-200"
-        >
-          <SparkleIcon className="h-3 w-3" />
-        </button>
-        <input
-          type="range"
-          min={-1}
-          max={1}
-          step={0.05}
-          value={track.pan}
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => updateTrack(track.id, { pan: Number(e.target.value) })}
-          className="ml-1 w-full accent-neutral-400"
-          title={`Pan ${track.pan.toFixed(2)}`}
-        />
       </div>
+
+      {track.armed && (
+        <div className="flex h-2 items-center">
+          <MeterBar analyser={isLiveInput ? engine.getRecordingAnalyser() : engine.getMonitorAnalyser()} vertical={false} />
+        </div>
+      )}
+
+      <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={track.name}>
+        <div className="flex items-center justify-center gap-6">
+          <Knob
+            value={track.volumeDb}
+            min={-60}
+            max={6}
+            defaultValue={0}
+            label="Volume"
+            unit=" dB"
+            onChange={(volumeDb) => updateTrack(track.id, { volumeDb })}
+          />
+          <Knob
+            value={track.pan}
+            min={-1}
+            max={1}
+            defaultValue={0}
+            decimals={2}
+            label="Pan"
+            onChange={(pan) => updateTrack(track.id, { pan })}
+          />
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setAutomationTrackId(track.id);
+              setMoreOpen(false);
+            }}
+            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded text-xs font-medium ${
+              hasAutomation ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+            }`}
+          >
+            <AutomationIcon className="h-4 w-4" />
+            Automation
+          </button>
+          <button
+            onClick={() => {
+              setAssistantDraftMessage(`${track.name}: `);
+              setBrowserTab("assistant");
+              setMobileView("browser");
+              setMoreOpen(false);
+            }}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-neutral-800 text-xs font-medium text-neutral-300"
+          >
+            <SparkleIcon className="h-4 w-4" />
+            Ask AI
+          </button>
+        </div>
+        <button
+          onClick={() => {
+            removeTrack(track.id);
+            setMoreOpen(false);
+          }}
+          disabled={isLiveInput}
+          className="flex min-h-11 w-full items-center justify-center rounded bg-red-950 text-xs font-medium text-red-400 disabled:opacity-30"
+        >
+          Delete track
+        </button>
+      </BottomSheet>
     </div>
   );
 }

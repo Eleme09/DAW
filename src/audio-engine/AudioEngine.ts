@@ -39,6 +39,23 @@ interface LivePitchMonitorSession {
   node: AudioWorkletNode;
 }
 
+export interface MonitorInputConstraints {
+  echoCancellation: boolean;
+  noiseSuppression: boolean;
+  autoGainControl: boolean;
+}
+
+/** Shared mic capture backing per-track input monitoring (Track.monitorMode)
+ * - distinct from `recording` (which deliberately never reaches the
+ * destination) and from `livePitchMonitor` (the old global Live Tune path).
+ * One physical input device, fanned out into whichever armed tracks' own
+ * `graph.input` currently want to hear it - see refreshMonitoring(). */
+interface MonitorSession {
+  stream: MediaStream;
+  source: MediaStreamAudioSourceNode;
+  analyser: AnalyserNode;
+}
+
 interface RecordingSession {
   stream: MediaStream;
   source: MediaStreamAudioSourceNode;
@@ -101,6 +118,15 @@ export class AudioEngine {
   private realtimePitchWorkletPromise: Promise<void> | null = null;
   private realtimePitchWorkletLoaded = false;
   private livePitchListeners = new Set<(info: LivePitchInfo) => void>();
+
+  private monitor: MonitorSession | null = null;
+  private monitorPending: Promise<StartRecordingResult> | null = null;
+  private monitorConnected = new Set<TrackId>();
+  private monitorConstraints: MonitorInputConstraints = {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: false,
+  };
 
   /** Must be called from a user-gesture handler (click) before any playback. */
   ensureContext(): AudioContext {
@@ -203,6 +229,7 @@ export class AudioEngine {
 
     for (const [id, graph] of this.tracks) {
       if (!liveIds.has(id)) {
+        this.disconnectMonitorFromTrack(id);
         graph.input.disconnect();
         graph.effectChain.dispose();
         this.tracks.delete(id);
@@ -236,10 +263,135 @@ export class AudioEngine {
       const audible = !track.muted && (this.soloedTracks.size === 0 || track.solo);
       graph.muteGain.gain.value = audible ? 1 : 0;
     }
+
+    this.refreshMonitoring(tracks);
   }
 
   getTrackAnalyser(trackId: TrackId): AnalyserNode | null {
     return this.tracks.get(trackId)?.analyser ?? null;
+  }
+
+  // ---------------------------------------------------------------------
+  // Input monitoring
+  //
+  // Lets an armed track's channel (with its own effect chain, volume, pan)
+  // hear the live mic while you sing/play, per Track.monitorMode. Shares one
+  // getUserMedia stream across every track that currently wants it - mic
+  // hardware is one physical input, not one per track - and connects that
+  // single source directly into each track's `graph.input`, the same entry
+  // point clips/instrument voices use (see scheduleClips/playVoice), so
+  // monitoring genuinely passes through whatever's in that track's insert
+  // chain right now (autotune, reverb, ...), not a separate dry copy.
+  // ---------------------------------------------------------------------
+
+  getMonitorConstraints(): MonitorInputConstraints {
+    return { ...this.monitorConstraints };
+  }
+
+  getMonitorAnalyser(): AnalyserNode | null {
+    return this.monitor?.analyser ?? null;
+  }
+
+  isMonitorStreamActive(): boolean {
+    return this.monitor !== null;
+  }
+
+  /** Echo-cancellation/noise-suppression/AGC default OFF (they audibly
+   * degrade a music signal), but the addendum requires the user be able to
+   * opt in for a noisy-room-without-headphones take. Re-acquires the mic
+   * with the new constraints if a monitor stream is already open. */
+  async setMonitorConstraints(next: Partial<MonitorInputConstraints>): Promise<void> {
+    this.monitorConstraints = { ...this.monitorConstraints, ...next };
+    if (!this.monitor) return;
+    const reconnectIds = [...this.monitorConnected];
+    this.stopMonitorStream();
+    const result = await this.ensureMonitorStream();
+    if (result.ok) for (const id of reconnectIds) this.connectMonitorToTrack(id);
+  }
+
+  private async ensureMonitorStream(): Promise<StartRecordingResult> {
+    if (this.monitor) return { ok: true };
+    if (this.monitorPending) return this.monitorPending;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      return { ok: false, error: "Microphone access is not available in this browser/context" };
+    }
+    const ctx = this.ensureContext();
+    this.monitorPending = (async (): Promise<StartRecordingResult> => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { ...this.monitorConstraints, channelCount: 1 },
+        });
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        source.connect(analyser);
+        this.monitor = { stream, source, analyser };
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : "Microphone permission denied" };
+      } finally {
+        this.monitorPending = null;
+      }
+    })();
+    return this.monitorPending;
+  }
+
+  private stopMonitorStream(): void {
+    if (!this.monitor) return;
+    const { stream, source, analyser } = this.monitor;
+    for (const id of this.monitorConnected) {
+      const graph = this.tracks.get(id);
+      if (graph) source.disconnect(graph.input);
+    }
+    this.monitorConnected.clear();
+    source.disconnect();
+    analyser.disconnect();
+    stream.getTracks().forEach((t) => t.stop());
+    this.monitor = null;
+  }
+
+  private connectMonitorToTrack(trackId: TrackId): void {
+    const graph = this.tracks.get(trackId);
+    if (!graph || !this.monitor || this.monitorConnected.has(trackId)) return;
+    this.monitor.source.connect(graph.input);
+    this.monitorConnected.add(trackId);
+  }
+
+  private disconnectMonitorFromTrack(trackId: TrackId): void {
+    if (!this.monitorConnected.has(trackId)) return;
+    const graph = this.tracks.get(trackId);
+    if (graph && this.monitor) this.monitor.source.disconnect(graph.input);
+    this.monitorConnected.delete(trackId);
+  }
+
+  private shouldMonitorTrack(track: Track): boolean {
+    if (!track.armed) return false;
+    switch (track.monitorMode) {
+      case "off":
+        return false;
+      case "on":
+        return true;
+      case "auto":
+        return !this.playing || this.isRecording();
+    }
+  }
+
+  private refreshMonitoring(tracks: Track[]): void {
+    const wantIds = new Set(tracks.filter((t) => this.shouldMonitorTrack(t)).map((t) => t.id));
+
+    for (const id of [...this.monitorConnected]) {
+      if (!wantIds.has(id)) this.disconnectMonitorFromTrack(id);
+    }
+
+    if (wantIds.size === 0) {
+      if (this.monitor && this.monitorConnected.size === 0) this.stopMonitorStream();
+      return;
+    }
+
+    void this.ensureMonitorStream().then((result) => {
+      if (!result.ok) return;
+      for (const id of wantIds) this.connectMonitorToTrack(id);
+    });
   }
 
   // ---------------------------------------------------------------------

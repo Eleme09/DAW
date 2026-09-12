@@ -1,7 +1,7 @@
 import type { Effect } from "./Effect";
 import type { EqParams } from "@/types/effects";
 
-const WEB_AUDIO_FILTER_TYPE: Record<EqParams["bands"][number]["type"], BiquadFilterType> = {
+export const WEB_AUDIO_FILTER_TYPE: Record<EqParams["bands"][number]["type"], BiquadFilterType> = {
   highpass: "highpass",
   lowshelf: "lowshelf",
   peaking: "peaking",

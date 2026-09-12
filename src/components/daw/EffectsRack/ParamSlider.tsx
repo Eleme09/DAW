@@ -1,5 +1,7 @@
 "use client";
 
+import { Knob } from "../ui/Knob";
+
 interface ParamSliderProps {
   label: string;
   value: number;
@@ -11,23 +13,13 @@ interface ParamSliderProps {
   onChange: (value: number) => void;
 }
 
-export function ParamSlider({ label, value, min, max, step, unit = "", decimals = 1, onChange }: ParamSliderProps) {
-  return (
-    <label className="flex items-center gap-2 text-[11px] text-neutral-400">
-      <span className="w-16 shrink-0 truncate">{label}</span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1 flex-1 accent-cyan-500"
-      />
-      <span className="w-14 shrink-0 text-right tabular-nums text-neutral-300">
-        {value.toFixed(decimals)}
-        {unit}
-      </span>
-    </label>
-  );
+/** Thin wrapper around Knob keeping the old ParamSlider prop shape, so every
+ * existing effect-params call site (every effect type, InstrumentSettings)
+ * got a real rotary control instead of a native `<input type=range>`
+ * without touching each one individually - PROMPT_MAESTRO FASE 9 prohibits
+ * native range inputs anywhere in an audio context. `step` is accepted for
+ * source compatibility but unused - a knob's long-throw drag is
+ * continuous, not stepped. */
+export function ParamSlider({ label, value, min, max, unit = "", decimals = 1, onChange }: ParamSliderProps) {
+  return <Knob value={value} min={min} max={max} label={label} unit={unit} decimals={decimals} size={36} onChange={onChange} />;
 }

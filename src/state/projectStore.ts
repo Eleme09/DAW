@@ -855,6 +855,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
           midiClips: t.midiClips ?? [],
           instrument: t.instrument ?? null,
           automation: t.automation ?? createDefaultAutomation(),
+          monitorMode: t.monitorMode ?? "auto",
         })),
       };
       set({ project: normalized, currentTime: 0, isPlaying: false, selectedTrackId: null, past: [], future: [] });

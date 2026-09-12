@@ -144,7 +144,7 @@ export function TransportBar() {
           onClick={() => (isPlaying ? pause() : play())}
           disabled={isRecording}
           title={isPlaying ? "Pause" : "Play"}
-          className="flex h-10 w-10 items-center justify-center rounded bg-cyan-500 font-bold text-black hover:bg-cyan-400 active:bg-cyan-400 disabled:opacity-40 sm:h-9 sm:w-9"
+          className="flex h-11 w-11 items-center justify-center rounded bg-cyan-500 font-bold text-black hover:bg-cyan-400 active:bg-cyan-400 disabled:opacity-40"
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying && !isRecording ? "❚❚" : "▶"}
@@ -153,14 +153,14 @@ export function TransportBar() {
           onClick={stop}
           disabled={isRecording}
           title="Stop"
-          className="flex h-10 w-10 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-40 sm:h-9 sm:w-9"
+          className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-40"
           aria-label="Stop"
         >
           ■
         </button>
         <button
           onClick={() => (isRecording ? stopRecording() : startRecording())}
-          className={`flex h-10 w-10 items-center justify-center rounded text-lg sm:h-9 sm:w-9 ${
+          className={`flex h-11 w-11 items-center justify-center rounded text-lg ${
             isRecording
               ? "animate-pulse bg-red-600 text-white"
               : "bg-neutral-800 text-red-500 hover:bg-neutral-700 active:bg-neutral-700"
@@ -177,7 +177,7 @@ export function TransportBar() {
           onClick={undo}
           disabled={!canUndo}
           title="Undo (Ctrl+Z)"
-          className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
         >
           <UndoIcon className="h-4 w-4" />
         </button>
@@ -185,7 +185,7 @@ export function TransportBar() {
           onClick={redo}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
-          className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
         >
           <RedoIcon className="h-4 w-4" />
         </button>
@@ -240,7 +240,7 @@ export function TransportBar() {
         onClick={() => setMoreOpen(true)}
         title="More transport controls"
         aria-label="More transport controls"
-        className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 sm:hidden"
+        className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 sm:hidden"
       >
         <MoreIcon className="h-5 w-5" />
       </button>

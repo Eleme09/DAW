@@ -4,6 +4,17 @@ import { useRef } from "react";
 
 const MIN_DB = -60;
 const MAX_DB = 6;
+/** Real dB marks, per PROMPT_MAESTRO FASE 9 section 3 - the bottom of the
+ * physical range reads as -inf (the floor), not a literal -60. */
+const SCALE_MARKS: { db: number; label: string }[] = [
+  { db: 6, label: "+6" },
+  { db: 0, label: "0" },
+  { db: -6, label: "-6" },
+  { db: -12, label: "-12" },
+  { db: -24, label: "-24" },
+  { db: -48, label: "-48" },
+  { db: MIN_DB, label: "-∞" },
+];
 /** Drag sensitivity - deliberately finer than the visual travel would imply
  * (same delta-based approach as the clip gain handle in ClipView), so a
  * short thumb drag on a narrow mobile strip still gives precise control. */
@@ -14,13 +25,17 @@ interface FaderProps {
   onChange: (db: number) => void;
   height?: number;
   label?: string;
+  /** Draws the dB scale alongside the track - off by default for tight
+   * spaces (e.g. a mini strip) where a caller already shows the value elsewhere. */
+  showScale?: boolean;
 }
 
-/** Touch-friendly long-throw vertical fader. The whole strip (not just the
- * thumb) is the drag target, and the drag is relative-delta based rather
- * than jump-to-pointer, so touch precision doesn't depend on hitting a thin
- * handle exactly. */
-export function Fader({ valueDb, onChange, height = 128, label }: FaderProps) {
+/** Touch-friendly long-throw vertical fader with a real dB scale. The whole
+ * strip (not just the thumb) is the drag target, and the drag is relative-
+ * delta based rather than jump-to-pointer, so touch precision doesn't
+ * depend on hitting a thin handle exactly. Hit area is 44px wide regardless
+ * of the visual track width, per FASE 9's minimum touch target. */
+export function Fader({ valueDb, onChange, height = 128, label, showScale = false }: FaderProps) {
   const drag = useRef<{ startY: number; startDb: number } | null>(null);
 
   function beginDrag(e: React.PointerEvent) {
@@ -44,28 +59,46 @@ export function Fader({ valueDb, onChange, height = 128, label }: FaderProps) {
   const zeroPct = ((0 - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
 
   return (
-    <div
-      onPointerDown={beginDrag}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onDoubleClick={() => onChange(0)}
-      title={`${label ? label + " — " : ""}${valueDb.toFixed(1)} dB — drag to adjust, double-click to reset to 0dB`}
-      style={{ height, touchAction: "none" }}
-      className="relative flex w-9 shrink-0 cursor-ns-resize select-none flex-col items-center rounded bg-neutral-950 active:cursor-grabbing"
-    >
-      <div className="pointer-events-none absolute inset-x-0.5 bottom-0 top-0 rounded bg-neutral-900" />
+    <div className="flex items-stretch gap-1">
       <div
-        className="pointer-events-none absolute inset-x-0 h-px bg-neutral-600"
-        style={{ bottom: `${zeroPct}%` }}
-      />
-      <div
-        className="pointer-events-none absolute inset-x-1 bottom-0 rounded-sm bg-cyan-500/25"
-        style={{ height: `${pct}%` }}
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0.5 h-2 rounded-sm bg-cyan-400 shadow"
-        style={{ bottom: `calc(${pct}% - 4px)` }}
-      />
+        onPointerDown={beginDrag}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onDoubleClick={() => onChange(0)}
+        title={`${label ? label + " — " : ""}${valueDb.toFixed(1)} dB — drag to adjust, double-click to reset to 0dB`}
+        style={{ height, width: 44, touchAction: "none" }}
+        className="relative flex shrink-0 cursor-ns-resize select-none flex-col items-center rounded active:cursor-grabbing"
+      >
+        <div className="pointer-events-none absolute inset-x-3.5 bottom-0 top-0 rounded bg-neutral-900" />
+        <div
+          className="pointer-events-none absolute inset-x-3 h-px bg-neutral-600"
+          style={{ bottom: `${zeroPct}%` }}
+        />
+        <div
+          className="pointer-events-none absolute inset-x-3 bottom-0 rounded-sm bg-cyan-500/25"
+          style={{ height: `${pct}%` }}
+        />
+        <div
+          className="pointer-events-none absolute inset-x-1.5 h-2.5 rounded-sm bg-cyan-400 shadow"
+          style={{ bottom: `calc(${pct}% - 5px)` }}
+        />
+      </div>
+      {showScale && (
+        <div className="relative shrink-0" style={{ height, width: 18 }}>
+          {SCALE_MARKS.map(({ db, label: markLabel }) => {
+            const markPct = ((Math.min(MAX_DB, Math.max(MIN_DB, db)) - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+            return (
+              <span
+                key={db}
+                className="pointer-events-none absolute -translate-y-1/2 font-mono text-[8px] tabular-nums text-neutral-600"
+                style={{ bottom: `${markPct}%` }}
+              >
+                {markLabel}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

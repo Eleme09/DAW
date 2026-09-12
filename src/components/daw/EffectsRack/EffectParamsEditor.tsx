@@ -1,7 +1,8 @@
 "use client";
 
-import type { EffectInstance, EqBand, MultibandBandParams } from "@/types/effects";
+import type { EffectInstance, MultibandBandParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
+import { EqPanel } from "./EqPanel";
 
 interface EffectParamsEditorProps {
   effect: EffectInstance;
@@ -11,7 +12,7 @@ interface EffectParamsEditorProps {
 export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps) {
   switch (effect.type) {
     case "eq":
-      return <EqEditor bands={effect.params.bands} onChange={(bands) => onChange({ bands })} />;
+      return <EqPanel bands={effect.params.bands} onChange={(bands) => onChange({ bands })} />;
 
     case "compressor": {
       const p = effect.params;
@@ -42,12 +43,12 @@ export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps
       const p = effect.params;
       return (
         <>
-          <div className="flex gap-1 text-[11px]">
+          <div className="flex w-full gap-1 text-[11px]">
             {(["warm", "neutral", "bright"] as const).map((tone) => (
               <button
                 key={tone}
                 onClick={() => onChange({ ...p, tone })}
-                className={`flex-1 rounded px-1 py-0.5 uppercase ${
+                className={`min-h-11 flex-1 rounded px-1 uppercase ${
                   p.tone === tone ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
@@ -95,12 +96,12 @@ export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps
       const p = effect.params;
       return (
         <>
-          <div className="flex gap-1 text-[11px]">
+          <div className="flex w-full gap-1 text-[11px]">
             {(["room", "hall", "plate"] as const).map((sizeType) => (
               <button
                 key={sizeType}
                 onClick={() => onChange({ ...p, sizeType })}
-                className={`flex-1 rounded px-1 py-0.5 uppercase ${
+                className={`min-h-11 flex-1 rounded px-1 uppercase ${
                   p.sizeType === sizeType ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
@@ -202,59 +203,3 @@ export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps
   }
 }
 
-function EqEditor({ bands, onChange }: { bands: EqBand[]; onChange: (bands: EqBand[]) => void }) {
-  function updateBand(id: string, patch: Partial<EqBand>) {
-    onChange(bands.map((b) => (b.id === id ? { ...b, ...patch } : b)));
-  }
-  function addBand() {
-    onChange([...bands, { id: crypto.randomUUID(), type: "peaking", freq: 1000, gainDb: 0, q: 1, enabled: true }]);
-  }
-  function removeBand(id: string) {
-    onChange(bands.filter((b) => b.id !== id));
-  }
-
-  return (
-    <div className="space-y-2">
-      {bands.map((band) => (
-        <div key={band.id} className="rounded border border-neutral-800 p-1.5">
-          <div className="mb-1 flex items-center gap-1">
-            <input
-              type="checkbox"
-              checked={band.enabled}
-              onChange={(e) => updateBand(band.id, { enabled: e.target.checked })}
-              title={band.enabled ? "Disable band" : "Enable band"}
-              className="accent-cyan-500"
-            />
-            <select
-              value={band.type}
-              onChange={(e) => updateBand(band.id, { type: e.target.value as EqBand["type"] })}
-              className="flex-1 rounded bg-neutral-800 px-1 py-0.5 text-[10px] text-neutral-300"
-            >
-              <option value="highpass">High-pass</option>
-              <option value="lowshelf">Low shelf</option>
-              <option value="peaking">Peaking</option>
-              <option value="highshelf">High shelf</option>
-              <option value="lowpass">Low-pass</option>
-            </select>
-            <button
-              onClick={() => removeBand(band.id)}
-              title="Remove band"
-              className="text-neutral-600 hover:text-red-400"
-            >
-              ✕
-            </button>
-          </div>
-          <ParamSlider label="Freq" value={band.freq} min={20} max={20000} step={10} unit=" Hz" decimals={0} onChange={(v) => updateBand(band.id, { freq: v })} />
-          <ParamSlider label="Gain" value={band.gainDb} min={-24} max={24} step={0.5} unit=" dB" onChange={(v) => updateBand(band.id, { gainDb: v })} />
-          <ParamSlider label="Q" value={band.q} min={0.1} max={10} step={0.1} onChange={(v) => updateBand(band.id, { q: v })} />
-        </div>
-      ))}
-      <button
-        onClick={addBand}
-        className="w-full rounded bg-neutral-800 py-1 text-[10px] text-neutral-300 hover:bg-neutral-700"
-      >
-        + Add Band
-      </button>
-    </div>
-  );
-}

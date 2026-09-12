@@ -80,7 +80,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         </button>
       </div>
       {expanded && (
-        <div className="space-y-1.5 border-t border-neutral-800 p-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-neutral-800 p-2">
           <EffectParamsEditor effect={effect} onChange={(params) => updateEffectParams(target, effect.id, params)} />
         </div>
       )}
