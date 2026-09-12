@@ -84,7 +84,7 @@ export function TransportBar() {
   }
 
   const bpmField = (
-    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Tempo, en pulsos por minuto">
+    <div className="flex items-center gap-1 text-xs text-bone-2" title="Tempo, en pulsos por minuto">
       <label className="font-medium">BPM</label>
       <input
         type="number"
@@ -92,13 +92,13 @@ export function TransportBar() {
         max={300}
         value={project.bpm}
         onChange={(e) => setBpm(Number(e.target.value) || project.bpm)}
-        className="w-16 rounded bg-neutral-900 px-1 py-1 text-neutral-100 outline-none focus:ring-1 focus:ring-cyan-500"
+        className="w-16 rounded bg-surf px-1 py-1 text-bone outline-none focus:ring-1 focus:ring-bone"
       />
     </div>
   );
 
   const timeSigField = (
-    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Compás">
+    <div className="flex items-center gap-1 text-xs text-bone-2" title="Compás">
       <label className="font-medium">COMPÁS</label>
       <input
         type="number"
@@ -106,7 +106,7 @@ export function TransportBar() {
         max={32}
         value={project.timeSignature[0]}
         onChange={(e) => setTimeSignature(Number(e.target.value) || 4, project.timeSignature[1])}
-        className="w-10 rounded bg-neutral-900 px-1 py-1 text-center text-neutral-100 outline-none"
+        className="w-10 rounded bg-surf px-1 py-1 text-center text-bone outline-none"
       />
       <span>/</span>
       <input
@@ -115,7 +115,7 @@ export function TransportBar() {
         max={32}
         value={project.timeSignature[1]}
         onChange={(e) => setTimeSignature(project.timeSignature[0], Number(e.target.value) || 4)}
-        className="w-10 rounded bg-neutral-900 px-1 py-1 text-center text-neutral-100 outline-none"
+        className="w-10 rounded bg-surf px-1 py-1 text-center text-bone outline-none"
       />
     </div>
   );
@@ -125,7 +125,7 @@ export function TransportBar() {
       onClick={() => setLoop({ enabled: !project.loop.enabled })}
       title="Reproducir en bucle entre los marcadores de loop"
       className={`min-h-11 rounded px-2 text-xs font-medium ${
-        project.loop.enabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+        project.loop.enabled ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
       }`}
     >
       LOOP
@@ -137,7 +137,7 @@ export function TransportBar() {
       onClick={toggleMetronome}
       title="Clic del metrónomo al reproducir/grabar"
       className={`min-h-11 rounded px-2 text-xs font-medium ${
-        project.metronomeEnabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+        project.metronomeEnabled ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
       }`}
     >
       CLICK
@@ -146,13 +146,13 @@ export function TransportBar() {
 
   return (
     <div
-      className="flex h-14 shrink-0 items-center gap-2 border-b border-neutral-800 bg-neutral-950 px-3 text-sm text-neutral-200 sm:gap-3 sm:px-4"
+      className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-ink px-3 text-sm text-bone sm:gap-3 sm:px-4"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <input
         value={project.name}
         onChange={(e) => renameProject(e.target.value)}
-        className="hidden w-32 shrink-0 rounded bg-neutral-900 px-2 py-1 font-medium outline-none focus:ring-1 focus:ring-cyan-500 sm:block md:w-40"
+        className="hidden w-32 shrink-0 rounded bg-surf px-2 py-1 font-medium outline-none focus:ring-1 focus:ring-bone sm:block md:w-40"
       />
 
       <div className="flex shrink-0 items-center gap-1">
@@ -160,7 +160,7 @@ export function TransportBar() {
           onClick={() => (isPlaying ? pause() : play())}
           disabled={isRecording}
           title={isPlaying ? "Pausar" : "Reproducir"}
-          className="flex h-11 w-11 items-center justify-center rounded bg-cyan-500 font-bold text-black hover:bg-cyan-400 active:bg-cyan-400 disabled:opacity-40"
+          className="flex h-11 w-11 items-center justify-center rounded bg-bone font-bold text-ink hover:opacity-90 active:opacity-90 disabled:opacity-40"
           aria-label={isPlaying ? "Pausar" : "Reproducir"}
         >
           {isPlaying && !isRecording ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
@@ -169,7 +169,7 @@ export function TransportBar() {
           onClick={stop}
           disabled={isRecording}
           title="Detener"
-          className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-40"
+          className="flex h-11 w-11 items-center justify-center rounded bg-surf-2 hover:bg-surf-3 active:bg-surf-3 disabled:opacity-40"
           aria-label="Detener"
         >
           <StopIcon className="h-4 w-4" />
@@ -179,7 +179,7 @@ export function TransportBar() {
           className={`flex h-11 w-11 items-center justify-center rounded text-lg ${
             isRecording
               ? "animate-pulse bg-red-600 text-white"
-              : "bg-neutral-800 text-red-500 hover:bg-neutral-700 active:bg-neutral-700"
+              : "bg-surf-2 text-red-500 hover:bg-surf-3 active:bg-surf-3"
           }`}
           aria-label={isRecording ? "Detener grabación" : "Grabar"}
           title={isRecording ? "Detener grabación" : "Graba sobre la pista armada"}
@@ -193,7 +193,7 @@ export function TransportBar() {
           onClick={undo}
           disabled={!canUndo}
           title="Deshacer (Ctrl+Z)"
-          className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded bg-surf-2 text-bone-2 hover:bg-surf-3 disabled:opacity-30"
         >
           <UndoIcon className="h-4 w-4" />
         </button>
@@ -201,13 +201,13 @@ export function TransportBar() {
           onClick={redo}
           disabled={!canRedo}
           title="Rehacer (Ctrl+Mayús+Z)"
-          className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded bg-surf-2 text-bone-2 hover:bg-surf-3 disabled:opacity-30"
         >
           <RedoIcon className="h-4 w-4" />
         </button>
       </div>
 
-      <span className="shrink-0 font-mono text-sm tabular-nums text-neutral-100 sm:text-base" title="Posición de reproducción">
+      <span className="shrink-0 font-mono text-sm tabular-nums text-bone sm:text-base" title="Posición de reproducción">
         {formatTime(currentTime)}
       </span>
       {recordingError && (
@@ -216,10 +216,10 @@ export function TransportBar() {
         </span>
       )}
 
-      <span className="hidden h-6 w-px shrink-0 bg-neutral-800 sm:block" />
+      <span className="hidden h-6 w-px shrink-0 bg-line sm:block" />
       <div className="hidden shrink-0 sm:block">{bpmField}</div>
       <div className="hidden shrink-0 sm:block">{timeSigField}</div>
-      <span className="hidden h-6 w-px shrink-0 bg-neutral-800 sm:block" />
+      <span className="hidden h-6 w-px shrink-0 bg-line sm:block" />
       <div className="hidden shrink-0 sm:block">{loopButton}</div>
       <div className="hidden shrink-0 sm:block">{clickButton}</div>
 
@@ -232,7 +232,7 @@ export function TransportBar() {
           onClick={handleExport}
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
           title={hasAudio ? "Renderiza la mezcla completa y descárgala en WAV" : "Agrega audio a la línea de tiempo primero"}
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+          className="rounded bg-surf-2 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
         >
           {isExporting ? "Exportando…" : "Exportar"}
         </button>
@@ -240,13 +240,13 @@ export function TransportBar() {
           onClick={handleExportStems}
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
           title={hasAudio ? "Descarga cada pista como su propio archivo WAV" : "Agrega audio a la línea de tiempo primero"}
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+          className="rounded bg-surf-2 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
         >
           {isExportingStems ? "Exportando…" : "Exportar stems"}
         </button>
         <button
           onClick={persist}
-          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="rounded bg-surf-2 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
         >
           Guardar proyecto
         </button>
@@ -256,18 +256,18 @@ export function TransportBar() {
         onClick={() => setMoreOpen(true)}
         title="Más controles de transporte"
         aria-label="Más controles de transporte"
-        className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 sm:hidden"
+        className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded bg-surf-2 text-bone-2 hover:bg-surf-3 sm:hidden"
       >
         <MoreIcon className="h-5 w-5" />
       </button>
 
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Transporte">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Nombre del proyecto</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-bone-3">Nombre del proyecto</span>
           <input
             value={project.name}
             onChange={(e) => renameProject(e.target.value)}
-            className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-100 outline-none focus:ring-1 focus:ring-cyan-500"
+            className="rounded bg-surf px-3 py-2 text-sm font-medium text-bone outline-none focus:ring-1 focus:ring-bone"
           />
         </label>
 
@@ -275,14 +275,14 @@ export function TransportBar() {
           <button
             onClick={undo}
             disabled={!canUndo}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-30"
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-surf-2 text-sm font-medium text-bone disabled:opacity-30"
           >
             <UndoIcon className="h-4 w-4" /> Deshacer
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-30"
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-surf-2 text-sm font-medium text-bone disabled:opacity-30"
           >
             <RedoIcon className="h-4 w-4" /> Rehacer
           </button>
@@ -298,11 +298,11 @@ export function TransportBar() {
           {clickButton}
         </div>
 
-        <div className="space-y-1.5 border-t border-neutral-800 pt-3">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
-            Entrada de micrófono {latencySec !== null && <span className="normal-case text-neutral-600">— {Math.round(latencySec * 1000)}ms de latencia medida</span>}
+        <div className="space-y-1.5 border-t border-line pt-3">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-bone-3">
+            Entrada de micrófono {latencySec !== null && <span className="normal-case text-bone-3">— {Math.round(latencySec * 1000)}ms de latencia medida</span>}
           </span>
-          <p className="text-xs text-neutral-600">
+          <p className="text-xs text-bone-3">
             Apagados por defecto los dos — degradan una señal musical pensada para grabar con
             teléfono/auriculares, no para una llamada. Actívalos solo si el ambiente es realmente
             ruidoso y no tienes otra opción.
@@ -313,7 +313,7 @@ export function TransportBar() {
                 key={key}
                 onClick={() => toggleMicConstraint(key)}
                 className={`flex h-11 items-center justify-between rounded px-3 text-sm font-medium ${
-                  micConstraints[key] ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+                  micConstraints[key] ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
                 }`}
               >
                 {CONSTRAINT_LABELS[key]}
@@ -330,20 +330,20 @@ export function TransportBar() {
         <button
           onClick={handleExport}
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
-          className="h-11 w-full rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-40"
+          className="h-11 w-full rounded bg-surf-2 text-sm font-medium text-bone disabled:opacity-40"
         >
           {isExporting ? "Exportando…" : hasAudio ? "Exportar mezcla como WAV" : "Agrega audio a la línea de tiempo primero"}
         </button>
         <button
           onClick={handleExportStems}
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
-          className="h-11 w-full rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-40"
+          className="h-11 w-full rounded bg-surf-2 text-sm font-medium text-bone disabled:opacity-40"
         >
           {isExportingStems ? "Exportando…" : "Exportar stems (un WAV por pista)"}
         </button>
         <button
           onClick={persist}
-          className="h-11 w-full rounded bg-cyan-500 text-sm font-semibold text-black"
+          className="h-11 w-full rounded bg-bone text-sm font-semibold text-ink"
         >
           Guardar proyecto
         </button>
