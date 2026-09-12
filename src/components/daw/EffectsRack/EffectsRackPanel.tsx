@@ -21,12 +21,12 @@ export function EffectsRackPanel() {
 
   const target = mode === "master" ? "master" : selectedTrackId;
   const inserts = mode === "master" ? masterInserts : (selectedTrack?.inserts ?? []);
-  const label = mode === "master" ? "Master Bus" : (selectedTrack?.name ?? "No track selected");
+  const label = mode === "master" ? "Bus master" : (selectedTrack?.name ?? "Ninguna pista seleccionada");
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-l border-neutral-800 bg-neutral-950 md:w-80">
       <div className="flex items-center gap-1.5 border-b border-neutral-800 px-3 py-2 text-xs font-semibold text-neutral-300">
-        <span className="text-neutral-500">Effects</span>
+        <span className="text-neutral-500">Efectos</span>
         <span className="text-neutral-700">/</span>
         <span className="truncate text-cyan-300">{label}</span>
       </div>
@@ -34,7 +34,7 @@ export function EffectsRackPanel() {
       <div className="flex border-b border-neutral-800 text-xs font-medium">
         <button
           onClick={() => setMode("track")}
-          title="Effects on the selected track only"
+          title="Efectos solo en la pista seleccionada"
           className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
             mode === "track"
               ? "border-cyan-500 bg-neutral-900 text-cyan-400"
@@ -42,11 +42,11 @@ export function EffectsRackPanel() {
           }`}
         >
           <WaveformIcon className="h-3.5 w-3.5" />
-          Track
+          Pista
         </button>
         <button
           onClick={() => setMode("master")}
-          title="Effects on the master bus, applied to the full mix"
+          title="Efectos en el bus master, aplicados a toda la mezcla"
           className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
             mode === "master"
               ? "border-cyan-500 bg-neutral-900 text-cyan-400"
@@ -62,12 +62,12 @@ export function EffectsRackPanel() {
       {mode === "track" && selectedTrack?.type === "instrument" && <InstrumentSettings track={selectedTrack} />}
 
       {!target ? (
-        <p className="p-4 text-center text-xs text-neutral-600">Select a track to edit its effects.</p>
+        <p className="p-4 text-center text-xs text-neutral-600">Selecciona una pista para editar sus efectos.</p>
       ) : (
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-2 overflow-y-auto p-2">
             {inserts.length === 0 && (
-              <p className="mt-4 text-center text-xs text-neutral-600">No effects yet.</p>
+              <p className="mt-4 text-center text-xs text-neutral-600">Todavía no hay efectos.</p>
             )}
             {inserts.map((effect, i) => (
               <EffectCard
@@ -85,7 +85,7 @@ export function EffectsRackPanel() {
               onClick={() => setShowAddMenu((v) => !v)}
               className="min-h-11 w-full rounded bg-cyan-500 px-2 text-xs font-semibold text-black hover:bg-cyan-400"
             >
-              + Add Effect
+              + Nuevo efecto
             </button>
             {showAddMenu && (
               <div className="absolute bottom-full left-2 right-2 mb-1 max-h-64 overflow-y-auto rounded border border-neutral-700 bg-neutral-900 shadow-lg">

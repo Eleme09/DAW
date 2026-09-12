@@ -219,22 +219,22 @@ export type EffectInstance =
 export type EffectType = EffectInstance["type"];
 
 export const EFFECT_LABELS: Record<EffectType, string> = {
-  eq: "EQ",
-  compressor: "Compressor",
-  deesser: "De-Esser",
-  saturation: "Saturation",
-  limiter: "Limiter",
+  eq: "Ecualizador",
+  compressor: "Compresor",
+  deesser: "De-esser",
+  saturation: "Saturación",
+  limiter: "Limitador",
   clipper: "Clipper",
-  noiseGate: "Noise Gate",
-  reverb: "Reverb",
+  noiseGate: "Puerta de ruido",
+  reverb: "Reverberación",
   delay: "Delay",
-  multibandCompressor: "Multiband Comp",
+  multibandCompressor: "Compresor multibanda",
   chorus: "Chorus",
   flanger: "Flanger",
-  exciter: "Exciter",
-  autoPan: "Auto-Pan",
-  stereoWidth: "Stereo Width",
-  pitchCorrection: "Auto-Tune / Afinación",
+  exciter: "Excitador",
+  autoPan: "Paneo automático",
+  stereoWidth: "Imagen estéreo",
+  pitchCorrection: "Afinación",
 };
 
 function defaultEqParams(): EqParams {

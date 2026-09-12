@@ -21,9 +21,9 @@ import type { ComponentType } from "react";
 // state) so other panels (e.g. the Mixer's per-channel FX button) can jump
 // to a different tab.
 const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ className?: string }> }[] = [
-  { id: "browser", label: "Browser", Icon: FolderIcon },
-  { id: "timeline", label: "Timeline", Icon: TimelineIcon },
-  { id: "mixer", label: "Mixer", Icon: MixIcon },
+  { id: "browser", label: "Biblioteca", Icon: FolderIcon },
+  { id: "timeline", label: "Sesión", Icon: TimelineIcon },
+  { id: "mixer", label: "Mezcla", Icon: MixIcon },
   { id: "effects", label: "FX", Icon: KnobIcon },
 ];
 
