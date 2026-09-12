@@ -14,7 +14,7 @@ export function SegmentedControl<T extends string>({ value, options, onChange, l
   return (
     <div className="flex flex-col gap-1">
       {label && <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">{label}</span>}
-      <div className="flex overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950">
+      <div className="flex overflow-hidden rounded-[3px] border border-neutral-800 bg-neutral-950">
         {options.map((opt) => (
           <button
             key={opt.value}

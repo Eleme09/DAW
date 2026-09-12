@@ -41,7 +41,7 @@ export function XYPad({ x, y, onChange, size = 120, xLabel, yLabel }: XYPadProps
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         style={{ width: size, height: size, touchAction: "none" }}
-        className="relative cursor-crosshair rounded-lg border border-neutral-800 bg-neutral-950"
+        className="relative cursor-crosshair rounded-[3px] border border-neutral-800 bg-neutral-950"
       >
         <div className="pointer-events-none absolute left-1/2 top-0 h-full w-px bg-neutral-900" />
         <div className="pointer-events-none absolute left-0 top-1/2 h-px w-full bg-neutral-900" />

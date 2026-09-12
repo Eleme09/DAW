@@ -73,7 +73,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
         </button>
       </div>
 
-      <div className="flex overflow-hidden rounded-lg">
+      <div className="flex overflow-hidden rounded-[3px]">
         <button
           onClick={(e) => {
             e.stopPropagation();
