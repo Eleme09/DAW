@@ -84,7 +84,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
         channels: buffer.numberOfChannels,
         createdAt: new Date().toISOString(),
       };
-      addSampleAsset(asset);
+      await addSampleAsset(asset);
       onNewSample?.();
 
       const track = addTrack(name);

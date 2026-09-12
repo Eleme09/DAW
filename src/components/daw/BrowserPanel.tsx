@@ -1,12 +1,11 @@
 "use client";
 
-import { useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset, listSampleAssets } from "@/lib/storage/sampleIndex";
-import { deleteProject, listProjects, loadProject as loadProjectFromDisk } from "@/lib/storage/projectStore";
-import { hydrateProjectSamples } from "@/lib/audio/sampleLoader";
+import { deleteProject, listProjects } from "@/lib/storage/projectStore";
 import { analyzeVocalRecording } from "@/audio-engine/analysis/vocalAnalysis";
 import { buildPhoneMicEnhanceChain } from "@/audio-engine/analysis/autoChain";
 import { useProjectStore } from "@/state/projectStore";
@@ -68,7 +67,7 @@ export function BrowserPanel() {
 }
 
 function AudioTab() {
-  const [samples, setSamples] = useState<SampleAsset[]>(() => listSampleAssets());
+  const [samples, setSamples] = useState<SampleAsset[]>([]);
   const [importing, setImporting] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<Record<string, VocalAnalysisResult>>({});
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
@@ -85,6 +84,10 @@ function AudioTab() {
   const addClip = useProjectStore((s) => s.addClip);
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const setEffectChain = useProjectStore((s) => s.setEffectChain);
+
+  useEffect(() => {
+    listSampleAssets().then(setSamples);
+  }, []);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -103,8 +106,8 @@ function AudioTab() {
           channels: buffer.numberOfChannels,
           createdAt: new Date().toISOString(),
         };
-        addSampleAsset(asset);
-        setSamples(listSampleAssets());
+        await addSampleAsset(asset);
+        setSamples(await listSampleAssets());
       }
     } finally {
       setImporting(false);
@@ -243,11 +246,11 @@ function AudioTab() {
             )}
             {engineerOpenId === s.id && <VocalEngineerPanel sample={s} />}
             {pitchOpenId === s.id && (
-              <PitchStudioPanel sample={s} onNewSample={() => setSamples(listSampleAssets())} />
+              <PitchStudioPanel sample={s} onNewSample={() => listSampleAssets().then(setSamples)} />
             )}
             {beatOpenId === s.id && <BeatAnalyzerPanel sample={s} />}
             {denoiseOpenId === s.id && (
-              <DenoisePanel sample={s} onNewSample={() => setSamples(listSampleAssets())} />
+              <DenoisePanel sample={s} onNewSample={() => listSampleAssets().then(setSamples)} />
             )}
           </div>
         ))}
@@ -257,22 +260,51 @@ function AudioTab() {
 }
 
 function ProjectsTab() {
-  const [entries, setEntries] = useState(() => listProjects());
-  const loadProject = useProjectStore((s) => s.loadProject);
+  const [entries, setEntries] = useState<Array<{ id: string; name: string; updatedAt: string }>>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const openProjectById = useProjectStore((s) => s.openProjectById);
   const persist = useProjectStore((s) => s.persist);
   const newProject = useProjectStore((s) => s.newProject);
   const currentId = useProjectStore((s) => s.project.id);
 
-  function refresh() {
-    setEntries(listProjects());
-  }
+  const refresh = useCallback(async () => {
+    try {
+      setEntries(await listProjects());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load projects");
+    } finally {
+      setLoaded(true);
+    }
+  }, []);
+
+  // Initial load is inlined (rather than calling `refresh` from the effect)
+  // so the effect body is a plain fetch-and-set, not a call into a function
+  // with its own try/catch/finally control flow.
+  useEffect(() => {
+    listProjects()
+      .then(setEntries)
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load projects"))
+      .finally(() => setLoaded(true));
+  }, []);
 
   async function openProject(id: string) {
-    const project = loadProjectFromDisk(id);
-    if (!project) return;
-    loadProject(project);
-    const sampleIds = Array.from(new Set(project.tracks.flatMap((t) => t.clips.map((c) => c.sampleId))));
-    await hydrateProjectSamples(sampleIds);
+    setError(null);
+    try {
+      await openProjectById(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to open project");
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setError(null);
+    try {
+      await deleteProject(id);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete project");
+    }
   }
 
   return (
@@ -288,17 +320,23 @@ function ProjectsTab() {
           New
         </button>
         <button
-          onClick={() => {
-            persist();
-            refresh();
+          onClick={async () => {
+            setError(null);
+            try {
+              await persist();
+              await refresh();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Failed to save project");
+            }
           }}
           className="flex-1 rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400"
         >
           Save
         </button>
       </div>
+      {error && <p className="px-2 pb-2 text-[11px] text-red-400">{error}</p>}
       <div className="flex-1 overflow-y-auto px-2 pb-2 text-xs">
-        {entries.length === 0 && (
+        {loaded && entries.length === 0 && (
           <p className="mt-4 text-center text-neutral-600">No saved projects yet.</p>
         )}
         {entries.map((e) => (
@@ -313,10 +351,7 @@ function ProjectsTab() {
               <div className="text-neutral-500">{new Date(e.updatedAt).toLocaleString()}</div>
             </button>
             <button
-              onClick={() => {
-                deleteProject(e.id);
-                refresh();
-              }}
+              onClick={() => handleDelete(e.id)}
               className="ml-2 shrink-0 text-neutral-500 hover:text-red-400"
               title="Delete project"
               aria-label="Delete project"

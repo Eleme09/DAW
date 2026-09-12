@@ -1,26 +1,51 @@
 import type { SampleAsset } from "@/types/project";
+import { idbDelete, idbGetAll, idbPut, STORES } from "./db";
 
 /** Lightweight metadata index for imported samples, mirrors sampleStore.ts blobs. */
-const KEY = "daw:samples";
 
-export function listSampleAssets(): SampleAsset[] {
-  if (typeof window === "undefined") return [];
-  const raw = window.localStorage.getItem(KEY);
-  if (!raw) return [];
-  try {
-    return JSON.parse(raw) as SampleAsset[];
-  } catch {
-    return [];
+const LEGACY_KEY = "daw:samples";
+const LEGACY_MIGRATED_KEY = "daw:migrated:samples";
+
+let migration: Promise<void> | null = null;
+
+/** One-time move of any pre-IndexedDB sample metadata out of localStorage.
+ * Idempotent and memoized — safe to call from every read/write here. */
+function migrateLegacyLocalStorage(): Promise<void> {
+  if (!migration) {
+    migration = (async () => {
+      if (typeof window === "undefined") return;
+      if (window.localStorage.getItem(LEGACY_MIGRATED_KEY)) return;
+
+      const raw = window.localStorage.getItem(LEGACY_KEY);
+      if (raw) {
+        try {
+          const assets = JSON.parse(raw) as SampleAsset[];
+          for (const asset of assets) {
+            await idbPut(STORES.sampleAssets, asset);
+          }
+        } catch {
+          // Corrupt legacy index - nothing to recover.
+        }
+        window.localStorage.removeItem(LEGACY_KEY);
+      }
+      window.localStorage.setItem(LEGACY_MIGRATED_KEY, "1");
+    })();
   }
+  return migration;
 }
 
-export function addSampleAsset(asset: SampleAsset): void {
-  const list = listSampleAssets().filter((s) => s.id !== asset.id);
-  list.unshift(asset);
-  window.localStorage.setItem(KEY, JSON.stringify(list));
+export async function listSampleAssets(): Promise<SampleAsset[]> {
+  await migrateLegacyLocalStorage();
+  const assets = await idbGetAll<SampleAsset>(STORES.sampleAssets);
+  return assets.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-export function removeSampleAsset(id: string): void {
-  const list = listSampleAssets().filter((s) => s.id !== id);
-  window.localStorage.setItem(KEY, JSON.stringify(list));
+export async function addSampleAsset(asset: SampleAsset): Promise<void> {
+  await migrateLegacyLocalStorage();
+  await idbPut(STORES.sampleAssets, asset);
+}
+
+export async function removeSampleAsset(id: string): Promise<void> {
+  await migrateLegacyLocalStorage();
+  await idbDelete(STORES.sampleAssets, id);
 }

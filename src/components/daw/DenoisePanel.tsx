@@ -62,7 +62,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
         channels: buffer.numberOfChannels,
         createdAt: new Date().toISOString(),
       };
-      addSampleAsset(asset);
+      await addSampleAsset(asset);
       onNewSample?.();
 
       const track = addTrack(name);

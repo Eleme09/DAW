@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
-import { saveProject } from "@/lib/storage/projectStore";
+import { listProjects, loadProject as loadProjectFromDisk, saveProject } from "@/lib/storage/projectStore";
 import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset } from "@/lib/storage/sampleIndex";
+import { hydrateProjectSamples } from "@/lib/audio/sampleLoader";
 import {
   createEmptyProject,
   createTrack,
@@ -63,8 +64,15 @@ interface ProjectState {
 
   renameProject: (name: string) => void;
   loadProject: (project: Project) => void;
+  /** Loads a saved project by id from disk and hydrates its samples into
+   * the audio engine cache. Returns false if the project no longer exists
+   * (e.g. deleted from another tab). */
+  openProjectById: (id: string) => Promise<boolean>;
+  /** Loads the most recently saved project, if any - used to resume the
+   * last session on startup. Returns false if there's nothing to recover. */
+  recoverLastProject: () => Promise<boolean>;
   newProject: () => void;
-  persist: () => void;
+  persist: () => Promise<void>;
 }
 
 function touch(project: Project): Project {
@@ -80,16 +88,46 @@ const COALESCE_MS = 400;
  * project snapshots are plain JSON (no audio data), so this is cheap. */
 const HISTORY_LIMIT = 200;
 
-export const useProjectStore = create<ProjectState>((set, get) => {
+/** Debounce window for autosave: a burst of edits (dragging a fader, typing
+ * a name) writes to IndexedDB once, shortly after the user stops, rather
+ * than on every keystroke/tick. */
+const AUTOSAVE_DEBOUNCE_MS = 1200;
+
+export const useProjectStore = create<ProjectState>((set, get, api) => {
   let unsubscribeTime: (() => void) | null = null;
   let lastPushAt = 0;
   let lastPushWasCoalescible = false;
+  let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingSave: Project | null = null;
 
   const attachEngineClock = () => {
     unsubscribeTime?.();
     unsubscribeTime = getAudioEngine().onTimeUpdate((t) => set({ currentTime: t }));
   };
   attachEngineClock();
+
+  const attachAutosave = () => {
+    api.subscribe((state, prevState) => {
+      if (state.project === prevState.project) return;
+      pendingSave = state.project;
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => {
+        const toSave = pendingSave;
+        pendingSave = null;
+        autosaveTimer = null;
+        if (toSave) saveProject(toSave).catch((err) => console.error("Autosave failed:", err));
+      }, AUTOSAVE_DEBOUNCE_MS);
+    });
+    if (typeof window !== "undefined") {
+      // Best-effort flush for a quick tab close right after an edit, before
+      // the debounce timer above would otherwise fire. A hard crash bypasses
+      // this regardless - the short debounce window is what bounds that risk.
+      window.addEventListener("beforeunload", () => {
+        if (pendingSave) void saveProject(pendingSave);
+      });
+    }
+  };
+  attachAutosave();
 
   /** The single funnel every project-data mutation goes through, so
    * undo/redo covers all of them uniformly. `coalesce: true` merges this
@@ -387,7 +425,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         channels: 1,
         createdAt: new Date().toISOString(),
       };
-      addSampleAsset(asset);
+      await addSampleAsset(asset);
 
       const clip: AudioClip = {
         id: crypto.randomUUID(),
@@ -424,6 +462,20 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         future: [],
       });
       lastPushWasCoalescible = false;
+    },
+    openProjectById: async (id) => {
+      const project = await loadProjectFromDisk(id);
+      if (!project) return false;
+      get().loadProject(project);
+      const sampleIds = Array.from(new Set(project.tracks.flatMap((t) => t.clips.map((c) => c.sampleId))));
+      await hydrateProjectSamples(sampleIds);
+      return true;
+    },
+    recoverLastProject: async () => {
+      const entries = await listProjects();
+      const mostRecent = entries[0];
+      if (!mostRecent) return false;
+      return get().openProjectById(mostRecent.id);
     },
     persist: () => saveProject(get().project),
   };

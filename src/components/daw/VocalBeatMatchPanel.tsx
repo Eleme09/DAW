@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { mixToMono } from "@/audio-engine/audioBufferUtils";
 import { analyzePitch } from "@/audio-engine/pitch/applyPitchCorrection";
@@ -8,10 +8,15 @@ import { detectBeatKey, matchVocalToBeat } from "@/audio-engine/matching/vocalBe
 import { NOTE_NAMES } from "@/types/pitch";
 import { listSampleAssets } from "@/lib/storage/sampleIndex";
 import type { VocalBeatMatchResult } from "@/types/match";
+import type { SampleAsset } from "@/types/project";
 import { MatchIcon } from "./icons";
 
 export function VocalBeatMatchPanel() {
-  const [samples] = useState(() => listSampleAssets());
+  const [samples, setSamples] = useState<SampleAsset[]>([]);
+
+  useEffect(() => {
+    listSampleAssets().then(setSamples);
+  }, []);
   const [vocalId, setVocalId] = useState<string>("");
   const [beatId, setBeatId] = useState<string>("");
   const [comparing, setComparing] = useState(false);

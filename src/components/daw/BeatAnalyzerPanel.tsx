@@ -84,7 +84,7 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
           channels: stem.buffer.numberOfChannels,
           createdAt: new Date().toISOString(),
         };
-        addSampleAsset(asset);
+        await addSampleAsset(asset);
 
         const track = addTrack(stem.name);
         const clip: AudioClip = {

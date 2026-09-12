@@ -31,6 +31,12 @@ export function DawShell() {
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
   const [mobileView, setMobileView] = useState<MobileView>("timeline");
 
+  // Resume the last session automatically - the store otherwise always
+  // starts from a blank project, which would defeat autosave/recovery.
+  useEffect(() => {
+    useProjectStore.getState().recoverLastProject();
+  }, []);
+
   // Keep the audio graph in sync with track state even before the user hits
   // play, so mixer meters/pan/volume are live immediately.
   useEffect(() => {
