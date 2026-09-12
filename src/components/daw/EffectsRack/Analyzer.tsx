@@ -52,7 +52,7 @@ export function Analyzer() {
   }, true);
 
   return (
-    <div className="border-b border-neutral-800 p-2">
+    <div className="border-b border-line p-2">
       <canvas ref={canvasRef} width={288} height={64} className="block w-full rounded bg-black" />
       <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[10px]">
         <Readout label="Pico" value={peakDb} />
@@ -65,9 +65,9 @@ export function Analyzer() {
 
 function Readout({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded bg-neutral-900 px-1 py-1">
-      <div className="text-neutral-500">{label}</div>
-      <div className="tabular-nums text-neutral-200">{Number.isFinite(value) ? value.toFixed(1) : "-∞"}</div>
+    <div className="rounded bg-surf px-1 py-1">
+      <div className="text-bone-2">{label}</div>
+      <div className="tabular-nums text-bone">{Number.isFinite(value) ? value.toFixed(1) : "-∞"}</div>
     </div>
   );
 }

@@ -206,10 +206,10 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
       <canvas
         ref={canvasRef}
         style={{ width: WIDTH, height: HEIGHT }}
-        className="w-full max-w-full rounded bg-neutral-950"
+        className="w-full max-w-full rounded bg-ink"
       />
-      <p className="text-[9px] text-neutral-600">
-        Blanco: nota detectada. Cian: nota destino (suavizada). La línea muestra cuántos cents desafinaste de la nota
+      <p className="text-[9px] text-bone-3">
+        Gris: nota detectada. Blanco: nota destino (suavizada). La línea muestra cuántos cents desafinaste de la nota
         de escala más cercana.
       </p>
 
@@ -218,7 +218,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           <button
             key={name}
             onClick={() => applyPreset(name)}
-            className="min-h-11 flex-1 rounded bg-neutral-800 px-1 text-[10px] font-medium text-neutral-300 hover:bg-neutral-700"
+            className="min-h-11 flex-1 rounded bg-surf-2 px-1 text-[10px] font-medium text-bone-2 hover:bg-surf-3"
           >
             {PITCH_CORRECTION_PRESET_LABELS[name]}
           </button>
@@ -243,7 +243,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
         </div>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded border border-neutral-800 p-1">
+      <div className="flex gap-1 overflow-x-auto rounded border border-line p-1">
         {Array.from({ length: 12 }, (_, i) => 11 - i).map((pc) => {
           const isRoot = pc === params.key;
           const isActive = activeClasses.has(pc);
@@ -254,8 +254,8 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
               onClick={() => togglePitchClass(pc)}
               title={`${NOTE_NAMES[pc]}${isActive ? " (en la escala)" : " (excluida)"}`}
               className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded text-[9px] font-medium ${
-                isActive ? (isBlack ? "bg-neutral-700 text-neutral-100" : "bg-neutral-200 text-black") : "bg-neutral-950 text-neutral-700"
-              } ${isRoot ? "ring-2 ring-inset ring-cyan-500" : ""}`}
+                isActive ? (isBlack ? "bg-surf-3 text-bone" : "bg-bone text-ink") : "bg-ink text-bone-3"
+              } ${isRoot ? "ring-2 ring-inset ring-bone" : ""}`}
               style={{ writingMode: "vertical-rl" }}
             >
               {NOTE_NAMES[pc]}
@@ -263,7 +263,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           );
         })}
       </div>
-      <p className="text-[9px] text-neutral-600">
+      <p className="text-[9px] text-bone-3">
         Desliza para ver las 12 notas. Toca una nota para excluirla/incluirla (cambia a escala Custom).
       </p>
 
@@ -332,7 +332,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           onChange={(v) => onChange({ ...params, detectMaxHz: Math.max(v, params.detectMinHz + 10) })}
         />
       </div>
-      <p className="text-[9px] text-neutral-600">
+      <p className="text-[9px] text-bone-3">
         Sin preservación de formantes todavía - correcciones grandes pueden sonar más finas (&quot;chipmunk&quot;).
         Ver AUDIO_ENGINE.md.
       </p>

@@ -171,17 +171,17 @@ export function EqPanel({ bands, onChange }: { bands: EqBand[]; onChange: (bands
         drawBackground={drawBackground}
         drawCurve={false}
       />
-      <p className="text-[9px] text-neutral-600">Doble toque para agregar una banda, arrastra un nodo fuera del gráfico para quitarla.</p>
+      <p className="text-[9px] text-bone-3">Doble toque para agregar una banda, arrastra un nodo fuera del gráfico para quitarla.</p>
       <div className="space-y-2">
         {bands.map((band) => (
-          <div key={band.id} className="space-y-1.5 rounded border border-neutral-800 p-1.5">
+          <div key={band.id} className="space-y-1.5 rounded border border-line p-1.5">
             <SegmentedControl value={band.type} options={TYPE_OPTIONS} onChange={(type) => updateBand(band.id, { type })} />
             <div className="flex items-center gap-2">
               <button
                 onClick={() => updateBand(band.id, { enabled: !band.enabled })}
                 title={band.enabled ? "Desactivar banda" : "Activar banda"}
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded text-[10px] font-bold ${
-                  band.enabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-500"
+                  band.enabled ? "bg-bone text-ink" : "bg-surf-2 text-bone-3"
                 }`}
               >
                 {band.enabled ? "ON" : "OFF"}
@@ -190,7 +190,7 @@ export function EqPanel({ bands, onChange }: { bands: EqBand[]; onChange: (bands
               <button
                 onClick={() => handleRemovePoint(band.id)}
                 title="Quitar banda"
-                className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-600 hover:text-red-400"
+                className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded text-bone-3 hover:text-red-400"
               >
                 <CloseIcon className="h-4 w-4" />
               </button>

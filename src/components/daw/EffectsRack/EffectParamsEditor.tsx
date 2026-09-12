@@ -58,7 +58,7 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
                 key={tone}
                 onClick={() => onChange({ ...p, tone })}
                 className={`min-h-11 flex-1 rounded px-1 uppercase ${
-                  p.tone === tone ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
+                  p.tone === tone ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
                 }`}
               >
                 {TONE_LABEL[tone]}
@@ -111,7 +111,7 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
                 key={sizeType}
                 onClick={() => onChange({ ...p, sizeType })}
                 className={`min-h-11 flex-1 rounded px-1 uppercase ${
-                  p.sizeType === sizeType ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
+                  p.sizeType === sizeType ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
                 }`}
               >
                 {SIZE_LABEL[sizeType]}
@@ -139,8 +139,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "multibandCompressor": {
       const p = effect.params;
       const bandEditor = (label: string, band: MultibandBandParams, key: "low" | "mid" | "high") => (
-        <div key={key} className="rounded border border-neutral-800 p-1.5">
-          <div className="mb-1 text-[10px] font-semibold uppercase text-neutral-500">{label}</div>
+        <div key={key} className="rounded border border-line p-1.5">
+          <div className="mb-1 text-[10px] font-semibold uppercase text-bone-2">{label}</div>
           <ParamSlider label="Threshold" value={band.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, [key]: { ...band, thresholdDb: v } })} />
           <ParamSlider label="Ratio" value={band.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...p, [key]: { ...band, ratio: v } })} />
           <ParamSlider label="Makeup" value={band.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, [key]: { ...band, makeupDb: v } })} />
