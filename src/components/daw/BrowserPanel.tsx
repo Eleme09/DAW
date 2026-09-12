@@ -36,8 +36,8 @@ export function BrowserPanel() {
   const setTab = useProjectStore((s) => s.setBrowserTab);
 
   return (
-    <div className="flex h-full w-full shrink-0 flex-col border-r border-neutral-800 bg-neutral-950 md:w-64">
-      <div className="grid grid-cols-3 border-b border-neutral-800">
+    <div className="flex h-full w-full shrink-0 flex-col border-r border-line bg-ink md:w-64">
+      <div className="grid grid-cols-3 border-b border-line">
         {TABS.map(({ id, label, hint, Icon }) => (
           <button
             key={id}
@@ -46,8 +46,8 @@ export function BrowserPanel() {
             aria-current={tab === id}
             className={`flex flex-col items-center gap-1 border-b-2 px-1 py-2 text-[10px] font-medium leading-tight ${
               tab === id
-                ? "border-cyan-500 bg-neutral-900 text-cyan-400"
-                : "border-transparent text-neutral-500 hover:bg-neutral-900/60 hover:text-neutral-300"
+                ? "border-bone bg-surf text-bone"
+                : "border-transparent text-bone-3 hover:bg-surf/60 hover:text-bone-2"
             }`}
           >
             <Icon className="h-4 w-4" />
@@ -176,7 +176,7 @@ function AudioTab() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={importing}
-          className="w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+          className="w-full rounded bg-bone px-2 py-1.5 text-xs font-semibold text-ink hover:opacity-90 disabled:opacity-50"
         >
           {importing ? "Importando…" : "Importar audio"}
         </button>
@@ -191,47 +191,47 @@ function AudioTab() {
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2 text-xs">
         {samples.length === 0 && (
-          <p className="mt-4 text-center text-neutral-600">Todavía no importaste audio.</p>
+          <p className="mt-4 text-center text-bone-3">Todavía no importaste audio.</p>
         )}
         {samples.map((s) => (
-          <div key={s.id} className="mb-1 rounded bg-neutral-900 px-2 py-2 text-neutral-300">
+          <div key={s.id} className="mb-1 rounded bg-surf px-2 py-2 text-bone-2">
             <button
               onClick={() => addSampleToTimeline(s)}
-              className="block w-full truncate text-left hover:text-neutral-100"
+              className="block w-full truncate text-left hover:text-bone"
               title={`Agregar "${s.name}" a la sesión`}
             >
-              <div className="truncate font-medium text-neutral-200">{s.name}</div>
-              <div className="text-neutral-500">{s.durationSec.toFixed(1)}s</div>
+              <div className="truncate font-medium text-bone">{s.name}</div>
+              <div className="text-bone-2">{s.durationSec.toFixed(1)}s</div>
             </button>
             <div className="mt-1 grid grid-cols-2 gap-1">
               <button
                 onClick={() => analyzeSample(s)}
                 disabled={analyzingId === s.id}
-                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+                className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3 disabled:opacity-50"
               >
                 {analyzingId === s.id ? "Analizando…" : "Analizar"}
               </button>
               <button
                 onClick={() => setEngineerOpenId((prev) => (prev === s.id ? null : s.id))}
-                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+                className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
               >
                 Ingeniero
               </button>
               <button
                 onClick={() => setPitchOpenId((prev) => (prev === s.id ? null : s.id))}
-                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+                className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
               >
                 Tono
               </button>
               <button
                 onClick={() => setBeatOpenId((prev) => (prev === s.id ? null : s.id))}
-                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+                className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
               >
                 Beat
               </button>
               <button
                 onClick={() => setDenoiseOpenId((prev) => (prev === s.id ? null : s.id))}
-                className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
+                className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
               >
                 Reducir ruido
               </button>
@@ -314,7 +314,7 @@ function ProjectsTab() {
             newProject();
             refresh();
           }}
-          className="flex-1 rounded bg-neutral-800 px-2 py-1.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-700"
+          className="flex-1 rounded bg-surf-2 px-2 py-1.5 text-xs font-semibold text-bone hover:bg-surf-3"
         >
           Nuevo
         </button>
@@ -328,7 +328,7 @@ function ProjectsTab() {
               setError(err instanceof Error ? err.message : "No se pudo guardar el proyecto");
             }
           }}
-          className="flex-1 rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
+          className="flex-1 rounded bg-bone px-2 py-1.5 text-xs font-semibold text-ink hover:opacity-90"
         >
           Guardar
         </button>
@@ -336,22 +336,22 @@ function ProjectsTab() {
       {error && <p className="px-2 pb-2 text-[11px] text-red-400">{error}</p>}
       <div className="flex-1 overflow-y-auto px-2 pb-2 text-xs">
         {loaded && entries.length === 0 && (
-          <p className="mt-4 text-center text-neutral-600">Todavía no hay proyectos guardados.</p>
+          <p className="mt-4 text-center text-bone-3">Todavía no hay proyectos guardados.</p>
         )}
         {entries.map((e) => (
           <div
             key={e.id}
             className={`mb-1 flex items-center justify-between rounded px-2 py-2 ${
-              e.id === currentId ? "bg-neutral-800" : "bg-neutral-900"
+              e.id === currentId ? "bg-surf-2" : "bg-surf"
             }`}
           >
             <button onClick={() => openProject(e.id)} className="min-w-0 flex-1 truncate text-left">
-              <div className="truncate font-medium text-neutral-200">{e.name}</div>
-              <div className="text-neutral-500">{new Date(e.updatedAt).toLocaleString()}</div>
+              <div className="truncate font-medium text-bone">{e.name}</div>
+              <div className="text-bone-2">{new Date(e.updatedAt).toLocaleString()}</div>
             </button>
             <button
               onClick={() => handleDelete(e.id)}
-              className="ml-2 shrink-0 text-neutral-500 hover:text-red-400"
+              className="ml-2 shrink-0 text-bone-2 hover:text-red-400"
               title="Eliminar proyecto"
               aria-label="Eliminar proyecto"
             >
