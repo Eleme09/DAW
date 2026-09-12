@@ -23,10 +23,17 @@ import { Picker } from "./ui/Picker";
 import { Knob } from "./ui/Knob";
 
 const SCALE_OPTIONS: { value: ScaleName; label: string }[] = [
-  { value: "major", label: "Major" },
-  { value: "naturalMinor", label: "Minor" },
-  { value: "chromatic", label: "Chromatic" },
+  { value: "major", label: "Mayor" },
+  { value: "naturalMinor", label: "Menor" },
+  { value: "chromatic", label: "Cromática" },
 ];
+
+const MODE_LABEL: Record<PitchMode, string> = {
+  natural: "Natural",
+  hardTune: "Corrección dura",
+  modernTrap: "Trap moderno",
+  extreme: "Extremo",
+};
 
 interface PitchStudioPanelProps {
   sample: SampleAsset;
@@ -82,7 +89,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
 
       const newSampleId = crypto.randomUUID();
       await getAudioEngine().decodeAndCache(newSampleId, await blob.arrayBuffer());
-      const name = `${sample.name.replace(/\.[^/.]+$/, "")} (tuned)`;
+      const name = `${sample.name.replace(/\.[^/.]+$/, "")} (afinado)`;
       await putSample(newSampleId, name, blob);
       const asset: SampleAsset = {
         id: newSampleId,
@@ -120,10 +127,10 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
       <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
         <NoteIcon className="h-3.5 w-3.5 text-cyan-400" />
-        Pitch Studio
+        Estudio de afinación
       </div>
 
-      {analyzing && <p className="text-neutral-600">Analyzing pitch…</p>}
+      {analyzing && <p className="text-neutral-600">Analizando el tono…</p>}
 
       {frames && (
         <>
@@ -134,7 +141,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
               <Picker
                 value={String(settings.key)}
                 options={NOTE_NAMES.map((name, i) => ({ value: String(i), label: name }))}
-                title="Key"
+                title="Tonalidad"
                 onChange={(v) => setSettings((prev) => ({ ...prev, key: Number(v) }))}
               />
             </div>
@@ -142,7 +149,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
               <Picker
                 value={settings.scale}
                 options={SCALE_OPTIONS}
-                title="Scale"
+                title="Escala"
                 onChange={(scale) => setSettings((prev) => ({ ...prev, scale }))}
               />
             </div>
@@ -157,7 +164,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
                   settings.mode === mode ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
-                {mode === "hardTune" ? "Hard Tune" : mode === "modernTrap" ? "Modern Trap" : mode}
+                {MODE_LABEL[mode]}
               </button>
             ))}
           </div>
@@ -180,14 +187,15 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
               defaultValue={40}
               decimals={0}
               unit="%"
-              label="Humanize"
+              label="Humanizar"
               onChange={(v) => setSettings((prev) => ({ ...prev, humanizeAmount: v / 100 }))}
             />
           </div>
 
           <p className="mt-2 text-neutral-600">
-            Renders a new, separate take — your original recording is never overwritten. No formant
-            preservation yet, so large corrections can sound thinner (see AUDIO_ENGINE.md).
+            Renderiza una toma nueva y separada — tu grabación original nunca se sobrescribe. Todavía
+            no hay preservación de formantes, así que correcciones grandes pueden sonar más delgadas
+            (ver AUDIO_ENGINE.md).
           </p>
 
           <button
@@ -195,7 +203,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
             disabled={applying}
             className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
-            {applying ? "Rendering…" : "Apply Pitch Correction"}
+            {applying ? "Renderizando…" : "Aplicar corrección de tono"}
           </button>
         </>
       )}
