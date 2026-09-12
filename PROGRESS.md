@@ -120,6 +120,20 @@ Deliberadamente diferido (no a medias):
 - [ ] Automatización de parámetros de efectos individuales (ej. cutoff de un filtro) - por ahora solo volumen y pan a nivel de track, los dos targets de mayor valor. Extenderlo requeriría un selector de "qué efecto + qué parámetro" por lane; se deja para cuando haya una necesidad concreta.
 - [ ] El fader/pan visual en el Mixer no sigue el valor automatizado en vivo durante la reproducción - solo el audio real sigue la curva, el control estático de la UI no se anima con el playhead (como sí hace Pro Tools). Puro pulido visual, no afecta el resultado sonoro.
 
-## FASE 7–8
+## FASE 7 — Capa de IA
 
-Status: **no iniciadas**
+Status: **Vocal Match completado esta sesión; AI Mix y masterizado ya cumplían de antes; Beat Gen y AI Assistant contextual con pendientes reales**
+
+Auditoría contra el prompt maestro punto por punto:
+
+- [x] **AI Mix** — ya cumplía de una sesión anterior: `MixAssistantPanel.tsx`/`mixAnalysis.ts` ya hacen análisis real (nivel, masking espectral, gain staging) con sugerencias aplicables una por una (`applySuggestion`). No se tocó, solo se verificó que sigue funcionando.
+- [x] **Masterizado automático con objetivo de loudness** — también ya existía: la sección MASTERING de `MixAssistantPanel` ya sugiere y aplica una ganancia de master hacia un LUFS objetivo por plataforma (Spotify/etc.).
+- [x] **Vocal Match — completado esta sesión.** Antes solo comparaba tonalidad (key/scale) y mostraba un mensaje de texto, sin ningún botón de aplicar - violaba la regla "la IA propone, el usuario aplica" tal cual la pide el prompt maestro. Se agregó lo que faltaba explícitamente (nivel y espacio):
+  - Nueva `suggestVocalTreatment()` en `vocalBeatMatch.ts`: nivel objetivo de la voz relativo al RMS del beat (+4dB, valor nombrado explícitamente, no una caja negra) y un delay sincronizado al tempo detectado del beat (nota de octavo) como técnica honesta de "espacio" - no se inventó una detección falsa de reverb del beat (eso necesitaría separación de fuentes, inviable aquí).
+  - Botones "Apply level" y "Apply tempo-synced delay" en `VocalBeatMatchPanel.tsx`, que crean/encuentran el track de la voz y aplican de verdad: `updateTrack` para el nivel, `setEffectChain` con un Delay para el espacio. Verificado en navegador: RMS/tempo detectados reales, click en ambos botones cambió el volumen del track (-8.1dB aplicado) y agregó un Delay real a su cadena de efectos (267ms, sincronizado al tempo detectado) - visible y editable en la pestaña FX.
+- [ ] **Beat Gen** — pendiente real, no iniciado. El propio código ya lo admite en un comentario: "every instrument here is a simple synthesized placeholder... there are no sample-based drums/instruments." Elevarlo a "sampler + patrones por género" tal como pide el prompt maestro necesita samples de batería/instrumento reales de origen, y este proyecto no trae ningún paquete de audio incluido — no puedo generar ni descargar samples de audio con licencia verificada por mi cuenta. **Necesito que el usuario decida** (ver mensaje de chat): mejorar la síntesis actual sin samples reales, proveer él mismo un pack de muestras, u omitir este punto por ahora.
+- [ ] **AI Assistant contextual** — pendiente real, no iniciado. Hoy el chat de `AiAssistantPanel` solo vive en su propia pestaña del Browser; el prompt maestro pide que sea "accesible desde cualquier pista o efecto". Falta un punto de entrada rápido (ej. un botón en `TrackHeader`/`EffectCard`) que salte al Assistant con esa pista ya en contexto.
+
+## FASE 8
+
+Status: **no iniciada**

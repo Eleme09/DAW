@@ -60,3 +60,40 @@ export function matchVocalToBeat(
 
   return { vocalKey, beatKey, compatible, message, notesOutsideScale };
 }
+
+export interface VocalTreatmentSuggestion {
+  levelDeltaDb: number;
+  vocalRmsDb: number;
+  beatRmsDb: number;
+  beatBpm: number;
+  beatTempoConfidence: number;
+  /** Eighth-note delay time at the beat's detected tempo, ms. */
+  suggestedDelayMs: number;
+}
+
+/** A vocal-forward level target relative to the beat's own loudness - an
+ * explicit named starting point (not a universal rule), same spirit as the
+ * mastering targets in masteringTargets.ts: a stated number, not a black box. */
+const TARGET_VOCAL_OVER_BEAT_DB = 4;
+
+/**
+ * "Space" here means rhythmic glue, not a (currently infeasible without
+ * source separation) estimate of the beat's own reverb send - a delay
+ * synced to the beat's tempo is a standard, honest technique for making a
+ * vocal feel like it belongs to a specific track instead of an arbitrary
+ * fixed delay time.
+ */
+export function suggestVocalTreatment(
+  vocalDynamics: { rmsDb: number },
+  beatDynamics: { rmsDb: number },
+  beatTempo: { bpm: number; confidence: number }
+): VocalTreatmentSuggestion {
+  return {
+    levelDeltaDb: beatDynamics.rmsDb + TARGET_VOCAL_OVER_BEAT_DB - vocalDynamics.rmsDb,
+    vocalRmsDb: vocalDynamics.rmsDb,
+    beatRmsDb: beatDynamics.rmsDb,
+    beatBpm: beatTempo.bpm,
+    beatTempoConfidence: beatTempo.confidence,
+    suggestedDelayMs: 60000 / beatTempo.bpm / 2,
+  };
+}

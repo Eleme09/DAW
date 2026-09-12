@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectBeatKey, matchVocalToBeat } from "./vocalBeatMatch";
+import { detectBeatKey, matchVocalToBeat, suggestVocalTreatment } from "./vocalBeatMatch";
 import { midiToFrequency } from "../pitch/noteUtils";
 import type { DetectedKeyResult, PitchFrame } from "@/types/pitch";
 
@@ -58,6 +58,26 @@ describe("matchVocalToBeat", () => {
     const vocalFrames = [frame(61, 0.1)]; // C#4, but low confidence
     const result = matchVocalToBeat(vocalFrames, C_MAJOR, C_MAJOR);
     expect(result.notesOutsideScale).toEqual([]);
+  });
+});
+
+describe("suggestVocalTreatment", () => {
+  it("suggests a positive level trim when the vocal is quieter than the beat-relative target", () => {
+    const suggestion = suggestVocalTreatment({ rmsDb: -24 }, { rmsDb: -18 }, { bpm: 140, confidence: 0.9 });
+    // target = beatRms(-18) + 4 = -14; vocal is at -24, so it needs +10dB
+    expect(suggestion.levelDeltaDb).toBeCloseTo(10);
+  });
+
+  it("suggests a negative level trim when the vocal is already louder than the target", () => {
+    const suggestion = suggestVocalTreatment({ rmsDb: -6 }, { rmsDb: -18 }, { bpm: 140, confidence: 0.9 });
+    // target = beatRms(-18) + 4 = -14; vocal is at -6, so it needs -8dB
+    expect(suggestion.levelDeltaDb).toBeCloseTo(-8);
+  });
+
+  it("suggests an eighth-note delay time synced to the beat's tempo", () => {
+    const suggestion = suggestVocalTreatment({ rmsDb: -18 }, { rmsDb: -18 }, { bpm: 120, confidence: 0.9 });
+    // 60000/120 = 500ms quarter note, eighth note is half that
+    expect(suggestion.suggestedDelayMs).toBeCloseTo(250);
   });
 });
 
