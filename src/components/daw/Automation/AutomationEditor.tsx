@@ -11,6 +11,7 @@ const RANGES: Record<AutomationParam, { min: number; max: number; unit: string; 
   volume: { min: -60, max: 6, unit: "dB", decimals: 1 },
   pan: { min: -1, max: 1, unit: "", decimals: 2 },
 };
+const PARAM_LABEL: Record<AutomationParam, string> = { volume: "Volumen", pan: "Pan" };
 
 /** Breakpoint-curve editor for a track's volume/pan automation, opened as a
  * bottom sheet (like the piano roll) rather than an inline Timeline lane -
@@ -95,7 +96,7 @@ export function AutomationEditor() {
     <BottomSheet
       open={Boolean(track)}
       onClose={() => setTrackId(null)}
-      title={track ? `${track.name} — Automation` : "Automation"}
+      title={track ? `${track.name} — Automatización` : "Automatización"}
     >
       {track && lane && (
         <div className="space-y-2">
@@ -105,11 +106,11 @@ export function AutomationEditor() {
                 <button
                   key={p}
                   onClick={() => setParam(p)}
-                  className={`rounded px-2 py-1 capitalize ${
+                  className={`rounded px-2 py-1 ${
                     param === p ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                   }`}
                 >
-                  {p}
+                  {PARAM_LABEL[p]}
                 </button>
               ))}
             </div>
@@ -119,12 +120,13 @@ export function AutomationEditor() {
                 checked={lane.enabled}
                 onChange={(e) => setLaneEnabled(track.id, param, e.target.checked)}
               />
-              Enabled
+              Activada
             </label>
           </div>
           <p className="text-[10px] text-neutral-600">
-            Tap empty space to add a point, drag a point to move it, double-click a point to remove it.
-            {!lane.enabled && points.length > 0 && " Disabled - playback uses the static value until enabled."}
+            Toca un espacio vacío para agregar un punto, arrastra un punto para moverlo, doble clic
+            sobre un punto para quitarlo.
+            {!lane.enabled && points.length > 0 && " Desactivada - la reproducción usa el valor estático hasta activarla."}
           </p>
           <div className="max-h-[50vh] overflow-auto rounded border border-neutral-800 bg-neutral-950">
             <div
