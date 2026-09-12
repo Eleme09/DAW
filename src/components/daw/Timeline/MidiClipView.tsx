@@ -69,7 +69,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onDoubleClick={() => removeMidiClip(clip.trackId, clip.id)}
-      title={`${clip.name} — ${clip.notes.length} notes — drag to move, drag right edge to resize, double-click to delete`}
+      title={`${clip.name} — ${clip.notes.length} notas — arrastra para mover, arrastra el borde derecho para redimensionar, doble clic para eliminar`}
       style={{
         position: "absolute",
         left: clip.startTime * PIXELS_PER_SECOND,
@@ -90,7 +90,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
             selectTrack(clip.trackId);
             setPianoRollClipId(clip.id);
           }}
-          title="Open piano roll"
+          title="Abrir piano roll"
           className="shrink-0 text-neutral-100/80 hover:text-white"
         >
           <NoteIcon className="h-3 w-3" />
