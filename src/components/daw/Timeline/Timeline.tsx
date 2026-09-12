@@ -96,7 +96,12 @@ export function Timeline() {
           <div
             className="pointer-events-none absolute top-0 z-10 w-px bg-cyan-500"
             style={{ left: HEADER_WIDTH + currentTime * PIXELS_PER_SECOND, height: tracksHeight }}
-          />
+          >
+            {/* Banderín de 1px con bandera triangular, como en Pro Tools
+               (estudio-ui.html .playhead::before) - marca la cabeza de
+               reproducción sin depender solo de la línea delgada. */}
+            <div className="absolute -left-1 top-0 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-cyan-500" />
+          </div>
         </div>
       </div>
 
