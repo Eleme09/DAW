@@ -41,32 +41,32 @@ export function Timeline() {
   const tracksHeight = RULER_HEIGHT + project.tracks.length * TRACK_HEIGHT;
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-neutral-950">
+    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
       <div className="relative flex-1 overflow-auto">
         {project.tracks.length === 0 && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
             <div>
-              <p className="text-sm font-medium text-neutral-400">Todavía no hay pistas</p>
-              <p className="text-xs text-neutral-600">Empieza con una de estas opciones, o importa un sample desde la pestaña Biblioteca</p>
+              <p className="text-sm font-medium text-bone-2">Todavía no hay pistas</p>
+              <p className="text-xs text-bone-3">Empieza con una de estas opciones, o importa un sample desde la pestaña Biblioteca</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <button
                 onClick={() => addTrack()}
-                className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+                className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
               >
                 + Nueva pista
               </button>
               <button
                 onClick={() => addTrack(undefined, "instrument")}
                 title="Una pista con un instrumento synth/sampler, reproducible desde patrones programados"
-                className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+                className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
               >
                 + Nuevo instrumento
               </button>
               <button
                 onClick={goToBeatGen}
                 title="Genera un boceto completo de batería/bajo/acordes/melodía para empezar"
-                className="rounded bg-cyan-500 min-h-11 px-3 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
+                className="rounded bg-bone min-h-11 px-3 py-1.5 text-xs font-semibold text-ink hover:opacity-90"
               >
                 Generar un beat
               </button>
@@ -76,7 +76,7 @@ export function Timeline() {
         <div className="relative" style={{ width: HEADER_WIDTH + contentWidth }}>
           <div className="sticky top-0 z-20 flex">
             <div
-              className="sticky left-0 z-30 shrink-0 border-b border-r border-neutral-800 bg-neutral-950"
+              className="sticky left-0 z-30 shrink-0 border-b border-r border-line bg-ink"
               style={{ width: HEADER_WIDTH, height: RULER_HEIGHT }}
             />
             <Ruler width={contentWidth} bpm={project.bpm} timeSignature={project.timeSignature} onSeek={(t) => seek(t)} />
@@ -94,30 +94,30 @@ export function Timeline() {
           ))}
 
           <div
-            className="pointer-events-none absolute top-0 z-10 w-px bg-cyan-500"
+            className="pointer-events-none absolute top-0 z-10 w-px bg-bone"
             style={{ left: HEADER_WIDTH + currentTime * PIXELS_PER_SECOND, height: tracksHeight }}
           >
             {/* Banderín de 1px con bandera triangular, como en Pro Tools
                (estudio-ui.html .playhead::before) - marca la cabeza de
                reproducción sin depender solo de la línea delgada. */}
-            <div className="absolute -left-1 top-0 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-cyan-500" />
+            <div className="absolute -left-1 top-0 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-bone" />
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-neutral-800 p-2">
+      <div className="flex flex-wrap items-center gap-2 border-t border-line p-2">
         {project.tracks.length > 0 && (
           <>
             <button
               onClick={() => addTrack()}
-              className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+              className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
             >
               + Nueva pista
             </button>
             <button
               onClick={() => addTrack(undefined, "instrument")}
               title="Agrega una pista con un instrumento synth/sampler, reproducible desde patrones programados"
-              className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+              className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
             >
               + Nuevo instrumento
             </button>
@@ -131,25 +131,25 @@ export function Timeline() {
               ? "Agrega un patrón de un compás a la pista de instrumento seleccionada en el playhead"
               : "Selecciona primero una pista de instrumento"
           }
-          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-30"
+          className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3 disabled:opacity-30"
         >
           + Nuevo patrón
         </button>
         <button
           onClick={splitClipAtPlayhead}
           title="Divide el clip de la pista seleccionada en el playhead (atajo: S)"
-          className="flex items-center gap-1.5 rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="flex items-center gap-1.5 rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
         >
           <ScissorsIcon className="h-3.5 w-3.5" /> Dividir
         </button>
         <button
           onClick={duplicateClipAtPlayhead}
           title="Duplica el clip de la pista seleccionada en el playhead (atajo: D)"
-          className="flex items-center gap-1.5 rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="flex items-center gap-1.5 rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
         >
           <DuplicateIcon className="h-3.5 w-3.5" /> Duplicar
         </button>
-        <div className="ml-auto flex items-center gap-1.5 text-xs text-neutral-400" title="Ajustar clips a la rejilla musical">
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-bone-2" title="Ajustar clips a la rejilla musical">
           <span className="font-medium">Ajuste</span>
           <div className="w-24">
             <Picker<GridResolution>

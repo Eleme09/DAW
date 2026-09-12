@@ -82,7 +82,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
       className="group cursor-grab select-none overflow-hidden rounded border active:cursor-grabbing"
     >
       <div className="flex items-center justify-between px-1" style={{ background: clip.color + "aa" }}>
-        <span className="truncate text-[10px] font-medium text-neutral-100">{clip.name}</span>
+        <span className="truncate text-[10px] font-medium text-bone">{clip.name}</span>
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => {
@@ -91,7 +91,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
             setPianoRollClipId(clip.id);
           }}
           title="Abrir piano roll"
-          className="shrink-0 text-neutral-100/80 hover:text-white"
+          className="shrink-0 text-bone/80 hover:text-bone"
         >
           <NoteIcon className="h-3 w-3" />
         </button>

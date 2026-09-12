@@ -60,7 +60,7 @@ export function LoopRegion({ height }: { height: number }) {
 
   return (
     <div
-      className={`absolute top-0 z-15 ${loop.enabled ? "bg-cyan-500/10" : "bg-neutral-500/5"}`}
+      className={`absolute top-0 z-15 ${loop.enabled ? "bg-bone/10" : "bg-bone-2/5"}`}
       style={{ left, width, height }}
       title={`Loop ${loop.startTime.toFixed(2)}s – ${loop.endTime.toFixed(2)}s — arrastra para mover`}
     >
@@ -69,7 +69,7 @@ export function LoopRegion({ height }: { height: number }) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         className={`absolute inset-x-0 top-0 h-2 cursor-grab border-b ${
-          loop.enabled ? "border-cyan-500 bg-cyan-500/40" : "border-neutral-600 bg-neutral-600/40"
+          loop.enabled ? "border-bone bg-bone/40" : "border-bone-3 bg-bone-3/40"
         }`}
       />
       <div

@@ -20,7 +20,7 @@ export function Ruler({ width, bpm, timeSignature, onSeek }: RulerProps) {
 
   return (
     <div
-      className="relative shrink-0 cursor-pointer border-b border-neutral-800 bg-neutral-950"
+      className="relative shrink-0 cursor-pointer border-b border-line bg-ink"
       style={{ width, height: RULER_HEIGHT }}
       onClick={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -34,7 +34,7 @@ export function Ruler({ width, bpm, timeSignature, onSeek }: RulerProps) {
           <div
             key={i}
             className={`absolute top-0 h-full pl-1 text-[10px] ${
-              isBar ? "border-l border-neutral-700 text-neutral-400" : "border-l border-neutral-900 text-transparent"
+              isBar ? "border-l border-line-2 text-bone-2" : "border-l border-surf text-transparent"
             }`}
             style={{ left: (i * beatSec * PIXELS_PER_SECOND) }}
           >
@@ -42,7 +42,7 @@ export function Ruler({ width, bpm, timeSignature, onSeek }: RulerProps) {
           </div>
         );
       })}
-      <span className="pointer-events-none absolute right-1 top-0.5 text-[9px] text-neutral-700" title="Duración del compás">
+      <span className="pointer-events-none absolute right-1 top-0.5 text-[9px] text-bone-3" title="Duración del compás">
         {barSec.toFixed(2)}s/compás
       </span>
     </div>

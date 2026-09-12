@@ -152,7 +152,7 @@ export function ClipView({ clip }: ClipViewProps) {
         className="flex items-center justify-between gap-1 px-1"
         style={{ background: clip.color + "aa" }}
       >
-        <span className="truncate text-[10px] font-medium text-neutral-100">{clip.name}</span>
+        <span className="truncate text-[10px] font-medium text-bone">{clip.name}</span>
         {takes.length > 1 && (
           <div className="w-20 shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
             <Picker

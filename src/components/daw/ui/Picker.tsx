@@ -33,17 +33,17 @@ export function Picker<T extends string>({ value, options, onChange, title, plac
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex min-h-11 w-full items-center justify-between rounded bg-neutral-900 px-3 text-left text-[11px] text-neutral-200"
+        className="flex min-h-11 w-full items-center justify-between rounded bg-surf px-3 text-left text-[11px] text-bone"
       >
         <span className="truncate">{current?.label ?? placeholder}</span>
-        <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-neutral-600" />
+        <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-bone-3" />
       </button>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={title}>
         <div className="space-y-1">
           {options.map((opt, i) => (
             <div key={opt.value}>
               {opt.group && opt.group !== options[i - 1]?.group && (
-                <p className="mb-1 mt-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500 first:mt-0">
+                <p className="mb-1 mt-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-bone-2 first:mt-0">
                   {opt.group}
                 </p>
               )}
@@ -53,7 +53,7 @@ export function Picker<T extends string>({ value, options, onChange, title, plac
                   setOpen(false);
                 }}
                 className={`flex min-h-11 w-full items-center rounded px-3 text-left text-sm ${
-                  opt.value === value ? "bg-cyan-500 text-black font-semibold" : "bg-neutral-900 text-neutral-200"
+                  opt.value === value ? "bg-bone text-ink font-semibold" : "bg-surf text-bone"
                 }`}
               >
                 {opt.label}

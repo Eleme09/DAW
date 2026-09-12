@@ -15,14 +15,14 @@ export function TrackLane({ track, width, selected }: TrackLaneProps) {
   return (
     <div
       style={{ width, height: TRACK_HEIGHT }}
-      className={`relative shrink-0 border-b border-neutral-800 ${
-        selected ? "bg-neutral-900/60" : "bg-neutral-950"
+      className={`relative shrink-0 border-b border-line ${
+        selected ? "bg-surf/60" : "bg-ink"
       }`}
     >
       {Array.from({ length: Math.ceil(width / PIXELS_PER_SECOND) }, (_, i) => (
         <div
           key={i}
-          className="absolute top-0 h-full border-l border-neutral-900"
+          className="absolute top-0 h-full border-l border-surf"
           style={{ left: i * PIXELS_PER_SECOND }}
         />
       ))}

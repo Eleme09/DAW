@@ -22,9 +22,9 @@ const MONITOR_LABEL: Record<MonitorMode, string> = {
   on: "Monitor: siempre (se oye la entrada mientras esté armada)",
 };
 const MONITOR_CLASS: Record<MonitorMode, string> = {
-  off: "bg-neutral-800 text-neutral-500",
-  auto: "bg-cyan-950 text-cyan-400",
-  on: "bg-green-500 text-black",
+  off: "bg-surf-2 text-bone-3",
+  auto: "bg-surf-3 text-bone-2",
+  on: "bg-live text-ink",
 };
 
 export function TrackHeader({ track, selected }: TrackHeaderProps) {
@@ -46,9 +46,9 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
     <div
       onClick={() => selectTrack(track.id)}
       style={{ width: HEADER_WIDTH, height: TRACK_HEIGHT }}
-      className={`sticky left-0 z-10 relative flex shrink-0 flex-col gap-1 border-b border-r border-neutral-800 bg-neutral-950 p-1.5 pl-2.5 ${
-        selected ? "ring-1 ring-inset ring-cyan-500" : ""
-      } ${isLiveInput ? "ring-1 ring-inset ring-red-500" : ""}`}
+      className={`sticky left-0 z-10 relative flex shrink-0 flex-col gap-1 border-b border-r border-line bg-ink p-1.5 pl-2.5 ${
+        selected ? "ring-1 ring-inset ring-bone" : ""
+      } ${isLiveInput ? "ring-1 ring-inset ring-rec" : ""}`}
     >
       {/* Color de pista: barra de 3px en el canto, no fondo teñido entero
          (estudio-ui.html .thead::before) - identifica la pista sin abaratar
@@ -59,7 +59,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           value={track.name}
           onChange={(e) => updateTrack(track.id, { name: e.target.value })}
           onClick={(e) => e.stopPropagation()}
-          className="w-full min-w-0 truncate bg-transparent text-xs font-medium text-neutral-200 outline-none"
+          className="w-full min-w-0 truncate bg-transparent text-xs font-medium text-bone outline-none"
         />
         <button
           onClick={(e) => {
@@ -67,7 +67,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             setMoreOpen(true);
           }}
           title="Más opciones de pista"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-500 hover:text-neutral-200"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-bone-2 hover:text-bone"
         >
           <MoreIcon className="h-4 w-4" />
         </button>
@@ -81,7 +81,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }}
           title={track.muted ? "Quitar silencio" : "Silenciar"}
           className={`min-h-11 flex-1 text-[11px] font-bold ${
-            track.muted ? "bg-red-500 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
+            track.muted ? "bg-red-500 text-black" : "bg-surf text-bone-3 hover:text-bone"
           }`}
         >
           M
@@ -93,7 +93,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }}
           title={track.solo ? "Quitar solo" : "Solo"}
           className={`min-h-11 flex-1 text-[11px] font-bold ${
-            track.solo ? "bg-yellow-400 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
+            track.solo ? "bg-yellow-400 text-black" : "bg-surf text-bone-3 hover:text-bone"
           }`}
         >
           S
@@ -106,7 +106,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           disabled={isRecording}
           title="Armar para grabar"
           className={`flex min-h-11 flex-1 items-center justify-center disabled:opacity-30 ${
-            track.armed ? "bg-red-600 text-white" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
+            track.armed ? "bg-rec text-bone" : "bg-surf text-bone-3 hover:text-bone"
           }`}
         >
           <RecordIcon className="h-3.5 w-3.5" />
@@ -157,7 +157,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
               setMoreOpen(false);
             }}
             className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded text-xs font-medium ${
-              hasAutomation ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+              hasAutomation ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
             }`}
           >
             <AutomationIcon className="h-4 w-4" />
@@ -170,7 +170,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
               setMobileView("browser");
               setMoreOpen(false);
             }}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-neutral-800 text-xs font-medium text-neutral-300"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-surf-2 text-xs font-medium text-bone-2"
           >
             <SparkleIcon className="h-4 w-4" />
             Preguntar a la IA
