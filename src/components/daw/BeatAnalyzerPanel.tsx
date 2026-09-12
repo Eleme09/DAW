@@ -29,6 +29,18 @@ const DRUM_COLOR: Record<DrumHitType, string> = {
   other: "#525252",
 };
 
+const DRUM_LABEL: Record<"kick" | "snare" | "hihat", string> = {
+  kick: "bombo",
+  snare: "caja",
+  hihat: "hi-hat",
+};
+
+const ENERGY_LABEL: Record<"low" | "medium" | "high", string> = {
+  low: "baja",
+  medium: "media",
+  high: "alta",
+};
+
 export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
   const [analyzing, setAnalyzing] = useState(true);
   const [result, setResult] = useState<BeatAnalysisResult | null>(null);
@@ -66,19 +78,19 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
       const engine = getAudioEngine();
 
       const stems: Array<{ name: string; buffer: AudioBuffer }> = [
-        { name: "Drums", buffer: synth.drums },
-        { name: "Bass", buffer: synth.bass },
-        { name: "Chords", buffer: synth.chords },
+        { name: "Batería", buffer: synth.drums },
+        { name: "Bajo", buffer: synth.bass },
+        { name: "Acordes", buffer: synth.chords },
       ];
 
       for (const stem of stems) {
         const sampleId = crypto.randomUUID();
         const blob = encodeWav(audioBufferToChannelArrays(stem.buffer), stem.buffer.sampleRate);
         await engine.decodeAndCache(sampleId, await blob.arrayBuffer());
-        await putSample(sampleId, `Reconstructed ${stem.name}`, blob);
+        await putSample(sampleId, `${stem.name} reconstruido`, blob);
         const asset: SampleAsset = {
           id: sampleId,
-          name: `Reconstructed ${stem.name} (from ${sample.name})`,
+          name: `${stem.name} reconstruido (de ${sample.name})`,
           durationSec: stem.buffer.duration,
           sampleRate: stem.buffer.sampleRate,
           channels: stem.buffer.numberOfChannels,
@@ -104,10 +116,10 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
       }
 
       setReconstructSummary(
-        `Reconstructed ${drums.length} drum hits, ${bass.length} bass notes, and ${chords.length} chords as 3 new tracks.`
+        `Se reconstruyeron ${drums.length} golpes de batería, ${bass.length} notas de bajo y ${chords.length} acordes en 3 pistas nuevas.`
       );
     } catch (err) {
-      setReconstructError(err instanceof Error ? err.message : "Reconstruction failed");
+      setReconstructError(err instanceof Error ? err.message : "No se pudo reconstruir");
     } finally {
       setReconstructing(false);
     }
@@ -117,10 +129,10 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
       <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
         <BeatGridIcon className="h-3.5 w-3.5 text-cyan-400" />
-        Beat Analyzer
+        Analizador de beat
       </div>
 
-      {analyzing && <p className="text-neutral-600">Analyzing beat — longer tracks can take a moment…</p>}
+      {analyzing && <p className="text-neutral-600">Analizando el beat — las pistas más largas pueden tardar un momento…</p>}
 
       {result && (
         <>
@@ -133,7 +145,7 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
               </div>
             </div>
             <div className="rounded bg-neutral-900 px-1.5 py-1">
-              <div className="text-neutral-500">Key</div>
+              <div className="text-neutral-500">Tonalidad</div>
               <div className="tabular-nums text-neutral-200">
                 {NOTE_NAMES[result.key.key]} {result.key.scale}{" "}
                 <span className="text-neutral-600">({Math.round(result.key.confidence * 100)}%)</span>
@@ -142,33 +154,33 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
           </div>
 
           <div className="mt-2">
-            <div className="mb-0.5 text-neutral-500">Bass line</div>
+            <div className="mb-0.5 text-neutral-500">Línea de bajo</div>
             <BassLineCanvas bassLine={result.bassLine} duration={result.durationSec} />
           </div>
 
           <div className="mt-2">
             <div className="mb-0.5 text-neutral-500">
-              Drum hits ({result.drumHits.length}) — heuristic, not a transcription
+              Golpes de batería ({result.drumHits.length}) — heurística, no una transcripción
             </div>
             <DrumHitCanvas drumHits={result.drumHits} duration={result.durationSec} />
             <div className="mt-1 flex gap-2 text-[10px]">
               {(["kick", "snare", "hihat"] as const).map((type) => (
                 <span key={type} className="flex items-center gap-1 text-neutral-500">
                   <span className="h-2 w-2 rounded-full" style={{ background: DRUM_COLOR[type] }} />
-                  {type}
+                  {DRUM_LABEL[type]}
                 </span>
               ))}
             </div>
           </div>
 
           <div className="mt-2">
-            <div className="mb-0.5 text-neutral-500">Chords (estimated, per second)</div>
+            <div className="mb-0.5 text-neutral-500">Acordes (estimados, por segundo)</div>
             <div className="flex flex-wrap gap-1">
               {result.chords.map((chord, i) => (
                 <span
                   key={i}
                   className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-300"
-                  title={`${chord.startSec.toFixed(1)}s (confidence ${Math.round(chord.confidence * 100)}%)`}
+                  title={`${chord.startSec.toFixed(1)}s (confianza ${Math.round(chord.confidence * 100)}%)`}
                 >
                   {NOTE_NAMES[chord.root]}
                   {chord.quality === "minor" ? "m" : ""}
@@ -179,12 +191,12 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
 
           <div className="mt-2">
             <div className="mb-0.5 text-neutral-500">
-              Section boundaries — relative energy level, not verse/chorus labels
+              Límites de sección — nivel de energía relativo, no etiquetas de verso/coro
             </div>
             <div className="flex flex-wrap gap-1">
               {result.sections.map((section, i) => (
                 <span key={i} className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-300">
-                  {section.timeSec.toFixed(1)}s · {section.energyLevel}
+                  {section.timeSec.toFixed(1)}s · {ENERGY_LABEL[section.energyLevel]}
                 </span>
               ))}
             </div>
@@ -192,9 +204,9 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
 
           <div className="mt-2 border-t border-neutral-800 pt-2">
             <p className="mb-1.5 text-neutral-600">
-              Reconstructs the detected drums/bass/chords as 3 new synthesized tracks — a best-effort
-              approximation from the analysis above, not a lossless transcription. No melody (this
-              project doesn&apos;t attempt melody extraction from a full mix).
+              Reconstruye la batería/bajo/acordes detectados como 3 pistas nuevas sintetizadas — una
+              aproximación de mejor esfuerzo a partir del análisis de arriba, no una transcripción
+              exacta. Sin melodía (este proyecto no intenta extraer melodía de una mezcla completa).
             </p>
             {reconstructError && <p className="mb-1.5 text-red-400">{reconstructError}</p>}
             {reconstructSummary && <p className="mb-1.5 text-neutral-500">{reconstructSummary}</p>}
@@ -203,7 +215,7 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
               disabled={reconstructing}
               className="w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
             >
-              {reconstructing ? "Reconstructing…" : "Reconstruct as Tracks"}
+              {reconstructing ? "Reconstruyendo…" : "Reconstruir como pistas"}
             </button>
           </div>
         </>
