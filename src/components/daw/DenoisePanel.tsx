@@ -88,22 +88,22 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
   }
 
   return (
-    <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <WaveformIcon className="h-3.5 w-3.5 text-cyan-400" />
+    <div className="mt-1 rounded border border-line bg-ink p-2 text-[11px]">
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-line pb-1.5 font-semibold uppercase tracking-wide text-bone-2">
+        <WaveformIcon className="h-3.5 w-3.5 text-bone" />
         Reducir ruido
       </div>
 
       {loading ? (
-        <p className="text-neutral-600">Analizando piso de ruido…</p>
+        <p className="text-bone-3">Analizando piso de ruido…</p>
       ) : (
         <>
-          <div className="flex justify-between text-neutral-500">
+          <div className="flex justify-between text-bone-2">
             <span>Nivel de ruido estimado</span>
-            <span className="text-neutral-300">{noiseLevel < 0.0005 ? "muy bajo" : noiseLevel < 0.003 ? "bajo" : "notable"}</span>
+            <span className="text-bone-2">{noiseLevel < 0.0005 ? "muy bajo" : noiseLevel < 0.003 ? "bajo" : "notable"}</span>
           </div>
 
-          <label className="mt-2 flex items-center justify-center gap-2 text-neutral-400">
+          <label className="mt-2 flex items-center justify-center gap-2 text-bone-2">
             <Knob
               value={strength * 100}
               min={0}
@@ -116,7 +116,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
             />
           </label>
 
-          <p className="mt-2 text-neutral-600">
+          <p className="mt-2 text-bone-3">
             Sustracción espectral clásica, no un modelo entrenado — funciona mejor cuando la grabación
             tiene silencios reales (aire de sala entre frases) de donde aprender la forma del ruido. Una
             intensidad agresiva sobre una señal sin silencios puede introducir un artefacto de &quot;ruido
@@ -127,7 +127,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
           <button
             onClick={applyDenoise}
             disabled={applying}
-            className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-2 min-h-11 w-full rounded bg-bone px-2 text-[11px] font-semibold text-ink hover:opacity-90 disabled:opacity-50"
           >
             {applying ? "Renderizando…" : "Aplicar reducción de ruido"}
           </button>

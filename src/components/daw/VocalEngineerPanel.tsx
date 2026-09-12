@@ -80,13 +80,13 @@ export function VocalEngineerPanel({ sample }: VocalEngineerPanelProps) {
   }
 
   return (
-    <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <SparkleIcon className="h-3.5 w-3.5 text-cyan-400" />
+    <div className="mt-1 rounded border border-line bg-ink p-2 text-[11px]">
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-line pb-1.5 font-semibold uppercase tracking-wide text-bone-2">
+        <SparkleIcon className="h-3.5 w-3.5 text-bone" />
         Ingeniero vocal
       </div>
 
-      {analyzing && <p className="text-neutral-600">Analizando…</p>}
+      {analyzing && <p className="text-bone-3">Analizando…</p>}
 
       {analysis && (
         <>
@@ -107,9 +107,9 @@ export function VocalEngineerPanel({ sample }: VocalEngineerPanelProps) {
             title="Estilo"
             onChange={setChoice}
           />
-          <p className="mt-1 text-neutral-500">{style.description}</p>
+          <p className="mt-1 text-bone-2">{style.description}</p>
 
-          <p className="mt-2 text-neutral-600">
+          <p className="mt-2 text-bone-3">
             Corrige lo que se midió (ruido/barro/aspereza/sibilancia/dinámica), y luego moldea el tono
             hacia el estilo elegido. La corrección de tono es aparte — usa la pestaña Tono. Crea o
             actualiza una pista para esta muestra.
@@ -118,7 +118,7 @@ export function VocalEngineerPanel({ sample }: VocalEngineerPanelProps) {
           <button
             onClick={makeProfessional}
             disabled={applying}
-            className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-2 min-h-11 w-full rounded bg-bone px-2 text-[11px] font-semibold text-ink hover:opacity-90 disabled:opacity-50"
           >
             {applying ? "Aplicando…" : "Profesionalizar voz"}
           </button>

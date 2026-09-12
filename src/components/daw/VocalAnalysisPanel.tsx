@@ -27,20 +27,20 @@ export function VocalAnalysisPanel({ result, onEnhance, enhancing }: VocalAnalys
   ];
 
   return (
-    <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <WaveformIcon className="h-3.5 w-3.5 text-cyan-400" />
+    <div className="mt-1 rounded border border-line bg-ink p-2 text-[11px]">
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-line pb-1.5 font-semibold uppercase tracking-wide text-bone-2">
+        <WaveformIcon className="h-3.5 w-3.5 text-bone" />
         Análisis vocal
       </div>
       <div className="space-y-0.5">
         {rows.map(([label, severity]) => (
           <div key={label} className="flex justify-between">
-            <span className="text-neutral-500">{label}</span>
+            <span className="text-bone-2">{label}</span>
             <span className={SEVERITY_COLOR[severity]}>{SEVERITY_LABEL[severity]}</span>
           </div>
         ))}
         <div className="flex justify-between">
-          <span className="text-neutral-500">Dinámica</span>
+          <span className="text-bone-2">Dinámica</span>
           <span className={result.dynamics === "uncontrolled" ? "text-yellow-400" : "text-green-400"}>
             {result.dynamics === "uncontrolled" ? "Descontrolada" : "Controlada"}
           </span>
@@ -48,9 +48,9 @@ export function VocalAnalysisPanel({ result, onEnhance, enhancing }: VocalAnalys
       </div>
 
       {result.limitations.length > 0 && (
-        <div className="mt-2 space-y-1 border-t border-neutral-800 pt-1.5">
+        <div className="mt-2 space-y-1 border-t border-line pt-1.5">
           {result.limitations.map((msg, i) => (
-            <p key={i} className="flex items-start gap-1.5 text-neutral-500">
+            <p key={i} className="flex items-start gap-1.5 text-bone-3">
               <WarningIcon className="h-3.5 w-3.5 shrink-0 translate-y-px" /> {msg}
             </p>
           ))}
@@ -61,7 +61,7 @@ export function VocalAnalysisPanel({ result, onEnhance, enhancing }: VocalAnalys
         <button
           onClick={onEnhance}
           disabled={enhancing}
-          className="mt-2 w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+          className="mt-2 w-full rounded bg-bone px-2 py-1 text-[11px] font-semibold text-ink hover:opacity-90 disabled:opacity-50"
         >
           {enhancing ? "Aplicando…" : "Mejorar esta grabación"}
         </button>
