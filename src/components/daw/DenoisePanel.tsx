@@ -53,7 +53,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
 
       const newSampleId = crypto.randomUUID();
       await getAudioEngine().decodeAndCache(newSampleId, await blob.arrayBuffer());
-      const name = `${sample.name.replace(/\.[^/.]+$/, "")} (denoised)`;
+      const name = `${sample.name.replace(/\.[^/.]+$/, "")} (sin ruido)`;
       await putSample(newSampleId, name, blob);
       const asset: SampleAsset = {
         id: newSampleId,
@@ -91,16 +91,16 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
       <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
         <WaveformIcon className="h-3.5 w-3.5 text-cyan-400" />
-        Denoise
+        Reducir ruido
       </div>
 
       {loading ? (
-        <p className="text-neutral-600">Analyzing noise floor…</p>
+        <p className="text-neutral-600">Analizando piso de ruido…</p>
       ) : (
         <>
           <div className="flex justify-between text-neutral-500">
-            <span>Estimated noise level</span>
-            <span className="text-neutral-300">{noiseLevel < 0.0005 ? "very low" : noiseLevel < 0.003 ? "low" : "noticeable"}</span>
+            <span>Nivel de ruido estimado</span>
+            <span className="text-neutral-300">{noiseLevel < 0.0005 ? "muy bajo" : noiseLevel < 0.003 ? "bajo" : "notable"}</span>
           </div>
 
           <label className="mt-2 flex items-center justify-center gap-2 text-neutral-400">
@@ -111,16 +111,17 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
               defaultValue={50}
               decimals={0}
               unit="%"
-              label="Strength"
+              label="Intensidad"
               onChange={(v) => setStrength(v / 100)}
             />
           </label>
 
           <p className="mt-2 text-neutral-600">
-            Classic spectral subtraction, not a trained model — works best when the recording has real
-            quiet gaps (room tone between phrases) to learn the noise&apos;s shape from. Aggressive
-            strength on a signal with no quiet gaps can introduce a warbly &quot;musical noise&quot;
-            artifact. Renders a new, separate take — your original recording is never overwritten.
+            Sustracción espectral clásica, no un modelo entrenado — funciona mejor cuando la grabación
+            tiene silencios reales (aire de sala entre frases) de donde aprender la forma del ruido. Una
+            intensidad agresiva sobre una señal sin silencios puede introducir un artefacto de &quot;ruido
+            musical&quot; ondulante. Renderiza una toma nueva y separada — tu grabación original nunca se
+            sobrescribe.
           </p>
 
           <button
@@ -128,7 +129,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
             disabled={applying}
             className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
-            {applying ? "Rendering…" : "Apply Denoise"}
+            {applying ? "Renderizando…" : "Aplicar reducción de ruido"}
           </button>
         </>
       )}
