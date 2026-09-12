@@ -83,7 +83,7 @@ export async function POST(request: Request): Promise<Response> {
     body = await request.json();
   } catch {
     return Response.json(
-      { configured: true, reply: "", proposedActions: [], errorMessage: "Invalid request body" } satisfies AssistantTurnResult,
+      { configured: true, reply: "", proposedActions: [], errorMessage: "Cuerpo de la petición inválido" } satisfies AssistantTurnResult,
       { status: 400 }
     );
   }
@@ -96,7 +96,7 @@ export async function POST(request: Request): Promise<Response> {
         configured: true,
         reply: "",
         proposedActions: [],
-        errorMessage: "Missing message or project context",
+        errorMessage: "Falta el mensaje o el contexto del proyecto",
       } satisfies AssistantTurnResult,
       { status: 400 }
     );
@@ -120,7 +120,7 @@ export async function POST(request: Request): Promise<Response> {
         configured: true,
         reply: "",
         proposedActions: [],
-        errorMessage: err instanceof Error ? err.message : "Assistant request failed",
+        errorMessage: err instanceof Error ? err.message : "Falló la petición al asistente",
       } satisfies AssistantTurnResult,
       { status: 502 }
     );

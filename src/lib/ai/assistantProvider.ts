@@ -27,12 +27,12 @@ export const httpAssistantProvider: AssistantProvider = {
         configured: true,
         reply: "",
         proposedActions: [],
-        errorMessage: err instanceof Error ? err.message : "Could not reach the assistant",
+        errorMessage: err instanceof Error ? err.message : "No se pudo contactar al asistente",
       };
     }
 
     if (!res.ok) {
-      return { configured: true, reply: "", proposedActions: [], errorMessage: `Assistant request failed (${res.status})` };
+      return { configured: true, reply: "", proposedActions: [], errorMessage: `Falló la petición al asistente (${res.status})` };
     }
     return (await res.json()) as AssistantTurnResult;
   },
