@@ -4,7 +4,7 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import type { MonitorMode } from "@/types/project";
 import { MeterBar } from "../MeterBar";
-import { WaveformIcon, BusIcon, MicIcon } from "../icons";
+import { WaveformIcon, BusIcon, MicIcon, ChevronLeftIcon, ChevronRightIcon, RecordIcon } from "../icons";
 import { Knob } from "../ui/Knob";
 import { Fader } from "./Fader";
 
@@ -73,9 +73,9 @@ export function MixerPanel() {
               }}
               disabled={i === 0}
               title="Mover canal a la izquierda"
-              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-[10px] text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
+              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
             >
-              ◀
+              <ChevronLeftIcon className="h-3.5 w-3.5" />
             </button>
             <input
               value={track.name}
@@ -91,9 +91,9 @@ export function MixerPanel() {
               }}
               disabled={i === tracks.length - 1}
               title="Mover canal a la derecha"
-              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-[10px] text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
+              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
             >
-              ▶
+              <ChevronRightIcon className="h-3.5 w-3.5" />
             </button>
           </div>
 
@@ -166,11 +166,11 @@ export function MixerPanel() {
               }}
               disabled={isRecording}
               title="Armar para grabar"
-              className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold disabled:opacity-30 ${
+              className={`flex h-11 w-11 items-center justify-center rounded disabled:opacity-30 ${
                 track.armed ? "bg-red-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               }`}
             >
-              ●
+              <RecordIcon className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={(e) => {

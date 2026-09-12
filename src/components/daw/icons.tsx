@@ -167,3 +167,110 @@ export function BusIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/** Transporte y controles genéricos añadidos en FASE 10B para reemplazar
+ * glifos Unicode usados como icono (✂ ⧉ ✕ ▶ ■ ● ◀ ▸ ▾ ↑ ↓ ❚❚) - el brief de
+ * FASE 10 prohíbe explícitamente emojis/glifos sueltos en la interfaz.
+ * Play, ChevronLeft y Scissors reutilizan el path exacto de estudio-ui.html. */
+export function PlayIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props} fill="currentColor" stroke="none">
+      <path d="M7 4l13 8-13 8z" />
+    </svg>
+  );
+}
+
+export function PauseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props} fill="currentColor" stroke="none">
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </svg>
+  );
+}
+
+export function StopIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props} fill="currentColor" stroke="none">
+      <rect x="5" y="5" width="14" height="14" rx="2" />
+    </svg>
+  );
+}
+
+export function RecordIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props} fill="currentColor" stroke="none">
+      <circle cx="12" cy="12" r="8" />
+    </svg>
+  );
+}
+
+export function ChevronLeftIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function ArrowUpIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <line x1="12" y1="19" x2="12" y2="5" />
+      <path d="M6 11l6-6 6 6" />
+    </svg>
+  );
+}
+
+export function ArrowDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <path d="M6 13l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function ScissorsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="6" cy="18" r="2.5" />
+      <circle cx="18" cy="18" r="2.5" />
+      <path d="M7.5 16L18 5M16.5 16L6 5" />
+    </svg>
+  );
+}
+
+export function DuplicateIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="8" y="8" width="12" height="12" rx="1.5" />
+      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
+    </svg>
+  );
+}
+
+export function CloseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <line x1="6" y1="6" x2="18" y2="18" />
+      <line x1="18" y1="6" x2="6" y2="18" />
+    </svg>
+  );
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { CloseIcon } from "./icons";
 
 interface BottomSheetProps {
   open: boolean;
@@ -27,7 +28,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             title="Cerrar"
             className="flex h-11 w-11 items-center justify-center text-neutral-500 hover:text-neutral-300"
           >
-            ✕
+            <CloseIcon className="h-4 w-4" />
           </button>
         </div>
         <div className="space-y-4 p-4">{children}</div>

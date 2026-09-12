@@ -6,6 +6,7 @@ import { WEB_AUDIO_FILTER_TYPE } from "@/audio-engine/effects/EqEffect";
 import { CurveEditor, type CurvePoint } from "../ui/CurveEditor";
 import { SegmentedControl } from "../ui/SegmentedControl";
 import { Knob } from "../ui/Knob";
+import { CloseIcon } from "../icons";
 import type { EqBand } from "@/types/effects";
 
 const FREQ_MIN = 20;
@@ -191,7 +192,7 @@ export function EqPanel({ bands, onChange }: { bands: EqBand[]; onChange: (bands
                 title="Quitar banda"
                 className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-600 hover:text-red-400"
               >
-                ✕
+                <CloseIcon className="h-4 w-4" />
               </button>
             </div>
           </div>

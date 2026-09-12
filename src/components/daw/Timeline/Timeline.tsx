@@ -8,6 +8,7 @@ import { Ruler } from "./Ruler";
 import { TrackHeader } from "./TrackHeader";
 import { TrackLane } from "./TrackLane";
 import { LoopRegion } from "./LoopRegion";
+import { ScissorsIcon, DuplicateIcon } from "../icons";
 
 export function Timeline() {
   const project = useProjectStore((s) => s.project);
@@ -132,16 +133,16 @@ export function Timeline() {
         <button
           onClick={splitClipAtPlayhead}
           title="Divide el clip de la pista seleccionada en el playhead (atajo: S)"
-          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="flex items-center gap-1.5 rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
-          ✂ Dividir
+          <ScissorsIcon className="h-3.5 w-3.5" /> Dividir
         </button>
         <button
           onClick={duplicateClipAtPlayhead}
           title="Duplica el clip de la pista seleccionada en el playhead (atajo: D)"
-          className="rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+          className="flex items-center gap-1.5 rounded bg-neutral-800 min-h-11 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
-          ⧉ Duplicar
+          <DuplicateIcon className="h-3.5 w-3.5" /> Duplicar
         </button>
         <div className="ml-auto flex items-center gap-1.5 text-xs text-neutral-400" title="Ajustar clips a la rejilla musical">
           <span className="font-medium">Ajuste</span>

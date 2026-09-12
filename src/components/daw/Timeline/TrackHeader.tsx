@@ -7,7 +7,7 @@ import type { MonitorMode, Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
 import { Knob } from "../ui/Knob";
 import { BottomSheet } from "../BottomSheet";
-import { AutomationIcon, SparkleIcon, MoreIcon, MicIcon } from "../icons";
+import { AutomationIcon, SparkleIcon, MoreIcon, MicIcon, RecordIcon } from "../icons";
 import { HEADER_WIDTH, TRACK_HEIGHT } from "./constants";
 
 interface TrackHeaderProps {
@@ -102,11 +102,11 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }}
           disabled={isRecording}
           title="Armar para grabar"
-          className={`min-h-11 flex-1 text-[11px] font-bold disabled:opacity-30 ${
+          className={`flex min-h-11 flex-1 items-center justify-center disabled:opacity-30 ${
             track.armed ? "bg-red-600 text-white" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
           }`}
         >
-          ●
+          <RecordIcon className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={(e) => {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useProjectStore, type EffectTarget } from "@/state/projectStore";
 import { EFFECT_LABELS, type EffectInstance } from "@/types/effects";
 import { EffectParamsEditor } from "./EffectParamsEditor";
-import { SparkleIcon } from "../icons";
+import { SparkleIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpIcon, ArrowDownIcon, CloseIcon } from "../icons";
 
 interface EffectCardProps {
   target: EffectTarget;
@@ -40,7 +40,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           title={expanded ? "Contraer" : "Expandir"}
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300"
         >
-          {expanded ? "▾" : "▸"}
+          {expanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
         </button>
         <span className="flex-1 truncate text-xs font-medium text-neutral-200">{EFFECT_LABELS[effect.type]}</span>
         <button
@@ -56,7 +56,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300 disabled:opacity-20"
           title="Subir"
         >
-          ↑
+          <ArrowUpIcon className="h-4 w-4" />
         </button>
         <button
           onClick={() => moveEffect(target, effect.id, 1)}
@@ -64,7 +64,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300 disabled:opacity-20"
           title="Bajar"
         >
-          ↓
+          <ArrowDownIcon className="h-4 w-4" />
         </button>
         <button
           onClick={() => toggleEffectBypass(target, effect.id)}
@@ -80,7 +80,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           title="Eliminar efecto"
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-600 hover:text-red-400"
         >
-          ✕
+          <CloseIcon className="h-4 w-4" />
         </button>
       </div>
       {expanded && (

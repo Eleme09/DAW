@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BottomSheet } from "../BottomSheet";
+import { ChevronDownIcon } from "../icons";
 
 interface PickerOption<T extends string> {
   value: T;
@@ -24,7 +25,7 @@ interface PickerProps<T extends string> {
 /** Replaces a native `<select>` for a list too long for a SegmentedControl
  * row (samples, presets, ...) - a button showing the current choice opens
  * a bottom sheet with every option as its own >=44px tappable row. */
-export function Picker<T extends string>({ value, options, onChange, title, placeholder = "Select…" }: PickerProps<T>) {
+export function Picker<T extends string>({ value, options, onChange, title, placeholder = "Selecciona…" }: PickerProps<T>) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => o.value === value);
 
@@ -35,7 +36,7 @@ export function Picker<T extends string>({ value, options, onChange, title, plac
         className="flex min-h-11 w-full items-center justify-between rounded bg-neutral-900 px-3 text-left text-[11px] text-neutral-200"
       >
         <span className="truncate">{current?.label ?? placeholder}</span>
-        <span className="text-neutral-600">▾</span>
+        <ChevronDownIcon className="h-3.5 w-3.5 shrink-0 text-neutral-600" />
       </button>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={title}>
         <div className="space-y-1">

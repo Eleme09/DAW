@@ -18,7 +18,7 @@ import { VocalEngineerPanel } from "./VocalEngineerPanel";
 import { MixAssistantPanel } from "./MixAssistantPanel";
 import { BeatGeneratorPanel } from "./BeatGeneratorPanel";
 import { AiAssistantPanel } from "./AiAssistantPanel";
-import { WaveformIcon, MatchIcon, MixIcon, BeatGridIcon, SparkleIcon, FolderIcon } from "./icons";
+import { WaveformIcon, MatchIcon, MixIcon, BeatGridIcon, SparkleIcon, FolderIcon, CloseIcon } from "./icons";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
@@ -355,7 +355,7 @@ function ProjectsTab() {
               title="Eliminar proyecto"
               aria-label="Eliminar proyecto"
             >
-              ✕
+              <CloseIcon className="h-4 w-4" />
             </button>
           </div>
         ))}

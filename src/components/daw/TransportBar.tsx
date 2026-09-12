@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
 import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/AudioEngine";
-import { UndoIcon, RedoIcon, MoreIcon } from "./icons";
+import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 
 const CONSTRAINT_LABELS: Record<keyof MonitorInputConstraints, string> = {
@@ -163,7 +163,7 @@ export function TransportBar() {
           className="flex h-11 w-11 items-center justify-center rounded bg-cyan-500 font-bold text-black hover:bg-cyan-400 active:bg-cyan-400 disabled:opacity-40"
           aria-label={isPlaying ? "Pausar" : "Reproducir"}
         >
-          {isPlaying && !isRecording ? "❚❚" : "▶"}
+          {isPlaying && !isRecording ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
         </button>
         <button
           onClick={stop}
@@ -172,7 +172,7 @@ export function TransportBar() {
           className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-40"
           aria-label="Detener"
         >
-          ■
+          <StopIcon className="h-4 w-4" />
         </button>
         <button
           onClick={() => (isRecording ? stopRecording() : startRecording())}
@@ -184,7 +184,7 @@ export function TransportBar() {
           aria-label={isRecording ? "Detener grabación" : "Grabar"}
           title={isRecording ? "Detener grabación" : "Graba sobre la pista armada"}
         >
-          ●
+          <RecordIcon className="h-4 w-4" />
         </button>
       </div>
 
