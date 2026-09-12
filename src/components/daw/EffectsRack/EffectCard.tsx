@@ -33,27 +33,27 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
   }
 
   return (
-    <div className={`rounded border ${effect.bypassed ? "border-neutral-800 opacity-50" : "border-neutral-700"} bg-neutral-900`}>
+    <div className={`rounded border ${effect.bypassed ? "border-line opacity-50" : "border-line-2"} bg-surf`}>
       <div className="flex items-center gap-0.5 px-2 py-1.5">
         <button
           onClick={() => setExpanded((v) => !v)}
           title={expanded ? "Contraer" : "Expandir"}
-          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300"
+          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
         >
           {expanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
         </button>
-        <span className="flex-1 truncate text-xs font-medium text-neutral-200">{EFFECT_LABELS[effect.type]}</span>
+        <span className="flex-1 truncate text-xs font-medium text-bone">{EFFECT_LABELS[effect.type]}</span>
         <button
           onClick={askAi}
           title="Preguntar a la IA sobre este efecto"
-          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300"
+          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
         >
           <SparkleIcon className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={() => moveEffect(target, effect.id, -1)}
           disabled={isFirst}
-          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300 disabled:opacity-20"
+          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2 disabled:opacity-20"
           title="Subir"
         >
           <ArrowUpIcon className="h-4 w-4" />
@@ -61,7 +61,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         <button
           onClick={() => moveEffect(target, effect.id, 1)}
           disabled={isLast}
-          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-500 hover:text-neutral-300 disabled:opacity-20"
+          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2 disabled:opacity-20"
           title="Bajar"
         >
           <ArrowDownIcon className="h-4 w-4" />
@@ -69,7 +69,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         <button
           onClick={() => toggleEffectBypass(target, effect.id)}
           className={`flex h-11 min-w-11 shrink-0 items-center justify-center rounded px-2 text-[10px] font-bold ${
-            effect.bypassed ? "bg-neutral-700 text-neutral-400" : "bg-cyan-500 text-black"
+            effect.bypassed ? "bg-surf-3 text-bone-2" : "bg-bone text-ink"
           }`}
           title="Bypass"
         >
@@ -78,13 +78,13 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         <button
           onClick={() => removeEffect(target, effect.id)}
           title="Eliminar efecto"
-          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-600 hover:text-red-400"
+          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-3 hover:text-red-400"
         >
           <CloseIcon className="h-4 w-4" />
         </button>
       </div>
       {expanded && (
-        <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-neutral-800 p-2">
+        <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-line p-2">
           <EffectParamsEditor target={target} effect={effect} onChange={(params) => updateEffectParams(target, effect.id, params)} />
         </div>
       )}

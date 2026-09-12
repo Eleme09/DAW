@@ -57,8 +57,8 @@ export function CurveEditor({
   onAddPoint,
   onRemovePoint,
   drawBackground,
-  curveColor = "#22d3ee",
-  pointColor = "#22d3ee",
+  curveColor = "#f2ede4",
+  pointColor = "#f2ede4",
   curveStyle = "smooth",
   nodeRadius = 6,
   drawCurve = true,
@@ -214,7 +214,7 @@ export function CurveEditor({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
-      className="cursor-crosshair rounded bg-neutral-950"
+      className="cursor-crosshair rounded bg-ink"
     />
   );
 }

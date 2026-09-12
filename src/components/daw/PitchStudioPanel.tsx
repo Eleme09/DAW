@@ -124,13 +124,13 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
   }
 
   return (
-    <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <NoteIcon className="h-3.5 w-3.5 text-cyan-400" />
+    <div className="mt-1 rounded border border-line bg-ink p-2 text-[11px]">
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-line pb-1.5 font-semibold uppercase tracking-wide text-bone-2">
+        <NoteIcon className="h-3.5 w-3.5 text-bone" />
         Estudio de afinación
       </div>
 
-      {analyzing && <p className="text-neutral-600">Analizando el tono…</p>}
+      {analyzing && <p className="text-bone-3">Analizando el tono…</p>}
 
       {frames && (
         <>
@@ -161,7 +161,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
                 key={mode}
                 onClick={() => applyMode(mode)}
                 className={`min-h-11 flex-1 rounded px-1 text-[10px] uppercase ${
-                  settings.mode === mode ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
+                  settings.mode === mode ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
                 }`}
               >
                 {MODE_LABEL[mode]}
@@ -192,7 +192,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
             />
           </div>
 
-          <p className="mt-2 text-neutral-600">
+          <p className="mt-2 text-bone-3">
             Renderiza una toma nueva y separada — tu grabación original nunca se sobrescribe. Todavía
             no hay preservación de formantes, así que correcciones grandes pueden sonar más delgadas
             (ver AUDIO_ENGINE.md).
@@ -201,7 +201,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
           <button
             onClick={applyCorrection}
             disabled={applying}
-            className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-2 min-h-11 w-full rounded bg-bone px-2 text-[11px] font-semibold text-ink hover:opacity-90 disabled:opacity-50"
           >
             {applying ? "Renderizando…" : "Aplicar corrección de tono"}
           </button>
@@ -233,7 +233,7 @@ function PitchTrackCanvas({ frames, duration }: { frames: PitchFrame[]; duration
     const maxMidi = Math.max(...midiValues) + 2;
     const range = Math.max(1, maxMidi - minMidi);
 
-    ctx.fillStyle = "#22d3ee";
+    ctx.fillStyle = "#f2ede4";
     for (const frame of frames) {
       if (frame.frequencyHz === null) continue;
       const midi = frequencyToMidi(frame.frequencyHz);

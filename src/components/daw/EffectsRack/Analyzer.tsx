@@ -93,7 +93,7 @@ function drawSpectrum(canvas: HTMLCanvasElement, freqData: Uint8Array): void {
     }
     const avg = count > 0 ? sum / count : 0;
     const barHeight = (avg / 255) * height;
-    ctx.fillStyle = "#22d3ee";
+    ctx.fillStyle = "#f2ede4";
     ctx.fillRect(bar * barWidth, height - barHeight, barWidth - 1, barHeight);
   }
 }

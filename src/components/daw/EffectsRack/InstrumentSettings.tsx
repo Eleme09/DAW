@@ -40,12 +40,12 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
   if (!instrument) return null;
 
   return (
-    <div className="space-y-2 border-b border-neutral-800 p-2">
+    <div className="space-y-2 border-b border-line p-2">
       <div className="flex gap-1 text-[11px] font-medium">
         <button
           onClick={() => setInstrument(track.id, createDefaultInstrument())}
           className={`min-h-11 flex-1 rounded px-2 ${
-            instrument.type === "synth" ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
+            instrument.type === "synth" ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
           }`}
         >
           Synth
@@ -53,7 +53,7 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
         <button
           onClick={() => setInstrument(track.id, createDefaultSamplerInstrument())}
           className={`min-h-11 flex-1 rounded px-2 ${
-            instrument.type === "sampler" ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
+            instrument.type === "sampler" ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
           }`}
         >
           Sampler

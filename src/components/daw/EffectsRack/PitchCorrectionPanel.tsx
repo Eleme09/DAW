@@ -118,7 +118,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
     // Grid: center "in tune" line + +/-25/50 cent guides.
     for (const c of [-50, -25, 0, 25, 50]) {
       const y = centsToY(c);
-      ctx.strokeStyle = c === 0 ? "rgba(34,211,238,0.35)" : "rgba(255,255,255,0.08)";
+      ctx.strokeStyle = c === 0 ? "rgba(242,237,228,0.35)" : "rgba(242,237,228,0.08)";
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(w, y);
@@ -149,7 +149,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
         ctx.lineTo(x, y);
       }
     }
-    ctx.strokeStyle = "#22d3ee";
+    ctx.strokeStyle = "#f2ede4";
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -158,7 +158,7 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
     if (lastCents !== undefined && !Number.isNaN(lastCents)) {
       const y = centsToY(lastCents);
       const inTune = Math.abs(lastCents) < 10;
-      ctx.fillStyle = inTune ? "#4ade80" : "#22d3ee";
+      ctx.fillStyle = inTune ? "#4ade80" : "#f2ede4";
       ctx.beginPath();
       ctx.arc(w - 4, y, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -167,13 +167,13 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
     // Detected -> target note readout.
     const { detected, target: targetLabel, confidence } = labelRef.current;
     ctx.font = "bold 15px monospace";
-    ctx.fillStyle = confidence > 0.5 ? "#e5e5e5" : "rgba(229,229,229,0.35)";
+    ctx.fillStyle = confidence > 0.5 ? "#9a968e" : "rgba(154,150,142,0.35)";
     ctx.fillText(detected, 8, h - 10);
     ctx.font = "11px monospace";
     ctx.fillStyle = "rgba(255,255,255,0.4)";
     ctx.fillText("→", 52, h - 12);
     ctx.font = "bold 15px monospace";
-    ctx.fillStyle = "#22d3ee";
+    ctx.fillStyle = "#f2ede4";
     ctx.fillText(targetLabel, 68, h - 10);
   }, true);
 

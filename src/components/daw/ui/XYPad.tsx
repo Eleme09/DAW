@@ -41,17 +41,17 @@ export function XYPad({ x, y, onChange, size = 120, xLabel, yLabel }: XYPadProps
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         style={{ width: size, height: size, touchAction: "none" }}
-        className="relative cursor-crosshair rounded-[3px] border border-neutral-800 bg-neutral-950"
+        className="relative cursor-crosshair rounded-[3px] border border-line bg-ink"
       >
-        <div className="pointer-events-none absolute left-1/2 top-0 h-full w-px bg-neutral-900" />
-        <div className="pointer-events-none absolute left-0 top-1/2 h-px w-full bg-neutral-900" />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-full w-px bg-surf" />
+        <div className="pointer-events-none absolute left-0 top-1/2 h-px w-full bg-surf" />
         <div
-          className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neutral-950 bg-cyan-400 shadow"
+          className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink bg-bone shadow"
           style={{ left: `${x * 100}%`, top: `${(1 - y) * 100}%` }}
         />
       </div>
       {(xLabel || yLabel) && (
-        <div className="flex w-full justify-between text-[9px] text-neutral-600" style={{ width: size }}>
+        <div className="flex w-full justify-between text-[9px] text-bone-3" style={{ width: size }}>
           <span>{xLabel}</span>
           <span>{yLabel}</span>
         </div>

@@ -58,7 +58,7 @@ export function EqPanel({ bands, onChange }: { bands: EqBand[]; onChange: (bands
         const freqData = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(freqData);
         const nyquist = (audioCtx?.sampleRate ?? 44100) / 2;
-        ctx.fillStyle = "rgba(34,211,238,0.12)";
+        ctx.fillStyle = "rgba(242,237,228,0.12)";
         for (let bar = 0; bar < SPECTRUM_BARS; bar++) {
           const f0 = xToFreq(bar / SPECTRUM_BARS);
           const f1 = xToFreq((bar + 1) / SPECTRUM_BARS);
@@ -125,7 +125,7 @@ export function EqPanel({ bands, onChange }: { bands: EqBand[]; onChange: (bands
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
-        ctx.strokeStyle = "#22d3ee";
+        ctx.strokeStyle = "#f2ede4";
         ctx.lineWidth = 2;
         ctx.stroke();
       }
