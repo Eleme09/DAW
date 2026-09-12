@@ -87,7 +87,7 @@ export function DawShell() {
   // Live pitch monitor uses its own mic stream independent of the transport/
   // recording lifecycle - make sure it's actually released on unmount.
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-neutral-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-ink text-bone">
       <TransportBar />
       <PianoRoll />
       <AutomationEditor />
@@ -114,7 +114,7 @@ export function DawShell() {
       </div>
 
       <nav
-        className="flex shrink-0 border-t border-neutral-800 bg-neutral-950 md:hidden"
+        className="flex shrink-0 border-t border-line bg-ink md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {MOBILE_VIEWS.map(({ id, label, Icon }) => (
@@ -123,8 +123,8 @@ export function DawShell() {
             onClick={() => setMobileView(id)}
             className={`flex flex-1 flex-col items-center gap-0.5 border-t-2 py-2 text-[11px] font-medium uppercase tracking-wide transition-colors ${
               mobileView === id
-                ? "border-cyan-500 text-cyan-400"
-                : "border-transparent text-neutral-500 hover:text-neutral-300"
+                ? "border-bone text-bone"
+                : "border-transparent text-bone-3 hover:text-bone-2"
             }`}
           >
             <Icon className="h-5 w-5" />
