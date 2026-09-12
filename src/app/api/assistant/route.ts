@@ -26,45 +26,47 @@ interface AssistantRequestBody {
 function buildMixSection(mix: AssistantContext["mix"]): string {
   if (!mix) return "";
   const masking = mix.masking.length
-    ? mix.masking.map((m) => `${m.trackAName} vs ${m.trackBName} around ${Math.round(m.freqHz)}Hz (${m.band})`).join("; ")
-    : "none detected";
+    ? mix.masking.map((m) => `${m.trackAName} vs ${m.trackBName} cerca de ${Math.round(m.freqHz)}Hz (${m.band})`).join("; ")
+    : "no se detectó ninguno"
   const gainStaging = mix.gainStaging.length
     ? mix.gainStaging
-        .map((g) => `${g.trackName} is ${Math.abs(g.deltaFromMedianDb).toFixed(1)}dB ${g.direction} than typical`)
+        .map((g) => `${g.trackName} está ${Math.abs(g.deltaFromMedianDb).toFixed(1)}dB ${g.direction === "louder" ? "más alta" : "más baja"} de lo habitual`)
         .join("; ")
-    : "levels look balanced";
+    : "los niveles se ven equilibrados";
   const lufs = Number.isFinite(mix.integratedLufs) ? mix.integratedLufs.toFixed(1) : "-inf";
 
   return [
     "",
-    "A DSP analysis of the actual rendered mix has already been measured - ground your reply and any tool",
-    "calls in these real numbers instead of generic mixing advice:",
-    `- Low end: ${mix.lowEnd}, mud: ${mix.mud}, harshness: ${mix.harshness}, sibilance: ${mix.sibilance}`,
-    `- Peak ${mix.peakDb.toFixed(1)}dB, RMS ${mix.rmsDb.toFixed(1)}dB, integrated loudness ${lufs} LUFS`,
-    `- Frequency masking: ${masking}`,
-    `- Gain staging: ${gainStaging}`,
+    "Ya se midió un análisis DSP real de la mezcla renderizada - basa tu respuesta y cualquier llamada a",
+    "herramientas en estos números reales, no en consejos genéricos de mezcla:",
+    `- Graves: ${mix.lowEnd}, barro: ${mix.mud}, aspereza: ${mix.harshness}, sibilancia: ${mix.sibilance}`,
+    `- Pico ${mix.peakDb.toFixed(1)}dB, RMS ${mix.rmsDb.toFixed(1)}dB, sonoridad integrada ${lufs} LUFS`,
+    `- Enmascaramiento de frecuencias: ${masking}`,
+    `- Niveles de ganancia: ${gainStaging}`,
   ].join("\n");
 }
 
 function buildSystemPrompt(context: AssistantContext): string {
   const trackList = context.tracks.length
     ? context.tracks.map((t) => `- "${t.name}" (id: ${t.id})`).join("\n")
-    : "(no tracks yet)";
+    : "(todavía no hay pistas)";
 
   return [
-    "You are the in-app assistant for a personal DAW (digital audio workstation) used for vocal/beat production.",
-    `The project is at ${context.bpm} BPM and has these tracks:`,
+    "Eres el asistente integrado de un DAW (estación de audio digital) personal usado para producción de voz/beats.",
+    "Responde siempre en español, sin importar en qué idioma esté escrito el mensaje del usuario.",
+    `El proyecto está a ${context.bpm} BPM y tiene estas pistas:`,
     trackList,
     buildMixSection(context.mix),
     "",
-    "When the user asks for a change, call one or more of the provided tools to propose concrete parameter " +
-      "changes on a specific track (reference it by its id from the list above, never by guessing an id). " +
-      "You never apply changes yourself — the app shows your tool calls to the user for review, so it's fine " +
-      "(expected) to propose something and explain it in your reply. Keep parameter values within normal, " +
-      "musical ranges consistent with a professional vocal/beat mixing context — see each tool's own " +
-      "description for typical ranges. If the request doesn't map to any available tool, needs clarification " +
-      "(e.g. which track), or nothing on the project can actually address it, say so plainly in your reply and " +
-      "don't call a tool.",
+    "Cuando el usuario pida un cambio, llama a una o más de las herramientas provistas para proponer cambios " +
+      "concretos de parámetros en una pista específica (referénciala por su id de la lista de arriba, nunca " +
+      "adivines un id). Nunca aplicas los cambios tú mismo — la app le muestra tus llamadas a herramientas al " +
+      "usuario para que las revise, así que está bien (es lo esperado) proponer algo y explicarlo en tu " +
+      "respuesta. Mantén los valores de los parámetros dentro de rangos normales y musicales, consistentes con " +
+      "un contexto profesional de mezcla de voz/beats — revisa la descripción de cada herramienta para ver sus " +
+      "rangos típicos. Si el pedido no corresponde a ninguna herramienta disponible, necesita aclaración (por " +
+      "ejemplo, qué pista) o nada en el proyecto puede resolverlo, dilo claramente en tu respuesta y no llames " +
+      "a ninguna herramienta.",
   ].join("\n");
 }
 

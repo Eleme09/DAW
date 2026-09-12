@@ -226,25 +226,35 @@ export function parseToolUse(name: string, input: Record<string, unknown>): Assi
   }
 }
 
+const EQ_TYPE_LABEL: Record<"highpass" | "lowshelf" | "peaking" | "highshelf" | "lowpass", string> = {
+  highpass: "HP",
+  lowshelf: "LS",
+  peaking: "PK",
+  highshelf: "HS",
+  lowpass: "LP",
+};
+const REVERB_SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
+const SATURATION_TONE_LABEL: Record<"warm" | "neutral" | "bright", string> = { warm: "cálido", neutral: "neutro", bright: "brillante" };
+
 export function describeAssistantAction(action: AssistantAction, trackName: string): string {
   switch (action.kind) {
     case "setTrackVolume":
-      return `Set ${trackName} volume to ${action.volumeDb.toFixed(1)}dB`;
+      return `Ajustar el volumen de ${trackName} a ${action.volumeDb.toFixed(1)}dB`;
     case "setTrackPan":
-      return `Pan ${trackName} to ${action.pan.toFixed(2)}`;
+      return `Panear ${trackName} a ${action.pan.toFixed(2)}`;
     case "setTrackMute":
-      return `${action.muted ? "Mute" : "Unmute"} ${trackName}`;
+      return `${action.muted ? "Silenciar" : "Quitar silencio a"} ${trackName}`;
     case "setTrackSolo":
-      return `${action.solo ? "Solo" : "Unsolo"} ${trackName}`;
+      return `${action.solo ? "Poner en solo" : "Quitar el solo de"} ${trackName}`;
     case "addEqBand":
-      return `Add ${action.eqType} EQ band on ${trackName} at ${Math.round(action.freq)}Hz (${action.gainDb > 0 ? "+" : ""}${action.gainDb.toFixed(1)}dB)`;
+      return `Agregar banda de EQ ${EQ_TYPE_LABEL[action.eqType]} en ${trackName} a ${Math.round(action.freq)}Hz (${action.gainDb > 0 ? "+" : ""}${action.gainDb.toFixed(1)}dB)`;
     case "setCompressor":
-      return `Set ${trackName} compressor: ${action.thresholdDb.toFixed(1)}dB threshold, ${action.ratio.toFixed(1)}:1 ratio`;
+      return `Ajustar el compresor de ${trackName}: umbral ${action.thresholdDb.toFixed(1)}dB, ratio ${action.ratio.toFixed(1)}:1`;
     case "setReverb":
-      return `Set ${trackName} reverb: ${action.sizeType}, ${Math.round(action.mix * 100)}% mix`;
+      return `Ajustar la reverberación de ${trackName}: ${REVERB_SIZE_LABEL[action.sizeType]}, ${Math.round(action.mix * 100)}% de mezcla`;
     case "setDelay":
-      return `Set ${trackName} delay: ${Math.round(action.timeMs)}ms, ${Math.round(action.mix * 100)}% mix`;
+      return `Ajustar el delay de ${trackName}: ${Math.round(action.timeMs)}ms, ${Math.round(action.mix * 100)}% de mezcla`;
     case "setSaturation":
-      return `Set ${trackName} saturation: ${action.tone}, ${Math.round(action.mix * 100)}% mix`;
+      return `Ajustar la saturación de ${trackName}: ${SATURATION_TONE_LABEL[action.tone]}, ${Math.round(action.mix * 100)}% de mezcla`;
   }
 }
