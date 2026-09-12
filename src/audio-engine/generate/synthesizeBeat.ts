@@ -10,12 +10,18 @@ import type { BassNoteEvent, ChordEvent, DrumHitEvent, GeneratedBeat, MelodyNote
  * elsewhere in this codebase) — not unit-tested, verified via Playwright.
  *
  * **Honesty note, stated plainly rather than left implicit**: every
- * instrument here is a simple synthesized placeholder (sine/saw/triangle
- * oscillators, filtered noise for drums) built from stock Web Audio nodes
- * — there are no sample-based drums/instruments. This is a rough sketch
- * meant to be mixed/replaced/layered in the DAW afterward (per the
- * brief's "editable in the DAW afterward"), not a claim of
- * production-quality sound design.
+ * instrument here is synthesized, not sampled — there is still no
+ * sample-based drum/instrument playback, and elevating this to a real
+ * sampler (per PROGRESS.md FASE 7) needs source audio this project doesn't
+ * ship and can't responsibly source on its own (see PROGRESS.md for why).
+ * The drum synthesis (kick/snare/hihat) was upgraded from single-layer
+ * oscillator/noise hits to layered analog-drum-machine techniques (a
+ * click transient on the kick, a snap layer on the snare, inharmonic
+ * square-oscillator "metal" on the hihat) — a real, audible step up in
+ * character, but still synthesized, not a claim of sample-based
+ * production quality. This is a rough sketch meant to be mixed/replaced/
+ * layered in the DAW afterward (per the brief's "editable in the DAW
+ * afterward").
  */
 
 const TAIL_SEC = 1;
@@ -48,7 +54,8 @@ function rampDownTo(param: AudioParam, target: number, atTime: number) {
   param.exponentialRampToValueAtTime(Math.max(target, 0.0001), atTime);
 }
 
-function synthKick(ctx: BaseAudioContext, destination: AudioNode, t: number, velocity: number): void {
+function synthKick(ctx: BaseAudioContext, destination: AudioNode, t: number, velocity: number, rng: () => number): void {
+  // Body: pitched sine sweep - the classic 808-style kick fundamental.
   const osc = ctx.createOscillator();
   osc.type = "sine";
   osc.frequency.setValueAtTime(150, t);
@@ -62,6 +69,23 @@ function synthKick(ctx: BaseAudioContext, destination: AudioNode, t: number, vel
   gain.connect(destination);
   osc.start(t);
   osc.stop(t + 0.2);
+
+  // Click: a few milliseconds of highpassed noise at the attack, for the
+  // beater-hitting-the-head transient a pure sine sweep can't produce -
+  // real kicks are body + click, not body alone.
+  const clickDur = 0.006;
+  const click = ctx.createBufferSource();
+  click.buffer = createNoiseBuffer(ctx, clickDur, rng);
+  const clickFilter = ctx.createBiquadFilter();
+  clickFilter.type = "highpass";
+  clickFilter.frequency.value = 2500;
+  const clickGain = ctx.createGain();
+  clickGain.gain.setValueAtTime(velocity * 0.5, t);
+  rampDownTo(clickGain.gain, 0.0001, t + clickDur);
+  click.connect(clickFilter);
+  clickFilter.connect(clickGain);
+  clickGain.connect(destination);
+  click.start(t);
 }
 
 function synthSnare(ctx: BaseAudioContext, destination: AudioNode, t: number, velocity: number, rng: () => number): void {
@@ -80,9 +104,27 @@ function synthSnare(ctx: BaseAudioContext, destination: AudioNode, t: number, ve
   noiseGain.connect(destination);
   noise.start(t);
 
+  // Snap: a very short high-frequency transient layered on top of the
+  // bandpassed noise body, for the "crack" real snares have that a single
+  // mid-frequency noise band reads as dull.
+  const snapDur = 0.02;
+  const snap = ctx.createBufferSource();
+  snap.buffer = createNoiseBuffer(ctx, snapDur, rng);
+  const snapFilter = ctx.createBiquadFilter();
+  snapFilter.type = "highpass";
+  snapFilter.frequency.value = 6000;
+  const snapGain = ctx.createGain();
+  snapGain.gain.setValueAtTime(velocity * 0.6, t);
+  rampDownTo(snapGain.gain, 0.0001, t + snapDur);
+  snap.connect(snapFilter);
+  snapFilter.connect(snapGain);
+  snapGain.connect(destination);
+  snap.start(t);
+
   const tone = ctx.createOscillator();
   tone.type = "triangle";
-  tone.frequency.value = 180;
+  tone.frequency.setValueAtTime(200, t);
+  tone.frequency.exponentialRampToValueAtTime(140, t + 0.08);
   const toneGain = ctx.createGain();
   toneGain.gain.setValueAtTime(velocity * 0.5, t);
   rampDownTo(toneGain.gain, 0.0001, t + 0.08);
@@ -91,6 +133,12 @@ function synthSnare(ctx: BaseAudioContext, destination: AudioNode, t: number, ve
   tone.start(t);
   tone.stop(t + 0.1);
 }
+
+/** Simplified inharmonic ratios for the hi-hat's "metal" layer - real analog
+ * drum machines mix six of these; three is a reasonable middle ground
+ * between audible character and render cost on dense trap hihat patterns
+ * (up to 15+ hits per bar). */
+const HAT_METAL_RATIOS = [1, 1.342, 1.632];
 
 function synthHat(
   ctx: BaseAudioContext,
@@ -107,18 +155,39 @@ function synthHat(
   highpass.type = "highpass";
   highpass.frequency.value = 7000;
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(velocity * 0.5, t);
+  gain.gain.setValueAtTime(velocity * 0.35, t);
   rampDownTo(gain.gain, 0.0001, t + dur);
   noise.connect(highpass);
   highpass.connect(gain);
   gain.connect(destination);
   noise.start(t);
+
+  // Metal: a few inharmonic square oscillators through a highpass - the
+  // classic analog-drum-machine technique for the hi-hat "ring" that
+  // filtered noise alone reads as flat/papery.
+  const metalFilter = ctx.createBiquadFilter();
+  metalFilter.type = "highpass";
+  metalFilter.frequency.value = 6000;
+  const metalGain = ctx.createGain();
+  metalGain.gain.setValueAtTime(velocity * 0.25, t);
+  rampDownTo(metalGain.gain, 0.0001, t + dur);
+  metalFilter.connect(metalGain);
+  metalGain.connect(destination);
+
+  for (const ratio of HAT_METAL_RATIOS) {
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.value = 3000 * ratio;
+    osc.connect(metalFilter);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
 }
 
 export function synthDrums(ctx: BaseAudioContext, destination: AudioNode, events: DrumHitEvent[], bpm: number, rng: () => number): void {
   for (const e of events) {
     const t = beatsToSec(e.startBeat, bpm);
-    if (e.type === "kick") synthKick(ctx, destination, t, e.velocity);
+    if (e.type === "kick") synthKick(ctx, destination, t, e.velocity, rng);
     else if (e.type === "snare") synthSnare(ctx, destination, t, e.velocity, rng);
     else synthHat(ctx, destination, t, e.velocity, e.type === "openhat", rng);
   }
