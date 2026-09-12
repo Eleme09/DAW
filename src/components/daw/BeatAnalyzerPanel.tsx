@@ -126,46 +126,46 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
   }
 
   return (
-    <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
-      <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <BeatGridIcon className="h-3.5 w-3.5 text-cyan-400" />
+    <div className="mt-1 rounded border border-line bg-ink p-2 text-[11px]">
+      <div className="mb-1.5 flex items-center gap-1.5 border-b border-line pb-1.5 font-semibold uppercase tracking-wide text-bone-2">
+        <BeatGridIcon className="h-3.5 w-3.5 text-bone" />
         Analizador de beat
       </div>
 
-      {analyzing && <p className="text-neutral-600">Analizando el beat — las pistas más largas pueden tardar un momento…</p>}
+      {analyzing && <p className="text-bone-3">Analizando el beat — las pistas más largas pueden tardar un momento…</p>}
 
       {result && (
         <>
           <div className="grid grid-cols-2 gap-1">
-            <div className="rounded bg-neutral-900 px-1.5 py-1">
-              <div className="text-neutral-500">BPM</div>
-              <div className="tabular-nums text-neutral-200">
+            <div className="rounded bg-surf px-1.5 py-1">
+              <div className="text-bone-2">BPM</div>
+              <div className="tabular-nums text-bone">
                 {result.tempo.bpm.toFixed(1)}{" "}
-                <span className="text-neutral-600">({Math.round(result.tempo.confidence * 100)}%)</span>
+                <span className="text-bone-3">({Math.round(result.tempo.confidence * 100)}%)</span>
               </div>
             </div>
-            <div className="rounded bg-neutral-900 px-1.5 py-1">
-              <div className="text-neutral-500">Tonalidad</div>
-              <div className="tabular-nums text-neutral-200">
+            <div className="rounded bg-surf px-1.5 py-1">
+              <div className="text-bone-2">Tonalidad</div>
+              <div className="tabular-nums text-bone">
                 {NOTE_NAMES[result.key.key]} {result.key.scale}{" "}
-                <span className="text-neutral-600">({Math.round(result.key.confidence * 100)}%)</span>
+                <span className="text-bone-3">({Math.round(result.key.confidence * 100)}%)</span>
               </div>
             </div>
           </div>
 
           <div className="mt-2">
-            <div className="mb-0.5 text-neutral-500">Línea de bajo</div>
+            <div className="mb-0.5 text-bone-2">Línea de bajo</div>
             <BassLineCanvas bassLine={result.bassLine} duration={result.durationSec} />
           </div>
 
           <div className="mt-2">
-            <div className="mb-0.5 text-neutral-500">
+            <div className="mb-0.5 text-bone-2">
               Golpes de batería ({result.drumHits.length}) — heurística, no una transcripción
             </div>
             <DrumHitCanvas drumHits={result.drumHits} duration={result.durationSec} />
             <div className="mt-1 flex gap-2 text-[10px]">
               {(["kick", "snare", "hihat"] as const).map((type) => (
-                <span key={type} className="flex items-center gap-1 text-neutral-500">
+                <span key={type} className="flex items-center gap-1 text-bone-2">
                   <span className="h-2 w-2 rounded-full" style={{ background: DRUM_COLOR[type] }} />
                   {DRUM_LABEL[type]}
                 </span>
@@ -174,12 +174,12 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
           </div>
 
           <div className="mt-2">
-            <div className="mb-0.5 text-neutral-500">Acordes (estimados, por segundo)</div>
+            <div className="mb-0.5 text-bone-2">Acordes (estimados, por segundo)</div>
             <div className="flex flex-wrap gap-1">
               {result.chords.map((chord, i) => (
                 <span
                   key={i}
-                  className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-300"
+                  className="rounded bg-surf px-1.5 py-0.5 text-bone-2"
                   title={`${chord.startSec.toFixed(1)}s (confianza ${Math.round(chord.confidence * 100)}%)`}
                 >
                   {NOTE_NAMES[chord.root]}
@@ -190,30 +190,30 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
           </div>
 
           <div className="mt-2">
-            <div className="mb-0.5 text-neutral-500">
+            <div className="mb-0.5 text-bone-2">
               Límites de sección — nivel de energía relativo, no etiquetas de verso/coro
             </div>
             <div className="flex flex-wrap gap-1">
               {result.sections.map((section, i) => (
-                <span key={i} className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-300">
+                <span key={i} className="rounded bg-surf px-1.5 py-0.5 text-bone-2">
                   {section.timeSec.toFixed(1)}s · {ENERGY_LABEL[section.energyLevel]}
                 </span>
               ))}
             </div>
           </div>
 
-          <div className="mt-2 border-t border-neutral-800 pt-2">
-            <p className="mb-1.5 text-neutral-600">
+          <div className="mt-2 border-t border-line pt-2">
+            <p className="mb-1.5 text-bone-3">
               Reconstruye la batería/bajo/acordes detectados como 3 pistas nuevas sintetizadas — una
               aproximación de mejor esfuerzo a partir del análisis de arriba, no una transcripción
               exacta. Sin melodía (este proyecto no intenta extraer melodía de una mezcla completa).
             </p>
             {reconstructError && <p className="mb-1.5 text-red-400">{reconstructError}</p>}
-            {reconstructSummary && <p className="mb-1.5 text-neutral-500">{reconstructSummary}</p>}
+            {reconstructSummary && <p className="mb-1.5 text-bone-2">{reconstructSummary}</p>}
             <button
               onClick={reconstructAsTracks}
               disabled={reconstructing}
-              className="w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+              className="w-full rounded bg-bone px-2 py-1 text-[11px] font-semibold text-ink hover:opacity-90 disabled:opacity-50"
             >
               {reconstructing ? "Reconstruyendo…" : "Reconstruir como pistas"}
             </button>
