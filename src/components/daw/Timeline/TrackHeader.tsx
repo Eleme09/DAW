@@ -17,9 +17,9 @@ interface TrackHeaderProps {
 
 const MONITOR_NEXT: Record<MonitorMode, MonitorMode> = { off: "auto", auto: "on", on: "off" };
 const MONITOR_LABEL: Record<MonitorMode, string> = {
-  off: "Monitor: off (never hear input)",
-  auto: "Monitor: auto (hear input while stopped or recording)",
-  on: "Monitor: on (always hear input while armed)",
+  off: "Monitor: apagado (nunca se oye la entrada)",
+  auto: "Monitor: automático (se oye la entrada al detener o grabar)",
+  on: "Monitor: siempre (se oye la entrada mientras esté armada)",
 };
 const MONITOR_CLASS: Record<MonitorMode, string> = {
   off: "bg-neutral-800 text-neutral-500",
@@ -63,7 +63,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             e.stopPropagation();
             setMoreOpen(true);
           }}
-          title="More track options"
+          title="Más opciones de pista"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-500 hover:text-neutral-200"
         >
           <MoreIcon className="h-4 w-4" />
@@ -76,7 +76,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             e.stopPropagation();
             updateTrack(track.id, { muted: !track.muted });
           }}
-          title={track.muted ? "Unmute" : "Mute"}
+          title={track.muted ? "Quitar silencio" : "Silenciar"}
           className={`min-h-11 flex-1 text-[11px] font-bold ${
             track.muted ? "bg-red-500 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
           }`}
@@ -88,7 +88,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             e.stopPropagation();
             updateTrack(track.id, { solo: !track.solo });
           }}
-          title={track.solo ? "Unsolo" : "Solo"}
+          title={track.solo ? "Quitar solo" : "Solo"}
           className={`min-h-11 flex-1 text-[11px] font-bold ${
             track.solo ? "bg-yellow-400 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
           }`}
@@ -101,7 +101,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             armTrack(track.id);
           }}
           disabled={isRecording}
-          title="Arm for recording"
+          title="Armar para grabar"
           className={`min-h-11 flex-1 text-[11px] font-bold disabled:opacity-30 ${
             track.armed ? "bg-red-600 text-white" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200"
           }`}
@@ -133,7 +133,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             min={-60}
             max={6}
             defaultValue={0}
-            label="Volume"
+            label="Volumen"
             unit=" dB"
             onChange={(volumeDb) => updateTrack(track.id, { volumeDb })}
           />
@@ -158,7 +158,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             }`}
           >
             <AutomationIcon className="h-4 w-4" />
-            Automation
+            Automatización
           </button>
           <button
             onClick={() => {
@@ -170,7 +170,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-neutral-800 text-xs font-medium text-neutral-300"
           >
             <SparkleIcon className="h-4 w-4" />
-            Ask AI
+            Preguntar a la IA
           </button>
         </div>
         <button
@@ -181,7 +181,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           disabled={isLiveInput}
           className="flex min-h-11 w-full items-center justify-center rounded bg-red-950 text-xs font-medium text-red-400 disabled:opacity-30"
         >
-          Delete track
+          Eliminar pista
         </button>
       </BottomSheet>
     </div>
