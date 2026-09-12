@@ -33,7 +33,7 @@ export function MixerPanel() {
               value={track.volumeDb}
               onChange={(e) => updateTrack(track.id, { volumeDb: Number(e.target.value) })}
               title={`Volume ${track.volumeDb.toFixed(1)} dB`}
-              className="h-24 w-6 accent-orange-500"
+              className="h-24 w-6 accent-cyan-500"
               style={{ writingMode: "vertical-lr", direction: "rtl" }}
             />
             <MeterBar analyser={engine.getTrackAnalyser(track.id)} />

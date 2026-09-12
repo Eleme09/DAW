@@ -47,7 +47,7 @@ export function VocalBeatMatchPanel() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden p-2 text-xs">
       <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <MatchIcon className="h-3.5 w-3.5 text-orange-400" />
+        <MatchIcon className="h-3.5 w-3.5 text-cyan-400" />
         Vocal Match
       </div>
       {samples.length < 2 ? (
@@ -88,7 +88,7 @@ export function VocalBeatMatchPanel() {
           <button
             onClick={compare}
             disabled={!vocalId || !beatId || comparing}
-            className="rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+            className="rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
             {comparing ? "Comparing…" : "Compare"}
           </button>

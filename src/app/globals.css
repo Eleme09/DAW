@@ -3,6 +3,26 @@
 :root {
   --background: #0a0a0a;
   --foreground: #ededed;
+
+  /* Design tokens (FASE 1) — surfaces are the existing neutral-950/900/800/700
+     scale, named so future components reference intent, not a raw shade.
+     Accent is cyan, not orange: a distinct identity for this DAW rather than
+     the generic orange most browser-audio tools default to. */
+  --surface-0: #0a0a0a; /* app background */
+  --surface-1: #171717; /* panels (neutral-900) */
+  --surface-2: #262626; /* cards/inputs (neutral-800) */
+  --surface-3: #404040; /* raised/hover (neutral-700) */
+  --border-default: #262626;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-disabled: #525252;
+  --accent: #22d3ee; /* cyan-400 */
+  --accent-strong: #06b6d4; /* cyan-500 */
+  --state-record: #dc2626;
+  --state-solo: #eab308;
+  --state-mute: #ef4444;
+  --state-clip: #ef4444;
+  --state-selected: #22d3ee;
 }
 
 @theme inline {

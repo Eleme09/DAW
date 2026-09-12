@@ -116,7 +116,7 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
       <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <BeatGridIcon className="h-3.5 w-3.5 text-orange-400" />
+        <BeatGridIcon className="h-3.5 w-3.5 text-cyan-400" />
         Beat Analyzer
       </div>
 
@@ -201,7 +201,7 @@ export function BeatAnalyzerPanel({ sample }: BeatAnalyzerPanelProps) {
             <button
               onClick={reconstructAsTracks}
               disabled={reconstructing}
-              className="w-full rounded bg-orange-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+              className="w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
             >
               {reconstructing ? "Reconstructing…" : "Reconstruct as Tracks"}
             </button>

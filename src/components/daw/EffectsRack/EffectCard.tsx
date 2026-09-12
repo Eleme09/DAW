@@ -49,7 +49,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         <button
           onClick={() => toggleEffectBypass(target, effect.id)}
           className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-            effect.bypassed ? "bg-neutral-700 text-neutral-400" : "bg-orange-500 text-black"
+            effect.bypassed ? "bg-neutral-700 text-neutral-400" : "bg-cyan-500 text-black"
           }`}
           title="Bypass"
         >

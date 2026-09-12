@@ -89,7 +89,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
       <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <WaveformIcon className="h-3.5 w-3.5 text-orange-400" />
+        <WaveformIcon className="h-3.5 w-3.5 text-cyan-400" />
         Denoise
       </div>
 
@@ -111,7 +111,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
               step={1}
               value={strength * 100}
               onChange={(e) => setStrength(Number(e.target.value) / 100)}
-              className="h-1 flex-1 accent-orange-500"
+              className="h-1 flex-1 accent-cyan-500"
             />
             <span className="w-10 shrink-0 text-right tabular-nums text-neutral-300">{Math.round(strength * 100)}%</span>
           </label>
@@ -126,7 +126,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
           <button
             onClick={applyDenoise}
             disabled={applying}
-            className="mt-2 w-full rounded bg-orange-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+            className="mt-2 w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
             {applying ? "Rendering…" : "Apply Denoise"}
           </button>

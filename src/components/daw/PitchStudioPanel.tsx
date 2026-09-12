@@ -111,7 +111,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
       <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <NoteIcon className="h-3.5 w-3.5 text-orange-400" />
+        <NoteIcon className="h-3.5 w-3.5 text-cyan-400" />
         Pitch Studio
       </div>
 
@@ -150,7 +150,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
                 key={mode}
                 onClick={() => applyMode(mode)}
                 className={`flex-1 rounded px-1 py-1 text-[10px] uppercase ${
-                  settings.mode === mode ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-400"
+                  settings.mode === mode ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
                 {mode === "hardTune" ? "Hard Tune" : mode === "modernTrap" ? "Modern Trap" : mode}
@@ -167,7 +167,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
               step={5}
               value={settings.retuneSpeedMs}
               onChange={(e) => setSettings((prev) => ({ ...prev, retuneSpeedMs: Number(e.target.value) }))}
-              className="h-1 flex-1 accent-orange-500"
+              className="h-1 flex-1 accent-cyan-500"
             />
             <span className="w-12 shrink-0 text-right tabular-nums text-neutral-300">{settings.retuneSpeedMs}ms</span>
           </label>
@@ -180,7 +180,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
               step={1}
               value={settings.humanizeAmount * 100}
               onChange={(e) => setSettings((prev) => ({ ...prev, humanizeAmount: Number(e.target.value) / 100 }))}
-              className="h-1 flex-1 accent-orange-500"
+              className="h-1 flex-1 accent-cyan-500"
             />
             <span className="w-12 shrink-0 text-right tabular-nums text-neutral-300">
               {Math.round(settings.humanizeAmount * 100)}%
@@ -195,7 +195,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
           <button
             onClick={applyCorrection}
             disabled={applying}
-            className="mt-2 w-full rounded bg-orange-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+            className="mt-2 w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
             {applying ? "Rendering…" : "Apply Pitch Correction"}
           </button>

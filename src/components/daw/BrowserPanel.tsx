@@ -47,7 +47,7 @@ export function BrowserPanel() {
             aria-current={tab === id}
             className={`flex flex-col items-center gap-1 border-b-2 px-1 py-2 text-[10px] font-medium leading-tight ${
               tab === id
-                ? "border-orange-500 bg-neutral-900 text-orange-400"
+                ? "border-cyan-500 bg-neutral-900 text-cyan-400"
                 : "border-transparent text-neutral-500 hover:bg-neutral-900/60 hover:text-neutral-300"
             }`}
           >
@@ -177,7 +177,7 @@ function AudioTab() {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={importing}
-          className="w-full rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+          className="w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
         >
           {importing ? "Importing…" : "Import Audio"}
         </button>
@@ -329,7 +329,7 @@ function ProjectsTab() {
               setError(err instanceof Error ? err.message : "Failed to save project");
             }
           }}
-          className="flex-1 rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400"
+          className="flex-1 rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
         >
           Save
         </button>

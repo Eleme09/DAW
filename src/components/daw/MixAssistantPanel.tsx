@@ -82,13 +82,13 @@ export function MixAssistantPanel() {
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-2 text-xs">
       <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <MixIcon className="h-3.5 w-3.5 text-orange-400" />
+        <MixIcon className="h-3.5 w-3.5 text-cyan-400" />
         AI Mix Assistant
       </div>
       <button
         onClick={runAnalysis}
         disabled={analyzing || !hasEnoughAudio}
-        className="w-full rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+        className="w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
       >
         {analyzing ? "Analyzing mix…" : "Analyze Mix"}
       </button>

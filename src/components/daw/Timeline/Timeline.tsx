@@ -49,7 +49,7 @@ export function Timeline() {
           ))}
 
           <div
-            className="pointer-events-none absolute top-0 z-10 w-px bg-orange-500"
+            className="pointer-events-none absolute top-0 z-10 w-px bg-cyan-500"
             style={{
               left: HEADER_WIDTH + currentTime * PIXELS_PER_SECOND,
               height: RULER_HEIGHT + project.tracks.length * 76,

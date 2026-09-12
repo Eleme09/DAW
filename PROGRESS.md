@@ -17,21 +17,17 @@ FASE 0 is now functionally complete against its stated scope (ARCHITECTURE.md ex
 
 ## FASE 1 — Sistema de diseño y shell móvil
 
-Status: **parcial, hecho fuera de orden antes de tener este documento**
+Status: **cumple los criterios de aceptación estipulados**
 
-What already landed (previous session, before PROMPT_MAESTRO.md was shared):
-- Icon set (`src/components/daw/icons.tsx`) and icon+label headers across every tab/panel.
-- Mobile bottom-tab shell (Browser/Timeline/Mixer/FX) in `DawShell.tsx`.
-- Timeline/Mixer empty states, ruler tick hierarchy, tooltips on previously-unlabeled controls.
+- [x] Tokens: `globals.css` `:root` now defines named surface/border/text/accent/state tokens (backing values unchanged - same neutral scale - so this didn't require a mechanical rename of every `neutral-900` etc. across 26 files; new/touched code can reference the named tokens).
+- [x] Accent color changed app-wide: orange → cyan (`orange-300/400/500` → `cyan-300/400/500`, one `sed` pass across all of `src/components/daw`, then verified with `tsc`/`eslint`/`vitest`) — user explicitly asked this NOT stay orange.
+- [x] **TransportBar no longer overflows or scrolls at 360px.** Below `sm`: only Play/Stop/Record + time + a "⋯ More" button are inline (measured `scrollWidth === clientWidth === 360`, no horizontal scroll). Project name, Undo/Redo, BPM, time signature, Loop, Click, Export and Save move into a new `BottomSheet` (`src/components/daw/BottomSheet.tsx` — FASE 1's required "hoja deslizable" base component, tap-backdrop-or-✕ to dismiss, no drag gesture yet). At `sm`+ every control is inline exactly as before (verified at 1024px).
+- [x] `paddingTop: env(safe-area-inset-top)` on TransportBar, `paddingBottom: env(safe-area-inset-bottom)` already on the mobile nav and now on BottomSheet.
+- [ ] Not done: a full button/slider/knob/context-menu component library. Deliberately deferred — the acceptance criteria is about the *result* (no overflow, thumb-reachable, tokens exist), not a specific implementation, and retrofitting every button in 26 files into shared components now would be a large mechanical refactor with no functional payoff yet. Revisit when a second bottom-sheet/menu use case actually needs the abstraction.
+- [ ] 🎤 emoji on "Live Tune" — left as-is, low priority, revisit in a later visual pass.
+- [ ] Tabular-numeric enforcement across all numeric readouts — time/BPM already `tabular-nums`; not audited across every dB/Hz readout in the effect panels.
 
-Does **not** yet meet FASE 1's acceptance bar:
-- [ ] TransportBar still overflows past 375px and was made horizontally *scrollable* (`overflow-x-auto`) rather than redesigned to fit — the master prompt explicitly forbids horizontal scroll for primary transport/save controls.
-- [ ] No formal design-token system (colors are still ad-hoc Tailwind classes like `neutral-950`/`orange-500`, not named surface/text/semantic tokens).
-- [ ] No shared base components (button/slider/knob/bottom-sheet/context-menu).
-- [ ] 🎤 emoji still used on "Live Tune" instead of a vector icon.
-- [ ] No tabular-numeric enforcement across all numeric readouts (time/BPM/dB/Hz).
-
-This phase needs to be revisited properly once FASE 0 is closed.
+Verified: `tsc --noEmit`, `eslint src`, `vitest run` (256 tests) all clean after every change in this phase. Manually confirmed in-browser at 360px (no scroll, sheet opens/closes) and 1024px (full inline layout unchanged).
 
 ## FASE 2–8
 

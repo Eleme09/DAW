@@ -48,7 +48,7 @@ export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps
                 key={tone}
                 onClick={() => onChange({ ...p, tone })}
                 className={`flex-1 rounded px-1 py-0.5 uppercase ${
-                  p.tone === tone ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-400"
+                  p.tone === tone ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
                 {tone}
@@ -101,7 +101,7 @@ export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps
                 key={sizeType}
                 onClick={() => onChange({ ...p, sizeType })}
                 className={`flex-1 rounded px-1 py-0.5 uppercase ${
-                  p.sizeType === sizeType ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-400"
+                  p.sizeType === sizeType ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
                 {sizeType}
@@ -223,7 +223,7 @@ function EqEditor({ bands, onChange }: { bands: EqBand[]; onChange: (bands: EqBa
               checked={band.enabled}
               onChange={(e) => updateBand(band.id, { enabled: e.target.checked })}
               title={band.enabled ? "Disable band" : "Enable band"}
-              className="accent-orange-500"
+              className="accent-cyan-500"
             />
             <select
               value={band.type}

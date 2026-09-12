@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav } from "@/lib/audio/exportProject";
-import { UndoIcon, RedoIcon } from "./icons";
+import { UndoIcon, RedoIcon, MoreIcon } from "./icons";
+import { BottomSheet } from "./BottomSheet";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -38,6 +39,7 @@ export function TransportBar() {
 
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const hasAudio = project.tracks.some((t) => t.clips.length > 0);
 
   async function handleExport() {
@@ -52,20 +54,84 @@ export function TransportBar() {
     }
   }
 
+  const bpmField = (
+    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Tempo, in beats per minute">
+      <label className="font-medium">BPM</label>
+      <input
+        type="number"
+        min={20}
+        max={300}
+        value={project.bpm}
+        onChange={(e) => setBpm(Number(e.target.value) || project.bpm)}
+        className="w-16 rounded bg-neutral-900 px-1 py-1 text-neutral-100 outline-none focus:ring-1 focus:ring-cyan-500"
+      />
+    </div>
+  );
+
+  const timeSigField = (
+    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Time signature">
+      <label className="font-medium">TIME</label>
+      <input
+        type="number"
+        min={1}
+        max={32}
+        value={project.timeSignature[0]}
+        onChange={(e) => setTimeSignature(Number(e.target.value) || 4, project.timeSignature[1])}
+        className="w-10 rounded bg-neutral-900 px-1 py-1 text-center text-neutral-100 outline-none"
+      />
+      <span>/</span>
+      <input
+        type="number"
+        min={1}
+        max={32}
+        value={project.timeSignature[1]}
+        onChange={(e) => setTimeSignature(project.timeSignature[0], Number(e.target.value) || 4)}
+        className="w-10 rounded bg-neutral-900 px-1 py-1 text-center text-neutral-100 outline-none"
+      />
+    </div>
+  );
+
+  const loopButton = (
+    <button
+      onClick={() => setLoop({ enabled: !project.loop.enabled })}
+      title="Loop playback between the loop markers"
+      className={`rounded px-2 py-1 text-xs font-medium ${
+        project.loop.enabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+      }`}
+    >
+      LOOP
+    </button>
+  );
+
+  const clickButton = (
+    <button
+      onClick={toggleMetronome}
+      title="Metronome click while playing/recording"
+      className={`rounded px-2 py-1 text-xs font-medium ${
+        project.metronomeEnabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
+      }`}
+    >
+      CLICK
+    </button>
+  );
+
   return (
-    <div className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b border-neutral-800 bg-neutral-950 px-3 text-sm text-neutral-200 [&>*]:shrink-0 sm:gap-4 sm:px-4">
+    <div
+      className="flex h-14 shrink-0 items-center gap-2 border-b border-neutral-800 bg-neutral-950 px-3 text-sm text-neutral-200 sm:gap-3 sm:px-4"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <input
         value={project.name}
         onChange={(e) => renameProject(e.target.value)}
-        className="w-28 rounded bg-neutral-900 px-2 py-1 font-medium outline-none focus:ring-1 focus:ring-orange-500 sm:w-40"
+        className="hidden w-32 shrink-0 rounded bg-neutral-900 px-2 py-1 font-medium outline-none focus:ring-1 focus:ring-cyan-500 sm:block md:w-40"
       />
 
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <button
           onClick={() => (isPlaying ? pause() : play())}
           disabled={isRecording}
           title={isPlaying ? "Pause" : "Play"}
-          className="flex h-10 w-10 items-center justify-center rounded bg-orange-500 font-bold text-black hover:bg-orange-400 active:bg-orange-400 disabled:opacity-40 sm:h-9 sm:w-9"
+          className="flex h-10 w-10 items-center justify-center rounded bg-cyan-500 font-bold text-black hover:bg-cyan-400 active:bg-cyan-400 disabled:opacity-40 sm:h-9 sm:w-9"
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying && !isRecording ? "❚❚" : "▶"}
@@ -93,12 +159,12 @@ export function TransportBar() {
         </button>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="hidden shrink-0 items-center gap-1 sm:flex">
         <button
           onClick={undo}
           disabled={!canUndo}
           title="Undo (Ctrl+Z)"
-          className="flex h-10 w-10 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-30 sm:h-9 sm:w-9"
+          className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
         >
           <UndoIcon className="h-4 w-4" />
         </button>
@@ -106,85 +172,33 @@ export function TransportBar() {
           onClick={redo}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
-          className="flex h-10 w-10 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-30 sm:h-9 sm:w-9"
+          className="flex h-9 w-9 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
         >
           <RedoIcon className="h-4 w-4" />
         </button>
       </div>
 
-      <span className="font-mono text-base tabular-nums text-neutral-100" title="Playhead position">
+      <span className="shrink-0 font-mono text-sm tabular-nums text-neutral-100 sm:text-base" title="Playhead position">
         {formatTime(currentTime)}
       </span>
       {recordingError && (
-        <span className="max-w-xs truncate text-xs text-red-400" title={recordingError}>
+        <span className="hidden max-w-xs truncate text-xs text-red-400 sm:inline" title={recordingError}>
           Mic error: {recordingError}
         </span>
       )}
 
-      <span className="h-6 w-px bg-neutral-800" />
-
-      <div className="flex items-center gap-1 text-xs text-neutral-400" title="Tempo, in beats per minute">
-        <label className="font-medium">BPM</label>
-        <input
-          type="number"
-          min={20}
-          max={300}
-          value={project.bpm}
-          onChange={(e) => setBpm(Number(e.target.value) || project.bpm)}
-          className="w-16 rounded bg-neutral-900 px-1 py-1 text-neutral-100 outline-none focus:ring-1 focus:ring-orange-500"
-        />
-      </div>
-
-      <div className="flex items-center gap-1 text-xs text-neutral-400" title="Time signature">
-        <label className="font-medium">TIME</label>
-        <input
-          type="number"
-          min={1}
-          max={32}
-          value={project.timeSignature[0]}
-          onChange={(e) => setTimeSignature(Number(e.target.value) || 4, project.timeSignature[1])}
-          className="w-10 rounded bg-neutral-900 px-1 py-1 text-center text-neutral-100 outline-none"
-        />
-        <span>/</span>
-        <input
-          type="number"
-          min={1}
-          max={32}
-          value={project.timeSignature[1]}
-          onChange={(e) => setTimeSignature(project.timeSignature[0], Number(e.target.value) || 4)}
-          className="w-10 rounded bg-neutral-900 px-1 py-1 text-center text-neutral-100 outline-none"
-        />
-      </div>
-
-      <span className="h-6 w-px bg-neutral-800" />
-
-      <button
-        onClick={() => setLoop({ enabled: !project.loop.enabled })}
-        title="Loop playback between the loop markers"
-        className={`rounded px-2 py-1 text-xs font-medium ${
-          project.loop.enabled ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-300"
-        }`}
-      >
-        LOOP
-      </button>
-
-      <button
-        onClick={toggleMetronome}
-        title="Metronome click while playing/recording"
-        className={`rounded px-2 py-1 text-xs font-medium ${
-          project.metronomeEnabled ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-300"
-        }`}
-      >
-        CLICK
-      </button>
+      <span className="hidden h-6 w-px shrink-0 bg-neutral-800 sm:block" />
+      <div className="hidden shrink-0 sm:block">{bpmField}</div>
+      <div className="hidden shrink-0 sm:block">{timeSigField}</div>
+      <span className="hidden h-6 w-px shrink-0 bg-neutral-800 sm:block" />
+      <div className="hidden shrink-0 sm:block">{loopButton}</div>
+      <div className="hidden shrink-0 sm:block">{clickButton}</div>
 
       {exportError && (
-        <span className="max-w-xs truncate text-xs text-red-400" title={exportError}>
-          Export error: {exportError}
-        </span>
+        <span className="hidden max-w-xs truncate text-xs text-red-400 sm:inline">Export error: {exportError}</span>
       )}
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
         <button
           onClick={handleExport}
           disabled={isExporting || isRecording || !hasAudio}
@@ -200,6 +214,71 @@ export function TransportBar() {
           Save Project
         </button>
       </div>
+
+      <button
+        onClick={() => setMoreOpen(true)}
+        title="More transport controls"
+        aria-label="More transport controls"
+        className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 sm:hidden"
+      >
+        <MoreIcon className="h-5 w-5" />
+      </button>
+
+      <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Transport">
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Project name</span>
+          <input
+            value={project.name}
+            onChange={(e) => renameProject(e.target.value)}
+            className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-100 outline-none focus:ring-1 focus:ring-cyan-500"
+          />
+        </label>
+
+        <div className="flex gap-2">
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-30"
+          >
+            <UndoIcon className="h-4 w-4" /> Undo
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-30"
+          >
+            <RedoIcon className="h-4 w-4" /> Redo
+          </button>
+        </div>
+
+        <div className="flex gap-4">
+          {bpmField}
+          {timeSigField}
+        </div>
+
+        <div className="flex gap-2">
+          {loopButton}
+          {clickButton}
+        </div>
+
+        {(recordingError || exportError) && (
+          <p className="text-xs text-red-400">{recordingError || exportError}</p>
+        )}
+
+        <button
+          onClick={handleExport}
+          disabled={isExporting || isRecording || !hasAudio}
+          className="h-11 w-full rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-40"
+        >
+          {isExporting ? "Exporting…" : hasAudio ? "Export mix as WAV" : "Add audio to the timeline first"}
+        </button>
+        <button
+          onClick={persist}
+          className="h-11 w-full rounded bg-cyan-500 text-sm font-semibold text-black"
+        >
+          Save Project
+        </button>
+      </BottomSheet>
     </div>
   );
 }

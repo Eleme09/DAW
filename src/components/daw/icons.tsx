@@ -126,6 +126,16 @@ export function RedoIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function MoreIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props} fill="currentColor" stroke="none">
+      <circle cx="5" cy="12" r="1.75" />
+      <circle cx="12" cy="12" r="1.75" />
+      <circle cx="19" cy="12" r="1.75" />
+    </svg>
+  );
+}
+
 export function BusIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

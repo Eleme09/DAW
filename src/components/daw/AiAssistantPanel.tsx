@@ -67,7 +67,7 @@ export function AiAssistantPanel() {
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-2 text-xs">
       <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <SparkleIcon className="h-3.5 w-3.5 text-orange-400" />
+        <SparkleIcon className="h-3.5 w-3.5 text-cyan-400" />
         AI Assistant
       </div>
       <p className="mb-2 text-neutral-500">
@@ -84,12 +84,12 @@ export function AiAssistantPanel() {
             if (e.key === "Enter") send();
           }}
           placeholder="Ask for a change…"
-          className="flex-1 rounded bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none focus:ring-1 focus:ring-orange-500"
+          className="flex-1 rounded bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none focus:ring-1 focus:ring-cyan-500"
         />
         <button
           onClick={send}
           disabled={sending || !message.trim()}
-          className="rounded bg-orange-500 px-3 py-1.5 font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+          className="rounded bg-cyan-500 px-3 py-1.5 font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
         >
           {sending ? "…" : "Send"}
         </button>

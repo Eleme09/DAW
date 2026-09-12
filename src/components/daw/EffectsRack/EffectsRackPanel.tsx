@@ -26,7 +26,7 @@ export function EffectsRackPanel() {
       <div className="flex items-center gap-1.5 border-b border-neutral-800 px-3 py-2 text-xs font-semibold text-neutral-300">
         <span className="text-neutral-500">Effects</span>
         <span className="text-neutral-700">/</span>
-        <span className="truncate text-orange-300">{label}</span>
+        <span className="truncate text-cyan-300">{label}</span>
       </div>
 
       <div className="flex border-b border-neutral-800 text-xs font-medium">
@@ -35,7 +35,7 @@ export function EffectsRackPanel() {
           title="Effects on the selected track only"
           className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
             mode === "track"
-              ? "border-orange-500 bg-neutral-900 text-orange-400"
+              ? "border-cyan-500 bg-neutral-900 text-cyan-400"
               : "border-transparent text-neutral-500 hover:text-neutral-300"
           }`}
         >
@@ -47,7 +47,7 @@ export function EffectsRackPanel() {
           title="Effects on the master bus, applied to the full mix"
           className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
             mode === "master"
-              ? "border-orange-500 bg-neutral-900 text-orange-400"
+              ? "border-cyan-500 bg-neutral-900 text-cyan-400"
               : "border-transparent text-neutral-500 hover:text-neutral-300"
           }`}
         >
@@ -80,7 +80,7 @@ export function EffectsRackPanel() {
           <div className="relative border-t border-neutral-800 p-2">
             <button
               onClick={() => setShowAddMenu((v) => !v)}
-              className="w-full rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400"
+              className="w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
             >
               + Add Effect
             </button>

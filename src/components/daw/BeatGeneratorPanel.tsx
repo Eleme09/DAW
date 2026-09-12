@@ -102,7 +102,7 @@ export function BeatGeneratorPanel() {
   return (
     <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2 text-xs">
       <div className="flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <BeatGridIcon className="h-3.5 w-3.5 text-orange-400" />
+        <BeatGridIcon className="h-3.5 w-3.5 text-cyan-400" />
         Beat Generator
       </div>
       <p className="text-neutral-500">
@@ -185,7 +185,7 @@ export function BeatGeneratorPanel() {
       <button
         onClick={handleGenerate}
         disabled={generating}
-        className="mt-1 rounded bg-orange-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+        className="mt-1 rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
       >
         {generating ? "Generating…" : "Generate Beat"}
       </button>

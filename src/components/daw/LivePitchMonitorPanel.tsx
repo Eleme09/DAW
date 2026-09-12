@@ -121,7 +121,7 @@ export function LivePitchMonitorPanel() {
                 key={m}
                 onClick={() => applyMode(m)}
                 className={`rounded px-1.5 py-1 text-[10px] uppercase ${
-                  mode === m ? "bg-orange-500 text-black" : "bg-neutral-800 text-neutral-400"
+                  mode === m ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
                 {m === "hardTune" ? "Hard" : m === "modernTrap" ? "Trap" : m}
@@ -133,7 +133,7 @@ export function LivePitchMonitorPanel() {
             <span className="text-neutral-500">Sung</span>
             <span className="text-neutral-200">{hzToNoteLabel(live.detectedHz)}</span>
             <span className="text-neutral-600">→</span>
-            <span className="text-orange-400">{hzToNoteLabel(live.targetHz)}</span>
+            <span className="text-cyan-400">{hzToNoteLabel(live.targetHz)}</span>
           </div>
 
           <span className="text-red-400" title="The mic feeds directly to your speakers/headphones so you can hear yourself corrected in real time.">

@@ -29,7 +29,7 @@ export function VocalAnalysisPanel({ result, onEnhance, enhancing }: VocalAnalys
   return (
     <div className="mt-1 rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px]">
       <div className="mb-1.5 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 font-semibold uppercase tracking-wide text-neutral-400">
-        <WaveformIcon className="h-3.5 w-3.5 text-orange-400" />
+        <WaveformIcon className="h-3.5 w-3.5 text-cyan-400" />
         Vocal Analysis
       </div>
       <div className="space-y-0.5">
@@ -61,7 +61,7 @@ export function VocalAnalysisPanel({ result, onEnhance, enhancing }: VocalAnalys
         <button
           onClick={onEnhance}
           disabled={enhancing}
-          className="mt-2 w-full rounded bg-orange-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-orange-400 disabled:opacity-50"
+          className="mt-2 w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
         >
           {enhancing ? "Applying…" : "Enhance This Recording"}
         </button>

@@ -24,7 +24,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
       onClick={() => selectTrack(track.id)}
       style={{ width: HEADER_WIDTH, height: TRACK_HEIGHT }}
       className={`sticky left-0 z-10 flex shrink-0 flex-col justify-between border-b border-r border-neutral-800 bg-neutral-950 p-2 ${
-        selected ? "ring-1 ring-inset ring-orange-500" : ""
+        selected ? "ring-1 ring-inset ring-cyan-500" : ""
       } ${isLiveInput ? "ring-1 ring-inset ring-red-500" : ""}`}
     >
       <div className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           value={track.volumeDb}
           onClick={(e) => e.stopPropagation()}
           onChange={(e) => updateTrack(track.id, { volumeDb: Number(e.target.value) })}
-          className="w-full accent-orange-500"
+          className="w-full accent-cyan-500"
         />
       )}
 

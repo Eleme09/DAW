@@ -22,7 +22,7 @@ export function ParamSlider({ label, value, min, max, step, unit = "", decimals 
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1 flex-1 accent-orange-500"
+        className="h-1 flex-1 accent-cyan-500"
       />
       <span className="w-14 shrink-0 text-right tabular-nums text-neutral-300">
         {value.toFixed(decimals)}
