@@ -167,7 +167,7 @@ export function MeterBar({ analyser, vertical = true }: MeterBarProps) {
     <canvas
       ref={canvasRef}
       onClick={resetClip}
-      title="Peak/RMS meter - click the dot to reset the clip indicator"
+      title="Medidor de pico/RMS - haz clic en el punto para reiniciar el indicador de clip"
       className={vertical ? "h-full w-3 cursor-pointer rounded-sm" : "h-full w-full cursor-pointer rounded-sm"}
     />
   );

@@ -23,8 +23,8 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           <span className="text-sm font-semibold text-neutral-200">{title}</span>
           <button
             onClick={onClose}
-            aria-label="Close"
-            title="Close"
+            aria-label="Cerrar"
+            title="Cerrar"
             className="flex h-11 w-11 items-center justify-center text-neutral-500 hover:text-neutral-300"
           >
             ✕
