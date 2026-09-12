@@ -3,7 +3,7 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { listProjects, loadProject as loadProjectFromDisk, saveProject } from "@/lib/storage/projectStore";
 import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset } from "@/lib/storage/sampleIndex";
-import { hydrateProjectSamples } from "@/lib/audio/sampleLoader";
+import { collectProjectSampleIds, hydrateProjectSamples } from "@/lib/audio/sampleLoader";
 import {
   createEmptyProject,
   createDefaultAutomation,
@@ -876,8 +876,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const project = await loadProjectFromDisk(id);
       if (!project) return false;
       get().loadProject(project);
-      const sampleIds = Array.from(new Set(project.tracks.flatMap((t) => t.clips.map((c) => c.sampleId))));
-      await hydrateProjectSamples(sampleIds);
+      await hydrateProjectSamples(collectProjectSampleIds(project));
       return true;
     },
     recoverLastProject: async () => {

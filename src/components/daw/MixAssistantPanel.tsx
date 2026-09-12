@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
-import { hydrateProjectSamples } from "@/lib/audio/sampleLoader";
+import { collectProjectSampleIds, hydrateProjectSamples } from "@/lib/audio/sampleLoader";
 import { analyzeMix } from "@/audio-engine/analysis/mixAnalysis";
 import { PLATFORM_LABELS, suggestMasteringGain, type MasteringPlatform } from "@/audio-engine/masteringTargets";
 import { createEffectInstance } from "@/types/effects";
@@ -38,7 +38,7 @@ export function MixAssistantPanel() {
   const setEffectChain = useProjectStore((s) => s.setEffectChain);
   const updateTrack = useProjectStore((s) => s.updateTrack);
 
-  const hasEnoughAudio = project.tracks.filter((t) => t.clips.length > 0).length > 0;
+  const hasEnoughAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
 
   async function runAnalysis() {
     setError(null);
@@ -49,10 +49,7 @@ export function MixAssistantPanel() {
     setAiTurn(null);
     setAiAppliedIds(new Set());
     try {
-      const sampleIds = Array.from(
-        new Set(project.tracks.flatMap((t) => t.clips.map((c) => c.sampleId)))
-      );
-      await hydrateProjectSamples(sampleIds);
+      await hydrateProjectSamples(collectProjectSampleIds(project));
       const engine = getAudioEngine();
       const analysis = await analyzeMix(project, (id) => engine.getBuffer(id));
       setResult(analysis);

@@ -138,6 +138,29 @@ Auditoría contra el prompt maestro punto por punto:
   - Verificado en navegador (tab y dev server completamente limpios): generó 4 tracks nuevos, reproducción real confirmada por medidor (83-90% de señal en drums/bass/master), sin errores de consola.
   - Sigue pendiente si el usuario quiere samples reales: aportar él mismo archivos con licencia verificable (ej. Freesound.org con CC0/CC-BY explícito por archivo, o grabaciones propias) para integrar un sampler real.
 
-## FASE 8
+## FASE 8 — Exportación, rendimiento y pulido final
 
-Status: **no iniciada**
+Status: **exportación corregida y ampliada; PWA parcial (instalable, sin offline real); pendientes de dispositivo real no aplicables desde aquí**
+
+Auditoría antes de tocar nada — encontró un problema serio, no cosmético: el pipeline de exportación/análisis (`bounce.ts`, usado tanto por "Export to WAV" como por el Mix Assistant) nunca se actualizó junto con el trabajo de FASE 3-6 de esta misma sesión. Un proyecto que usara tracks de instrumento, tomas silenciadas (comping), automatización o el fader de master se exportaría **incorrectamente, en silencio, sin ningún error** — exactamente el tipo de bug que las reglas de honestidad del prompt maestro piden evitar.
+
+- [x] **`bounce.ts` corregido para igualar exactamente lo que se escucha en vivo**:
+  - No renderizaba tracks de instrumento en absoluto (`for (const clip of track.clips)` ignoraba `track.midiClips` por completo) — un track de synth/sampler se exportaba como silencio total. Se extrajo la lógica de voz (`playVoice` de `AudioEngine`) a un módulo compartido nuevo (`audio-engine/synthVoice.ts`, `scheduleVoice`) usable tanto por el motor en vivo como por el render offline, para que ambos no puedan divergir.
+  - No excluía tomas silenciadas de comping (`clip.muted`) — una toma inactiva sonaría igual que la activa en la exportación.
+  - No aplicaba curvas de automatización (volumen/pan) — se extrajo `scheduleParamAutomation` a `lib/automation/automation.ts` (compartido con `AudioEngine`) y ahora se aplica también offline, anclado en t=0.
+  - No aplicaba el trim de volumen de master (`masterVolumeDb`) — el master fader se ignoraba por completo al exportar.
+  - `projectDurationSec` no contaba la duración de los `midiClips`, así que un proyecto solo de instrumentos se exportaba truncado a los 3s de cola.
+  - El botón "Export" además aparecía deshabilitado ("Add audio to the timeline first") para un proyecto compuesto solo por tracks de instrumento, y lo mismo en `MixAssistantPanel`/`mixAnalysis.ts` (que además excluían esos tracks del análisis por-track de masking/gain-staging aunque el mix completo sí los incluyera).
+  - Se encontró y corrigió un cuarto problema relacionado: la hidratación de samples antes de exportar/analizar/abrir un proyecto (3 sitios) solo recolectaba `sampleId` de `AudioClip`, nunca el sample asignado a un instrumento Sampler — se extrajo `collectProjectSampleIds()` a `lib/audio/sampleLoader.ts` como único punto de verdad, usado en los 4 lugares.
+  - Verificado en navegador capturando el blob real exportado (interceptando `URL.createObjectURL`) y decodificándolo: audio real presente donde debía estar la nota del synth, duración exacta (`4.71428s` = 1 compás a 140bpm + 3s de cola, coincide al detalle de redondeo de muestreo), y magnitud de pico consistente con el trim de master de -12dB aplicado.
+- [x] **Export de stems** (nuevo): botón "Export Stems" — renderiza cada track con audio (clips o patrón MIDI) solo por turno a través de `bounceProject` (mismo truco que ya usaba `mixAnalysis.ts` para medir la contribución de un track) y descarga un WAV por track, escalonado 300ms entre descargas. Verificado con 2 tracks de instrumento → 2 archivos WAV reales capturados.
+- [x] **PWA parcial**: `public/manifest.json` + ícono propio (`public/icon.svg`, SVG a mano ya que no puedo generar imágenes PNG) + metadata de Next (`manifest`, `appleWebApp`, `viewport.themeColor`) — la app ya es instalable a la pantalla de inicio. **Explícitamente NO incluye** un service worker de verdad, así que "funcionamiento offline" (lo que pide el prompt maestro) sigue sin cumplirse — un service worker mal diseñado que sirva JS desactualizado tras un deploy es peor que no tener ninguno, y diseñar una estrategia de cache correcta para una app Next.js que se actualiza seguido es un trabajo aparte, no algo para apurar.
+- [x] **Estado vacío con propuesta de acción**: el mensaje pasivo "No tracks yet" se reemplazó por tres botones reales (+ Add Track, + Add Instrument, Generate a Beat) que hacen algo con un tap, en vez de solo indicar qué hacer en otro lado.
+
+Verificado: `tsc`/`eslint`/`vitest` (289 tests) limpios en cada paso. En navegador: exportación real con audio/duración/master-trim confirmados por decodificación directa del blob, stems reales para 2 tracks, manifest+ícono resuelven con 200, estado vacío funcional en escritorio y móvil (375px, sin overflow).
+
+Deliberadamente diferido (no a medias):
+- [ ] **MP3 export** — Web Audio no tiene encoder de MP3 nativo; se necesita agregar una dependencia nueva (ej. `lamejs`) para esto, una decisión que no tomé unilateralmente en esta pasada. Queda como próximo paso si se quiere.
+- [ ] **Service worker / offline real** — ver nota arriba; necesita una estrategia de cache diseñada a propósito, no uno genérico.
+- [ ] **Pruebas en dispositivo real (Android/iOS), medición de fps y CPU de audio** — no soy capaz de hacer esto desde este entorno (no tengo acceso a hardware físico); necesita que el usuario lo pruebe en sus propios dispositivos.
+- [ ] **Gestión de memoria / descarga de buffers no usados** — el cache de buffers decodificados (`AudioEngine.bufferCache`) crece sin límite ni desalojo; no es un problema con el uso típico de un proyecto personal, pero no hay techo. Se deja para cuando haga falta en la práctica.

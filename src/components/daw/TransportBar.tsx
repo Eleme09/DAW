@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
-import { exportProjectToWav } from "@/lib/audio/exportProject";
+import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
 import { UndoIcon, RedoIcon, MoreIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 
@@ -38,9 +38,10 @@ export function TransportBar() {
   const canRedo = useProjectStore((s) => s.future.length > 0);
 
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingStems, setIsExportingStems] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const hasAudio = project.tracks.some((t) => t.clips.length > 0);
+  const hasAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
 
   async function handleExport() {
     setExportError(null);
@@ -51,6 +52,18 @@ export function TransportBar() {
       setExportError(err instanceof Error ? err.message : "Export failed");
     } finally {
       setIsExporting(false);
+    }
+  }
+
+  async function handleExportStems() {
+    setExportError(null);
+    setIsExportingStems(true);
+    try {
+      await exportStemsToWav(project);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Stem export failed");
+    } finally {
+      setIsExportingStems(false);
     }
   }
 
@@ -201,11 +214,19 @@ export function TransportBar() {
       <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
         <button
           onClick={handleExport}
-          disabled={isExporting || isRecording || !hasAudio}
+          disabled={isExporting || isExportingStems || isRecording || !hasAudio}
           title={hasAudio ? "Render the full mix and download as WAV" : "Add audio to the timeline first"}
           className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
         >
           {isExporting ? "Exporting…" : "Export"}
+        </button>
+        <button
+          onClick={handleExportStems}
+          disabled={isExporting || isExportingStems || isRecording || !hasAudio}
+          title={hasAudio ? "Download each track as its own WAV file" : "Add audio to the timeline first"}
+          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+        >
+          {isExportingStems ? "Exporting…" : "Export Stems"}
         </button>
         <button
           onClick={persist}
@@ -267,10 +288,17 @@ export function TransportBar() {
 
         <button
           onClick={handleExport}
-          disabled={isExporting || isRecording || !hasAudio}
+          disabled={isExporting || isExportingStems || isRecording || !hasAudio}
           className="h-11 w-full rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-40"
         >
           {isExporting ? "Exporting…" : hasAudio ? "Export mix as WAV" : "Add audio to the timeline first"}
+        </button>
+        <button
+          onClick={handleExportStems}
+          disabled={isExporting || isExportingStems || isRecording || !hasAudio}
+          className="h-11 w-full rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-40"
+        >
+          {isExportingStems ? "Exporting…" : "Export stems (one WAV per track)"}
         </button>
         <button
           onClick={persist}

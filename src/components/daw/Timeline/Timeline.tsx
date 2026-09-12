@@ -19,6 +19,13 @@ export function Timeline() {
   const addPatternAtPlayhead = useProjectStore((s) => s.addPatternAtPlayhead);
   const snapResolution = useProjectStore((s) => s.snapResolution);
   const setSnapResolution = useProjectStore((s) => s.setSnapResolution);
+  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
+  const setMobileView = useProjectStore((s) => s.setMobileView);
+
+  function goToBeatGen() {
+    setBrowserTab("generate");
+    setMobileView("browser");
+  }
 
   const selectedTrack = project.tracks.find((t) => t.id === selectedTrackId);
   const canAddPattern = selectedTrack?.type === "instrument";
@@ -35,11 +42,33 @@ export function Timeline() {
     <div className="flex flex-1 flex-col overflow-hidden bg-neutral-950">
       <div className="relative flex-1 overflow-auto">
         {project.tracks.length === 0 && (
-          <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-1 text-center">
-            <p className="text-sm font-medium text-neutral-500">No tracks yet</p>
-            <p className="text-xs text-neutral-700">
-              Import a sample from the Samples tab, or click + Add Track below
-            </p>
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
+            <div>
+              <p className="text-sm font-medium text-neutral-400">No tracks yet</p>
+              <p className="text-xs text-neutral-600">Start with one of these, or import a sample from the Samples tab</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                onClick={() => addTrack()}
+                className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+              >
+                + Add Track
+              </button>
+              <button
+                onClick={() => addTrack(undefined, "instrument")}
+                title="A track with a synth/sampler instrument, playable from programmed patterns"
+                className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+              >
+                + Add Instrument
+              </button>
+              <button
+                onClick={goToBeatGen}
+                title="Generate a full drum/bass/chords/melody sketch to start from"
+                className="rounded bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
+              >
+                Generate a Beat
+              </button>
+            </div>
           </div>
         )}
         <div className="relative" style={{ width: HEADER_WIDTH + contentWidth }}>

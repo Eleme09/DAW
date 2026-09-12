@@ -52,7 +52,7 @@ export async function analyzeMix(
   getBuffer: (sampleId: string) => AudioBuffer | undefined,
   options: BounceOptions = {}
 ): Promise<MixAnalysisResult> {
-  const tracksWithClips = project.tracks.filter((t) => t.clips.length > 0);
+  const tracksWithClips = project.tracks.filter((t) => t.clips.length > 0 || t.midiClips.length > 0);
 
   const fullMix = await bounceProject(project, getBuffer, options);
   const fullMixMono = mixToMono(fullMix);

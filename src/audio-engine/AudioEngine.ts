@@ -1,9 +1,9 @@
 import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
-import { midiToFrequency } from "./pitch/noteUtils";
-import { interpolateAutomation } from "@/lib/automation/automation";
-import type { AudioClip, AutomationLane, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
+import { scheduleVoice } from "./synthVoice";
+import { scheduleParamAutomation } from "@/lib/automation/automation";
+import type { AudioClip, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
 import type { LivePitchInfo, LivePitchMonitorSettings } from "@/types/pitch";
 
@@ -30,7 +30,6 @@ interface ScheduledSource {
    * clip or a sampler voice - both are AudioScheduledSourceNode, which is
    * all `stopSources()` needs. */
   source: AudioScheduledSourceNode;
-  envelope: GainNode;
   clipId: string;
 }
 
@@ -371,25 +370,8 @@ export class AudioEngine {
     for (const track of tracks) {
       const graph = this.tracks.get(track.id);
       if (!graph) continue;
-      this.scheduleParamAutomation(track.automation.volume, graph.volume.gain, fromTime, ctxStartTime, dbToGain);
-      this.scheduleParamAutomation(track.automation.pan, graph.pan.pan, fromTime, ctxStartTime, (v) => v);
-    }
-  }
-
-  private scheduleParamAutomation(
-    lane: AutomationLane,
-    param: AudioParam,
-    fromTime: number,
-    ctxStartTime: number,
-    toParamValue: (value: number) => number
-  ): void {
-    if (!lane.enabled || lane.points.length === 0) return;
-    const points = [...lane.points].sort((a, b) => a.time - b.time);
-    param.cancelScheduledValues(ctxStartTime);
-    param.setValueAtTime(toParamValue(interpolateAutomation(points, fromTime)), ctxStartTime);
-    for (const p of points) {
-      if (p.time <= fromTime) continue;
-      param.linearRampToValueAtTime(toParamValue(p.value), ctxStartTime + (p.time - fromTime));
+      scheduleParamAutomation(track.automation.volume, graph.volume.gain, fromTime, ctxStartTime, dbToGain);
+      scheduleParamAutomation(track.automation.pan, graph.pan.pan, fromTime, ctxStartTime, (v) => v);
     }
   }
 
@@ -420,57 +402,16 @@ export class AudioEngine {
   private playVoice(instrument: Instrument, note: Note, destination: AudioNode, when: number): void {
     const ctx = this.ctx;
     if (!ctx) return;
-
-    const peak = Math.max(0.0001, Math.min(1, note.velocity));
-    const attack = Math.max(0.001, instrument.attack);
-    const decay = Math.max(0, instrument.decay);
-    const sustainLevel = peak * Math.max(0, Math.min(1, instrument.sustain));
-    const release = Math.max(0.001, instrument.release);
-
-    const attackEnd = when + attack;
-    const decayEnd = attackEnd + decay;
-    const noteOff = Math.max(decayEnd, when + note.duration);
-    const releaseEnd = noteOff + release;
-
-    const envelope = ctx.createGain();
-    envelope.connect(destination);
-    envelope.gain.setValueAtTime(0, when);
-    envelope.gain.linearRampToValueAtTime(peak, attackEnd);
-    envelope.gain.linearRampToValueAtTime(sustainLevel, decayEnd);
-    envelope.gain.setValueAtTime(sustainLevel, noteOff);
-    envelope.gain.linearRampToValueAtTime(0, releaseEnd);
-
-    if (instrument.type === "synth") {
-      const osc = ctx.createOscillator();
-      osc.type = instrument.waveform;
-      osc.frequency.value = midiToFrequency(note.pitch);
-      osc.connect(envelope);
-      osc.start(when);
-      osc.stop(releaseEnd + 0.05);
-      osc.onended = () => {
-        osc.disconnect();
-        this.scheduled = this.scheduled.filter((s) => s.source !== osc);
-      };
-      this.scheduled.push({ source: osc, envelope, clipId: "voice" });
-      return;
-    }
-
-    const buffer = instrument.sampleId ? this.bufferCache.get(instrument.sampleId) : undefined;
-    if (!buffer) {
-      envelope.disconnect();
-      return;
-    }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.playbackRate.value = Math.pow(2, (note.pitch - instrument.rootNote) / 12);
-    source.connect(envelope);
-    source.start(when);
-    source.stop(releaseEnd + 0.05);
+    const source = scheduleVoice(ctx, instrument, note, destination, when, (id) => this.bufferCache.get(id));
+    if (!source) return;
+    // scheduleVoice already wired the source through its own envelope into
+    // `destination` - tracking just the source here is enough for
+    // stopSources() (pause/seek cleanup) to stop and disconnect it.
     source.onended = () => {
       source.disconnect();
       this.scheduled = this.scheduled.filter((s) => s.source !== source);
     };
-    this.scheduled.push({ source, envelope, clipId: "voice" });
+    this.scheduled.push({ source, clipId: "voice" });
   }
 
   /** Instant one-off preview of a pitch through a track's instrument,
@@ -514,7 +455,7 @@ export class AudioEngine {
     this.applyFades(envelope.gain, clip, when, startsInFuture ? 0 : offsetIntoClip);
 
     source.start(when, sourceOffset, playDuration);
-    this.scheduled.push({ source, envelope, clipId: clip.id });
+    this.scheduled.push({ source, clipId: clip.id });
     source.onended = () => {
       this.scheduled = this.scheduled.filter((s) => s.source !== source);
     };
