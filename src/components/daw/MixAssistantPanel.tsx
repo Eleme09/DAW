@@ -120,7 +120,7 @@ export function MixAssistantPanel() {
         },
       };
       const turn = await httpAssistantProvider.sendCommand(
-        "Give me a professional read of this mix and propose concrete fixes.",
+        "Dame una lectura profesional de esta mezcla y propón arreglos concretos.",
         context
       );
       setAiTurn(turn);
@@ -155,26 +155,26 @@ export function MixAssistantPanel() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-2 text-xs">
-      <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <MixIcon className="h-3.5 w-3.5 text-cyan-400" />
+      <div className="mb-2 flex items-center gap-1.5 border-b border-line pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-bone-2">
+        <MixIcon className="h-3.5 w-3.5 text-bone" />
         Asistente de mezcla IA
       </div>
       <button
         onClick={runAnalysis}
         disabled={analyzing || !hasEnoughAudio}
-        className="w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+        className="w-full rounded bg-bone px-2 py-1.5 text-xs font-semibold text-ink hover:opacity-90 disabled:opacity-50"
       >
         {analyzing ? "Analizando mezcla…" : "Analizar mezcla"}
       </button>
       {!hasEnoughAudio && (
-        <p className="mt-2 text-center text-neutral-600">Agrega audio a la sesión primero.</p>
+        <p className="mt-2 text-center text-bone-3">Agrega audio a la sesión primero.</p>
       )}
       {error && <p className="mt-2 text-red-400">{error}</p>}
 
       {result && (
         <div className="mt-3 space-y-3">
-          <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
-            <div className="mb-1 font-semibold text-neutral-400">LECTURA DE LA MEZCLA</div>
+          <section className="rounded border border-line bg-ink p-2">
+            <div className="mb-1 font-semibold text-bone-2">LECTURA DE LA MEZCLA</div>
             <div className="space-y-0.5 text-[11px]">
               {(
                 [
@@ -185,57 +185,57 @@ export function MixAssistantPanel() {
                 ] as Array<[string, Severity]>
               ).map(([label, severity]) => (
                 <div key={label} className="flex justify-between">
-                  <span className="text-neutral-500">{label}</span>
+                  <span className="text-bone-2">{label}</span>
                   <span className={SEVERITY_COLOR[severity]}>{SEVERITY_LABEL[severity]}</span>
                 </div>
               ))}
               <div className="flex justify-between">
-                <span className="text-neutral-500">Pico / RMS</span>
-                <span className="text-neutral-300">
+                <span className="text-bone-2">Pico / RMS</span>
+                <span className="text-bone-2">
                   {result.mix.peakDb.toFixed(1)} / {result.mix.rmsDb.toFixed(1)} dB
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">LUFS integrado</span>
-                <span className="text-neutral-300">
+                <span className="text-bone-2">LUFS integrado</span>
+                <span className="text-bone-2">
                   {Number.isFinite(result.mix.integratedLufs) ? result.mix.integratedLufs.toFixed(1) : "-∞"}
                 </span>
               </div>
             </div>
           </section>
 
-          <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
-            <div className="mb-1 flex items-center gap-1.5 font-semibold text-neutral-400">
-              <SparkleIcon className="h-3 w-3 text-cyan-400" />
+          <section className="rounded border border-line bg-ink p-2">
+            <div className="mb-1 flex items-center gap-1.5 font-semibold text-bone-2">
+              <SparkleIcon className="h-3 w-3 text-bone" />
               LECTURA DE IA
             </div>
             {!aiTurn ? (
               <button
                 onClick={askAiForMixRead}
                 disabled={aiLoading}
-                className="w-full rounded bg-neutral-800 py-1.5 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-50"
+                className="w-full rounded bg-surf-2 py-1.5 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-50"
               >
                 {aiLoading ? "Preguntando…" : "Pedir lectura de IA"}
               </button>
             ) : !aiTurn.configured ? (
-              <p className="text-[11px] text-neutral-500">
-                El asistente de IA no está configurado. Define <code className="text-neutral-400">ANTHROPIC_API_KEY</code> en
+              <p className="text-[11px] text-bone-2">
+                El asistente de IA no está configurado. Define <code className="text-bone-2">ANTHROPIC_API_KEY</code> en
                 tu entorno para activarlo — el análisis de arriba funciona igual sin él.
               </p>
             ) : aiTurn.errorMessage ? (
               <p className="text-[11px] text-red-400">{aiTurn.errorMessage}</p>
             ) : (
               <div className="space-y-2">
-                {aiTurn.reply && <p className="text-[11px] text-neutral-300">{aiTurn.reply}</p>}
+                {aiTurn.reply && <p className="text-[11px] text-bone-2">{aiTurn.reply}</p>}
                 {aiTurn.proposedActions.length > 0 && (
                   <ul className="space-y-1.5">
                     {aiTurn.proposedActions.map((proposed) => (
-                      <li key={proposed.id} className="rounded bg-neutral-900 p-2 text-[11px]">
-                        <p className="text-neutral-400">{proposed.description}</p>
+                      <li key={proposed.id} className="rounded bg-surf p-2 text-[11px]">
+                        <p className="text-bone-2">{proposed.description}</p>
                         <button
                           onClick={() => applyAiAction(proposed)}
                           disabled={aiAppliedIds.has(proposed.id)}
-                          className="mt-1.5 w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                          className="mt-1.5 w-full rounded bg-surf-2 py-1 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-40"
                         >
                           {aiAppliedIds.has(proposed.id) ? "Aplicado" : "Aplicar"}
                         </button>
@@ -247,9 +247,9 @@ export function MixAssistantPanel() {
             )}
           </section>
 
-          <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
-            <div className="mb-1 font-semibold text-neutral-400">MASTERIZACIÓN</div>
-            <p className="mb-2 text-[11px] text-neutral-600">
+          <section className="rounded border border-line bg-ink p-2">
+            <div className="mb-1 font-semibold text-bone-2">MASTERIZACIÓN</div>
+            <p className="mb-2 text-[11px] text-bone-3">
               Objetivos de normalización publicados por cada plataforma, no una garantía exacta de
               su comportamiento real. Se aplica como un ajuste de ganancia en el bus master (un
               compresor 1:1 usado solo por su ganancia de compensación) — revísalo antes de exportar.
@@ -270,13 +270,13 @@ export function MixAssistantPanel() {
               return (
                 <>
                   <div className="mb-2 flex justify-between text-[11px]">
-                    <span className="text-neutral-500">Objetivo</span>
-                    <span className="text-neutral-300">{suggestion.targetLufs} LUFS</span>
+                    <span className="text-bone-2">Objetivo</span>
+                    <span className="text-bone-2">{suggestion.targetLufs} LUFS</span>
                   </div>
                   <button
                     onClick={() => applyMasterGain(suggestion.deltaDb)}
                     disabled={masterGainApplied || Math.abs(suggestion.deltaDb) < 0.1}
-                    className="w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                    className="w-full rounded bg-surf-2 py-1 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-40"
                   >
                     {masterGainApplied
                       ? "Aplicado"
@@ -289,18 +289,18 @@ export function MixAssistantPanel() {
             })()}
           </section>
 
-          <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
-            <div className="mb-1 font-semibold text-neutral-400">
+          <section className="rounded border border-line bg-ink p-2">
+            <div className="mb-1 font-semibold text-bone-2">
               ENMASCARAMIENTO {result.masking.length > 0 && `(${result.masking.length})`}
             </div>
             {result.masking.length === 0 ? (
-              <p className="text-[11px] text-neutral-600">No se detectó enmascaramiento de frecuencias significativo.</p>
+              <p className="text-[11px] text-bone-3">No se detectó enmascaramiento de frecuencias significativo.</p>
             ) : (
               <ul className="space-y-1 text-[11px]">
                 {result.masking.map((f, i) => (
-                  <li key={i} className="text-neutral-400">
-                    <span className="text-neutral-200">{f.trackAName}</span> vs{" "}
-                    <span className="text-neutral-200">{f.trackBName}</span> cerca de{" "}
+                  <li key={i} className="text-bone-2">
+                    <span className="text-bone">{f.trackAName}</span> vs{" "}
+                    <span className="text-bone">{f.trackBName}</span> cerca de{" "}
                     {Math.round(f.freqHz)}Hz ({f.band})
                   </li>
                 ))}
@@ -308,17 +308,17 @@ export function MixAssistantPanel() {
             )}
           </section>
 
-          <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
-            <div className="mb-1 font-semibold text-neutral-400">
+          <section className="rounded border border-line bg-ink p-2">
+            <div className="mb-1 font-semibold text-bone-2">
               NIVELES DE GANANCIA {result.gainStaging.length > 0 && `(${result.gainStaging.length})`}
             </div>
             {result.gainStaging.length === 0 ? (
-              <p className="text-[11px] text-neutral-600">Los niveles de las pistas se ven razonablemente equilibrados.</p>
+              <p className="text-[11px] text-bone-3">Los niveles de las pistas se ven razonablemente equilibrados.</p>
             ) : (
               <ul className="space-y-1 text-[11px]">
                 {result.gainStaging.map((f) => (
-                  <li key={f.trackId} className="text-neutral-400">
-                    <span className="text-neutral-200">{f.trackName}</span> está{" "}
+                  <li key={f.trackId} className="text-bone-2">
+                    <span className="text-bone">{f.trackName}</span> está{" "}
                     {Math.abs(f.deltaFromMedianDb).toFixed(1)}dB {f.direction === "louder" ? "más alta" : "más baja"} de lo habitual
                   </li>
                 ))}
@@ -327,19 +327,19 @@ export function MixAssistantPanel() {
           </section>
 
           {result.suggestions.length > 0 && (
-            <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
-              <div className="mb-1 font-semibold text-neutral-400">SUGERENCIAS</div>
-              <p className="mb-2 text-[11px] text-neutral-600">
+            <section className="rounded border border-line bg-ink p-2">
+              <div className="mb-1 font-semibold text-bone-2">SUGERENCIAS</div>
+              <p className="mb-2 text-[11px] text-bone-3">
                 Nada de esto se aplica automáticamente — elige lo que tenga sentido para tu mezcla.
               </p>
               <ul className="space-y-2">
                 {result.suggestions.map((s) => (
-                  <li key={s.id} className="rounded bg-neutral-900 p-2 text-[11px]">
-                    <p className="text-neutral-400">{s.reason}</p>
+                  <li key={s.id} className="rounded bg-surf p-2 text-[11px]">
+                    <p className="text-bone-2">{s.reason}</p>
                     <button
                       onClick={() => applySuggestion(s)}
                       disabled={appliedIds.has(s.id)}
-                      className="mt-1.5 w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                      className="mt-1.5 w-full rounded bg-surf-2 py-1 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-40"
                     >
                       {appliedIds.has(s.id)
                         ? "Aplicado"
@@ -354,9 +354,9 @@ export function MixAssistantPanel() {
           )}
 
           {result.limitations.length > 0 && (
-            <section className="space-y-1 border-t border-neutral-800 pt-2">
+            <section className="space-y-1 border-t border-line pt-2">
               {result.limitations.map((msg, i) => (
-                <p key={i} className="flex items-start gap-1.5 text-[11px] text-neutral-600">
+                <p key={i} className="flex items-start gap-1.5 text-[11px] text-bone-3">
                   <WarningIcon className="h-3.5 w-3.5 shrink-0 translate-y-px" /> {msg}
                 </p>
               ))}
