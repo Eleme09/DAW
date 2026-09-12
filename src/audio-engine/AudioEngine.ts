@@ -1,7 +1,8 @@
 import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
-import type { AudioClip, LoopRegion, Track, TrackId } from "@/types/project";
+import { midiToFrequency } from "./pitch/noteUtils";
+import type { AudioClip, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
 import type { LivePitchInfo, LivePitchMonitorSettings } from "@/types/pitch";
 
@@ -24,7 +25,10 @@ interface TrackGraph {
 }
 
 interface ScheduledSource {
-  source: AudioBufferSourceNode;
+  /** OscillatorNode for a synth voice, AudioBufferSourceNode for a sampled
+   * clip or a sampler voice - both are AudioScheduledSourceNode, which is
+   * all `stopSources()` needs. */
+  source: AudioScheduledSourceNode;
   envelope: GainNode;
   clipId: string;
 }
@@ -338,10 +342,107 @@ export class AudioEngine {
     for (const track of tracks) {
       const graph = this.tracks.get(track.id);
       if (!graph) continue;
+      if (track.type === "instrument") {
+        if (!track.instrument) continue;
+        for (const clip of track.midiClips) {
+          this.scheduleMidiClip(clip, track.instrument, graph, fromTime, ctxStartTime);
+        }
+        continue;
+      }
       for (const clip of track.clips) {
         this.scheduleClip(clip, graph, fromTime, ctxStartTime);
       }
     }
+  }
+
+  private scheduleMidiClip(
+    clip: MidiClip,
+    instrument: Instrument,
+    graph: TrackGraph,
+    fromTime: number,
+    ctxStartTime: number
+  ): void {
+    const clipEnd = clip.startTime + clip.duration;
+    if (clipEnd <= fromTime) return;
+    for (const note of clip.notes) {
+      const noteStart = clip.startTime + note.startTime;
+      // Seeking into the middle of a sustained note doesn't retrigger it
+      // from the middle - a known, named simplification (see PROGRESS.md).
+      if (noteStart < fromTime) continue;
+      const when = ctxStartTime + (noteStart - fromTime);
+      this.playVoice(instrument, note, graph.input, when);
+    }
+  }
+
+  /** Schedules one synth/sampler voice: a shared ADSR amplitude envelope
+   * over either an oscillator (synth) or a pitch-shifted sample playback
+   * (sampler), connected at the same point audio clips connect to (`graph
+   * .input`) so it goes through the track's insert chain/volume/pan/mute
+   * exactly like a recorded clip would. */
+  private playVoice(instrument: Instrument, note: Note, destination: AudioNode, when: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+
+    const peak = Math.max(0.0001, Math.min(1, note.velocity));
+    const attack = Math.max(0.001, instrument.attack);
+    const decay = Math.max(0, instrument.decay);
+    const sustainLevel = peak * Math.max(0, Math.min(1, instrument.sustain));
+    const release = Math.max(0.001, instrument.release);
+
+    const attackEnd = when + attack;
+    const decayEnd = attackEnd + decay;
+    const noteOff = Math.max(decayEnd, when + note.duration);
+    const releaseEnd = noteOff + release;
+
+    const envelope = ctx.createGain();
+    envelope.connect(destination);
+    envelope.gain.setValueAtTime(0, when);
+    envelope.gain.linearRampToValueAtTime(peak, attackEnd);
+    envelope.gain.linearRampToValueAtTime(sustainLevel, decayEnd);
+    envelope.gain.setValueAtTime(sustainLevel, noteOff);
+    envelope.gain.linearRampToValueAtTime(0, releaseEnd);
+
+    if (instrument.type === "synth") {
+      const osc = ctx.createOscillator();
+      osc.type = instrument.waveform;
+      osc.frequency.value = midiToFrequency(note.pitch);
+      osc.connect(envelope);
+      osc.start(when);
+      osc.stop(releaseEnd + 0.05);
+      osc.onended = () => {
+        osc.disconnect();
+        this.scheduled = this.scheduled.filter((s) => s.source !== osc);
+      };
+      this.scheduled.push({ source: osc, envelope, clipId: "voice" });
+      return;
+    }
+
+    const buffer = instrument.sampleId ? this.bufferCache.get(instrument.sampleId) : undefined;
+    if (!buffer) {
+      envelope.disconnect();
+      return;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.playbackRate.value = Math.pow(2, (note.pitch - instrument.rootNote) / 12);
+    source.connect(envelope);
+    source.start(when);
+    source.stop(releaseEnd + 0.05);
+    source.onended = () => {
+      source.disconnect();
+      this.scheduled = this.scheduled.filter((s) => s.source !== source);
+    };
+    this.scheduled.push({ source, envelope, clipId: "voice" });
+  }
+
+  /** Instant one-off preview of a pitch through a track's instrument,
+   * independent of the transport - used by the piano roll so tapping a
+   * cell gives audible feedback even while stopped. */
+  previewNote(trackId: TrackId, instrument: Instrument, pitch: number): void {
+    const ctx = this.ensureContext();
+    const graph = this.tracks.get(trackId);
+    if (!graph) return;
+    this.playVoice(instrument, { id: "preview", pitch, startTime: 0, duration: 0.25, velocity: 0.85 }, graph.input, ctx.currentTime);
   }
 
   private scheduleClip(

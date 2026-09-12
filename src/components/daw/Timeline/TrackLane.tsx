@@ -3,6 +3,7 @@
 import type { Track } from "@/types/project";
 import { PIXELS_PER_SECOND, TRACK_HEIGHT } from "./constants";
 import { ClipView } from "./ClipView";
+import { MidiClipView } from "./MidiClipView";
 
 interface TrackLaneProps {
   track: Track;
@@ -25,9 +26,9 @@ export function TrackLane({ track, width, selected }: TrackLaneProps) {
           style={{ left: i * PIXELS_PER_SECOND }}
         />
       ))}
-      {track.clips.map((clip) => (
-        <ClipView key={clip.id} clip={clip} />
-      ))}
+      {track.type === "instrument"
+        ? track.midiClips.map((clip) => <MidiClipView key={clip.id} clip={clip} />)
+        : track.clips.map((clip) => <ClipView key={clip.id} clip={clip} />)}
     </div>
   );
 }

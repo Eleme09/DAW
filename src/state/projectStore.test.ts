@@ -197,3 +197,107 @@ describe("undo/redo", () => {
     expect(useProjectStore.getState().future).toHaveLength(0);
   });
 });
+
+describe("instrument tracks and patterns", () => {
+  beforeEach(resetStore);
+
+  it("addTrack('instrument') creates a track with a default synth and no audio clips", () => {
+    const { addTrack } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+    expect(track.type).toBe("instrument");
+    expect(track.instrument?.type).toBe("synth");
+    expect(track.clips).toEqual([]);
+    expect(track.midiClips).toEqual([]);
+  });
+
+  it("addPatternAtPlayhead is a no-op when the selected track isn't an instrument", () => {
+    const { addTrack, selectTrack, seek, addPatternAtPlayhead } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    selectTrack(track.id);
+    seek(2);
+
+    addPatternAtPlayhead();
+
+    expect(useProjectStore.getState().project.tracks[0].midiClips).toHaveLength(0);
+    expect(useProjectStore.getState().pianoRollClipId).toBeNull();
+  });
+
+  it("addPatternAtPlayhead adds a one-bar pattern at the playhead and opens the piano roll", () => {
+    const { addTrack, selectTrack, seek, addPatternAtPlayhead } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+    selectTrack(track.id);
+    seek(3);
+
+    addPatternAtPlayhead();
+
+    const clip = useProjectStore.getState().project.tracks[0].midiClips[0];
+    expect(clip.startTime).toBe(3);
+    expect(clip.duration).toBeCloseTo((60 / 140) * 4); // one bar at the default 140bpm 4/4
+    expect(useProjectStore.getState().pianoRollClipId).toBe(clip.id);
+  });
+
+  it("addNote/removeNote add and remove notes from a pattern", () => {
+    const { addTrack, selectTrack, addPatternAtPlayhead, addNote, removeNote } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+    selectTrack(track.id);
+    addPatternAtPlayhead();
+    const clipId = useProjectStore.getState().pianoRollClipId!;
+
+    addNote(track.id, clipId, { pitch: 60, startTime: 0, duration: 0.25, velocity: 0.9 });
+    let notes = useProjectStore.getState().project.tracks[0].midiClips[0].notes;
+    expect(notes).toHaveLength(1);
+    expect(notes[0].pitch).toBe(60);
+
+    removeNote(track.id, clipId, notes[0].id);
+    notes = useProjectStore.getState().project.tracks[0].midiClips[0].notes;
+    expect(notes).toHaveLength(0);
+  });
+
+  it("removeMidiClip closes the piano roll if that clip was open", () => {
+    const { addTrack, selectTrack, addPatternAtPlayhead, removeMidiClip } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+    selectTrack(track.id);
+    addPatternAtPlayhead();
+    const clipId = useProjectStore.getState().pianoRollClipId!;
+
+    removeMidiClip(track.id, clipId);
+
+    expect(useProjectStore.getState().project.tracks[0].midiClips).toHaveLength(0);
+    expect(useProjectStore.getState().pianoRollClipId).toBeNull();
+  });
+
+  it("setInstrument fully replaces the instrument (discrete, own undo step)", () => {
+    const { addTrack, setInstrument, undo } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+
+    setInstrument(track.id, {
+      type: "sampler",
+      sampleId: "sample-1",
+      rootNote: 60,
+      attack: 0.002,
+      decay: 0.05,
+      sustain: 1,
+      release: 0.05,
+    });
+    expect(useProjectStore.getState().project.tracks[0].instrument?.type).toBe("sampler");
+
+    undo();
+    expect(useProjectStore.getState().project.tracks[0].instrument?.type).toBe("synth");
+  });
+
+  it("updateInstrumentEnvelope coalesces consecutive slider drags into one undo step", () => {
+    const { addTrack, updateInstrumentEnvelope, undo } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+    const pastAfterAdd = useProjectStore.getState().past.length;
+
+    updateInstrumentEnvelope(track.id, { attack: 0.1 });
+    updateInstrumentEnvelope(track.id, { attack: 0.2 });
+    updateInstrumentEnvelope(track.id, { attack: 0.3 });
+
+    expect(useProjectStore.getState().past.length).toBe(pastAfterAdd + 1);
+    expect(useProjectStore.getState().project.tracks[0].instrument?.attack).toBeCloseTo(0.3);
+
+    undo();
+    expect(useProjectStore.getState().project.tracks[0].instrument?.attack).toBeCloseTo(0.005); // default
+  });
+});

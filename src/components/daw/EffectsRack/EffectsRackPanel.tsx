@@ -5,6 +5,7 @@ import { useProjectStore } from "@/state/projectStore";
 import { EFFECT_LABELS, type EffectType } from "@/types/effects";
 import { EffectCard } from "./EffectCard";
 import { Analyzer } from "./Analyzer";
+import { InstrumentSettings } from "./InstrumentSettings";
 import { WaveformIcon, BusIcon } from "../icons";
 
 const EFFECT_TYPES = Object.keys(EFFECT_LABELS) as EffectType[];
@@ -58,6 +59,7 @@ export function EffectsRackPanel() {
       </div>
 
       {mode === "master" && <Analyzer />}
+      {mode === "track" && selectedTrack?.type === "instrument" && <InstrumentSettings track={selectedTrack} />}
 
       {!target ? (
         <p className="p-4 text-center text-xs text-neutral-600">Select a track to edit its effects.</p>

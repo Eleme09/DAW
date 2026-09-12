@@ -9,6 +9,7 @@ import { Timeline } from "./Timeline/Timeline";
 import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { LivePitchMonitorPanel } from "./LivePitchMonitorPanel";
+import { PianoRoll } from "./PianoRoll/PianoRoll";
 import { FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
 import type { ComponentType } from "react";
 
@@ -97,6 +98,7 @@ export function DawShell() {
     <div className="flex h-screen flex-col overflow-hidden bg-neutral-950 text-neutral-100">
       <TransportBar />
       <LivePitchMonitorPanel />
+      <PianoRoll />
       <div className="flex flex-1 overflow-hidden">
         <div className={`${mobileView === "browser" ? "block" : "hidden"} w-full md:contents`}>
           <BrowserPanel />

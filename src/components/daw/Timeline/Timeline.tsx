@@ -16,8 +16,12 @@ export function Timeline() {
   const addTrack = useProjectStore((s) => s.addTrack);
   const splitClipAtPlayhead = useProjectStore((s) => s.splitClipAtPlayhead);
   const duplicateClipAtPlayhead = useProjectStore((s) => s.duplicateClipAtPlayhead);
+  const addPatternAtPlayhead = useProjectStore((s) => s.addPatternAtPlayhead);
   const snapResolution = useProjectStore((s) => s.snapResolution);
   const setSnapResolution = useProjectStore((s) => s.setSnapResolution);
+
+  const selectedTrack = project.tracks.find((t) => t.id === selectedTrackId);
+  const canAddPattern = selectedTrack?.type === "instrument";
 
   const clipEnd = project.tracks.reduce(
     (max, t) => Math.max(max, ...t.clips.map((c) => c.startTime + c.duration), 0),
@@ -71,6 +75,25 @@ export function Timeline() {
           className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
           + Add Track
+        </button>
+        <button
+          onClick={() => addTrack(undefined, "instrument")}
+          title="Add a track with a synth/sampler instrument, playable from programmed patterns"
+          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
+        >
+          + Add Instrument
+        </button>
+        <button
+          onClick={addPatternAtPlayhead}
+          disabled={!canAddPattern}
+          title={
+            canAddPattern
+              ? "Add a one-bar pattern to the selected instrument track at the playhead"
+              : "Select an instrument track first"
+          }
+          className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-30"
+        >
+          + Add Pattern
         </button>
         <button
           onClick={splitClipAtPlayhead}

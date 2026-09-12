@@ -24,6 +24,22 @@ describe("createTrack", () => {
     expect(track.clips).toEqual([]);
     expect(track.muted).toBe(false);
     expect(track.volumeDb).toBe(0);
+    expect(track.instrument).toBeNull();
+  });
+
+  it("creates an instrument track with a default synth and no clips", () => {
+    const track = createTrack("Lead", 0, "instrument");
+    expect(track.type).toBe("instrument");
+    expect(track.clips).toEqual([]);
+    expect(track.midiClips).toEqual([]);
+    expect(track.instrument).toEqual({
+      type: "synth",
+      waveform: "sawtooth",
+      attack: 0.005,
+      decay: 0.15,
+      sustain: 0.6,
+      release: 0.2,
+    });
   });
 });
 

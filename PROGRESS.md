@@ -69,6 +69,26 @@ Deliberadamente diferido (arquitectura nueva, no a medias):
 
 Verificado: `tsc`/`eslint`/`vitest` (265 tests) limpios. En navegador, con el beat real de 4 pistas: arrastre de fader con clamping -60..+6dB, doble-click reset, undo revierte el fader, pan/mute/solo/arm funcionando (arm respeta exclusividad), reorder ◀/▶ reordena y el Timeline lo refleja, botón FX de canal y de Master saltan correctamente a Effects (seleccionando el track o el modo Master) tanto en escritorio como saltando de pestaña en móvil, fader de Master atenúa el bus completo sin afectar los medidores individuales de cada canal, medidores muestran RMS variando en tiempo real, peak-hold sostenido y LED de clip encendiéndose con señal real (el beat generado sí satura picos) y apagándose al click. A 375px de ancho: el Mixer ahora ocupa toda la altura disponible (antes ~192px con una franja vacía arriba), sin overflow horizontal de página.
 
-## FASE 4–8
+## FASE 4 — Creación musical
+
+Status: **primer slice funcional (synth+sampler, patrones, piano roll por tap); pendientes reales anotados abajo**
+
+- [x] Track de instrumento: nuevo `Track.type: "audio" | "instrument"`. Deliberadamente **no** se fusionó `midiClips` dentro de `clips` — quedó como array propio (`Track.midiClips`) para que los 8+ consumidores existentes que asumen `clips: AudioClip[]` (exportar, bounce, mix analysis, los paneles de IA) sigan funcionando sin tocarlos ni tener que filtrar por tipo.
+- [x] Instrumento por track: `Instrument = SynthInstrument | SamplerInstrument`, con ADSR compartido. Sintetizador (oscilador + envolvente) y Sampler (sample existente de la librería, re-pitchado por `playbackRate = 2^((nota-raíz)/12)`) implementados en `AudioEngine.playVoice` — se conectan al mismo punto (`graph.input`) que un `AudioClip`, así que atraviesan la cadena de inserts/volumen/pan/mute/medidor del track exactamente igual (todo lo de FASE 3 les aplica gratis).
+- [x] Patrones: botón "+ Add Instrument" (crea el track) y "+ Add Pattern" (agrega un `MidiClip` de 1 compás en el playhead del track de instrumento seleccionado y abre el piano roll). El bloque en el Timeline (`MidiClipView.tsx`) se mueve/recorta como un clip de audio y muestra una miniatura de las notas.
+- [x] Piano roll: `PianoRoll/PianoRoll.tsx`, abierto como bottom-sheet (reutiliza `BottomSheet`) — grid de tap-para-alternar-nota (como un step sequencer), con preview de audio inmediato al tocar una celda (`AudioEngine.previewNote`), y botones +/− para extender el patrón por compás.
+- [x] Panel de instrumento: `EffectsRack/InstrumentSettings.tsx`, agregado arriba de la cadena de inserts cuando el track seleccionado es de instrumento — cambia Synth/Sampler, forma de onda, sample+nota raíz, y los 4 sliders ADSR (reutilizan `ParamSlider`, ya coalescen igual que los demás parámetros de efectos).
+- [x] Proyectos guardados antes de este modelo cargan con `type:"audio"`/`midiClips:[]`/`instrument:null` por defecto (mismo patrón que la normalización de `masterVolumeDb` en FASE 3).
+
+Verificado: `tsc`/`eslint`/`vitest` (273 tests, +8 nuevos) limpios. En navegador: creado un track de instrumento, agregado un patrón de 1 compás, programada una melodía tocando celdas (C4-E4-G4-C5), toggle on/off confirmado, cerrado y el bloque en el Timeline muestra la miniatura de notas correctamente tanto en escritorio como a 375px (sin overflow horizontal, la barra de herramientas ahora hace wrap a dos filas). Reproducción real: el medidor del track de instrumento muestra señal real tanto en modo Synth (sawtooth) como después de asignarle un sample existente en modo Sampler y tocarlo pitcheado — confirma que ambos caminos de síntesis llegan al bus del track. Sin errores de consola en ningún paso.
+
+Deliberadamente diferido (para no dejarlo a medias):
+- [ ] Arrastrar/redimensionar notas individuales en el piano roll — hoy solo tap para agregar/quitar (duración fija = un paso de grid). Mover una nota existente requiere borrarla y volver a tocarla.
+- [ ] Step sequencer dedicado (grid de baterías con velocity por celda) — el piano roll actual puede programar percusión asignando un sample por pitch, pero no tiene la vista compacta tipo FL Studio.
+- [ ] Patrones reutilizables de verdad (bloque compartido tipo FL Studio, donde editar una instancia actualiza todas) — hoy cada patrón es independiente; "Duplicate" ya existente para audio no se extendió a `MidiClip`, así que copiar un patrón hoy es solo posible recreándolo o vía código, no desde la UI.
+- [ ] Split/Duplicate-at-playhead (los atajos S/D existentes) no se extendieron a `MidiClip` — por ahora solo operan sobre clips de audio.
+- [ ] Un limitador de voces/polifonía — cada nota agenda su propio oscilador/buffer sin límite; una progresión muy densa en muchos tracks de instrumento simultáneos podría acumular nodos. No es un problema con el uso típico de este proyecto, pero no hay un techo explícito.
+
+## FASE 5–8
 
 Status: **no iniciadas**
