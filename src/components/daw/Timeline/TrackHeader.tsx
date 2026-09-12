@@ -46,12 +46,15 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
     <div
       onClick={() => selectTrack(track.id)}
       style={{ width: HEADER_WIDTH, height: TRACK_HEIGHT }}
-      className={`sticky left-0 z-10 flex shrink-0 flex-col gap-1 border-b border-r border-neutral-800 bg-neutral-950 p-1.5 ${
+      className={`sticky left-0 z-10 relative flex shrink-0 flex-col gap-1 border-b border-r border-neutral-800 bg-neutral-950 p-1.5 pl-2.5 ${
         selected ? "ring-1 ring-inset ring-cyan-500" : ""
       } ${isLiveInput ? "ring-1 ring-inset ring-red-500" : ""}`}
     >
+      {/* Color de pista: barra de 3px en el canto, no fondo teñido entero
+         (estudio-ui.html .thead::before) - identifica la pista sin abaratar
+         la interfaz con color plano, como hace BandLab. */}
+      <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: track.color }} />
       <div className="flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: track.color }} />
         <input
           value={track.name}
           onChange={(e) => updateTrack(track.id, { name: e.target.value })}
