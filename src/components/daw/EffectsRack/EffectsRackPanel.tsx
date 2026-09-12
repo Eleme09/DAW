@@ -10,7 +10,8 @@ import { WaveformIcon, BusIcon } from "../icons";
 const EFFECT_TYPES = Object.keys(EFFECT_LABELS) as EffectType[];
 
 export function EffectsRackPanel() {
-  const [mode, setMode] = useState<"track" | "master">("track");
+  const mode = useProjectStore((s) => s.effectsRackMode);
+  const setMode = useProjectStore((s) => s.setEffectsRackMode);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
   const selectedTrack = useProjectStore((s) => s.project.tracks.find((t) => t.id === s.selectedTrackId));

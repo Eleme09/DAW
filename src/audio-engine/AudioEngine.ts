@@ -67,6 +67,7 @@ const SCALE_INDEX: Record<LivePitchMonitorSettings["scale"], number> = { major: 
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private masterVolume: GainNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
   private loudnessAnalyser: AnalyserNode | null = null;
   private masterChain: EffectChain | null = null;
@@ -105,8 +106,10 @@ export class AudioEngine {
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
       const masterChain = new EffectChain(ctx, this.effectChainDeps());
+      const masterVolume = ctx.createGain();
       master.connect(masterChain.inputNode);
-      masterChain.outputNode.connect(analyser);
+      masterChain.outputNode.connect(masterVolume);
+      masterVolume.connect(analyser);
       analyser.connect(ctx.destination);
 
       // Loudness tap: approximate K-weighting (perceptual, not exact BS.1770
@@ -132,6 +135,7 @@ export class AudioEngine {
 
       this.ctx = ctx;
       this.master = master;
+      this.masterVolume = masterVolume;
       this.masterAnalyser = analyser;
       this.loudnessAnalyser = loudnessAnalyser;
       this.masterChain = masterChain;
@@ -157,6 +161,13 @@ export class AudioEngine {
   syncMasterInserts(inserts: EffectInstance[]): void {
     this.ensureContext();
     this.masterChain?.setInserts(inserts);
+  }
+
+  /** Final output trim, applied post insert-chain (right before the master
+   * meter/destination) - same convention as a Pro Tools/FL master fader. */
+  setMasterVolume(db: number): void {
+    this.ensureContext();
+    if (this.masterVolume) this.masterVolume.gain.value = dbToGain(db);
   }
 
   private effectChainDeps(): EffectChainDeps {

@@ -17,6 +17,9 @@ import { createEffectInstance, type EffectInstance, type EffectType } from "@/ty
 import type { GridResolution } from "@/lib/timing/grid";
 
 export type EffectTarget = TrackId | "master";
+/** Which single pane is full-width on mobile - see DawShell. Unused at `md`+,
+ * where every pane renders simultaneously. */
+export type MobileView = "browser" | "timeline" | "mixer" | "effects";
 
 interface ProjectState {
   project: Project;
@@ -33,6 +36,12 @@ interface ProjectState {
    * undo/redo or persistence. */
   snapResolution: GridResolution;
   setSnapResolution: (resolution: GridResolution) => void;
+  mobileView: MobileView;
+  setMobileView: (view: MobileView) => void;
+  /** Which chain the EffectsRackPanel is showing - lifted out of that
+   * component so the Mixer's per-strip/master "FX" buttons can jump to it. */
+  effectsRackMode: "track" | "master";
+  setEffectsRackMode: (mode: "track" | "master") => void;
 
   undo: () => void;
   redo: () => void;
@@ -40,6 +49,8 @@ interface ProjectState {
   addTrack: (name?: string) => Track;
   removeTrack: (trackId: TrackId) => void;
   updateTrack: (trackId: TrackId, patch: Partial<Track>) => void;
+  /** Swaps a track with its immediate left/right neighbor in channel order. */
+  moveTrack: (trackId: TrackId, direction: -1 | 1) => void;
   armTrack: (trackId: TrackId) => void;
   addClip: (clip: AudioClip) => void;
   updateClip: (trackId: TrackId, clipId: string, patch: Partial<AudioClip>) => void;
@@ -61,6 +72,7 @@ interface ProjectState {
   setTimeSignature: (num: number, den: number) => void;
   setLoop: (patch: Partial<Project["loop"]>) => void;
   toggleMetronome: () => void;
+  setMasterVolume: (db: number) => void;
 
   play: () => void;
   pause: () => void;
@@ -183,6 +195,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     recordingError: null,
     snapResolution: "1/16",
     setSnapResolution: (resolution) => set({ snapResolution: resolution }),
+    mobileView: "timeline",
+    setMobileView: (view) => set({ mobileView: view }),
+    effectsRackMode: "track",
+    setEffectsRackMode: (mode) => set({ effectsRackMode: mode }),
 
     undo: () => {
       const { past, project, future } = get();
@@ -222,12 +238,22 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     updateTrack: (trackId, patch) => {
       const project = get().project;
-      const coalesce = Object.keys(patch).every((k) => k === "volumeDb" || k === "pan");
+      const coalesce = Object.keys(patch).every((k) => k === "volumeDb" || k === "pan" || k === "name");
       setProject(
         touch({ ...project, tracks: project.tracks.map((t) => (t.id === trackId ? { ...t, ...patch } : t)) }),
         { coalesce }
       );
       getAudioEngine().syncTracks(get().project.tracks);
+    },
+
+    moveTrack: (trackId, direction) => {
+      const project = get().project;
+      const index = project.tracks.findIndex((t) => t.id === trackId);
+      const newIndex = index + direction;
+      if (index === -1 || newIndex < 0 || newIndex >= project.tracks.length) return;
+      const reordered = [...project.tracks];
+      [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+      setProject(touch({ ...project, tracks: reordered.map((t, i) => ({ ...t, order: i })) }));
     },
 
     armTrack: (trackId) => {
@@ -376,6 +402,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       setProject(touch({ ...project, metronomeEnabled: enabled }));
       getAudioEngine().setMetronomeEnabled(enabled, get().project.tracks, project.bpm);
     },
+    setMasterVolume: (db) => setProject(touch({ ...get().project, masterVolumeDb: db }), { coalesce: true }),
 
     play: () => {
       const { project, currentTime } = get();
@@ -474,7 +501,11 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       // Opening a different project starts a fresh undo history - carrying
       // over the previous project's history would let undo cross documents.
       getAudioEngine().stop();
-      set({ project, currentTime: 0, isPlaying: false, selectedTrackId: null, past: [], future: [] });
+      // Projects saved before masterVolumeDb existed won't have it - default
+      // to unity so old projects don't load silently attenuated (or worse,
+      // NaN-gained if the field is just missing).
+      const normalized: Project = { ...project, masterVolumeDb: project.masterVolumeDb ?? 0 };
+      set({ project: normalized, currentTime: 0, isPlaying: false, selectedTrackId: null, past: [], future: [] });
       lastPushWasCoalescible = false;
     },
     newProject: () => {

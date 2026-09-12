@@ -62,6 +62,8 @@ export interface Project {
   metronomeEnabled: boolean;
   /** Master bus insert effect chain, applied after all tracks are summed. */
   masterInserts: EffectInstance[];
+  /** Final output trim, applied after the master insert chain. */
+  masterVolumeDb: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -88,6 +90,7 @@ export function createEmptyProject(name = "Untitled Project"): Project {
     markers: [],
     metronomeEnabled: false,
     masterInserts: [],
+    masterVolumeDb: 0,
     createdAt: now,
     updatedAt: now,
   };

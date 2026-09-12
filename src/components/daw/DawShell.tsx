@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
-import { useProjectStore } from "@/state/projectStore";
+import { useProjectStore, type MobileView } from "@/state/projectStore";
 import { TransportBar } from "./TransportBar";
 import { BrowserPanel } from "./BrowserPanel";
 import { Timeline } from "./Timeline/Timeline";
@@ -16,9 +16,9 @@ import type { ComponentType } from "react";
 // EffectsRack) plus the docked Mixer can't coexist on screen at once, so on
 // mobile exactly one of the four becomes a full-width view, switched via the
 // tab bar at the bottom. At `md` and up every pane renders simultaneously
-// exactly as before and this state is unused.
-type MobileView = "browser" | "timeline" | "mixer" | "effects";
-
+// exactly as before and this state is unused. Lives in the store (not local
+// state) so other panels (e.g. the Mixer's per-channel FX button) can jump
+// to a different tab.
 const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ className?: string }> }[] = [
   { id: "browser", label: "Browser", Icon: FolderIcon },
   { id: "timeline", label: "Timeline", Icon: TimelineIcon },
@@ -29,7 +29,9 @@ const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ class
 export function DawShell() {
   const tracks = useProjectStore((s) => s.project.tracks);
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
-  const [mobileView, setMobileView] = useState<MobileView>("timeline");
+  const masterVolumeDb = useProjectStore((s) => s.project.masterVolumeDb);
+  const mobileView = useProjectStore((s) => s.mobileView);
+  const setMobileView = useProjectStore((s) => s.setMobileView);
 
   // Resume the last session automatically - the store otherwise always
   // starts from a blank project, which would defeat autosave/recovery.
@@ -46,6 +48,10 @@ export function DawShell() {
   useEffect(() => {
     getAudioEngine().syncMasterInserts(masterInserts);
   }, [masterInserts]);
+
+  useEffect(() => {
+    getAudioEngine().setMasterVolume(masterVolumeDb);
+  }, [masterVolumeDb]);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -98,11 +104,18 @@ export function DawShell() {
         <div className={`${mobileView === "timeline" ? "flex" : "hidden"} min-w-0 flex-1 md:contents`}>
           <Timeline />
         </div>
+        {/* On mobile the Mixer is a full-height dedicated tab, not the
+           compact desktop dock below - otherwise the three panes above stay
+           empty-but-flex-1 (still claiming their share of height even with
+           nothing visible in them) and squeeze the mixer into a sliver. */}
+        <div className={`${mobileView === "mixer" ? "flex" : "hidden"} w-full flex-1 flex-col overflow-hidden md:hidden`}>
+          <MixerPanel />
+        </div>
         <div className={`${mobileView === "effects" ? "block" : "hidden"} w-full md:contents`}>
           <EffectsRackPanel />
         </div>
       </div>
-      <div className={`shrink-0 ${mobileView === "mixer" ? "block" : "hidden"} md:block`}>
+      <div className="hidden shrink-0 md:block">
         <MixerPanel />
       </div>
 

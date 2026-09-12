@@ -49,6 +49,26 @@ Deliberadamente diferido (no a medias — no se empezó por el riesgo/costo real
 
 Verificado: `tsc`/`eslint`/`vitest` (265 tests, +9 nuevos) limpios. En navegador: generado un beat real (4 pistas con audio real vía Beat Generator), confirmado bar-length en la regla, arrastre de gain simulado con PointerEvent (0dB -> 10dB), undo revierte correctamente a 0dB, loop region con título/rango correcto, sin errores de consola.
 
-## FASE 3–8
+## FASE 3 — Mixer completo
+
+Status: **subset de mayor valor implementado; sends/buses diferidos (ver abajo)**
+
+- [x] Fader de recorrido largo, táctil: nuevo `Mixer/Fader.tsx` — todo el control (no solo la manija fina) es el área de arrastre, con delta de arrastre desacoplado del alto visual (mismo patrón que la línea de gain de `ClipView.tsx`) para precisión real en una tira angosta; doble-click/doble-tap resetea a 0dB.
+- [x] Pan por canal (ya existía en `TrackHeader.tsx`, faltaba en el Mixer — agregado).
+- [x] Mute/Solo/Arm por canal en el Mixer (el Arm ahora usa la acción `armTrack` del store, que ya garantizaba exclusividad — el Mixer no debía reimplementar esa regla con un `updateTrack` suelto).
+- [x] Acceso directo a la cadena de inserts: botón "FX" por canal y en Master — selecciona el track (o modo Master) y salta a la pestaña Effects en móvil (`effectsRackMode` y `mobileView` se subieron al store para que el Mixer pueda pilotar la navegación, antes eran estado local de `EffectsRackPanel`/`DawShell`).
+- [x] Rename inline por canal en el Mixer (ya existía en el Timeline; de paso se corrigió que renombrar generaba un undo-step por cada tecla — ahora coalesce como BPM/pan).
+- [x] Reordenar canales con ◀/▶ (nueva acción `moveTrack`) — reordena el array `tracks` y reasigna `order`; el Timeline refleja el mismo orden porque comparte el campo.
+- [x] Master fader real: nuevo `Project.masterVolumeDb` + `GainNode` dedicado en `AudioEngine` (`setMasterVolume`), insertado después de la cadena de inserts de Master y antes del analyser — mismo lugar que un fader maestro en Pro Tools/FL. Proyectos guardados antes de este campo cargan con 0dB por defecto (`loadProject` normaliza).
+- [x] Metering peak+RMS con hold y clip: `MeterBar.tsx` reescrito — RMS coloreado (verde/ámbar/rojo) en escala de dB (no lineal), línea de peak-hold con decaimiento (~12dB/s), LED de clip que se enciende a ~-0.18dBFS y queda enclavado hasta que se hace click para resetearlo. Es el mismo componente que ya usaban `TrackHeader` y el medidor de grabación en vivo, así que ambos heredan la mejora sin duplicar código.
+- [x] Bug de layout corregido de paso: en móvil, la pestaña "Mixer" quedaba comprimida en la barra compacta de escritorio (192px) mientras el área de arriba —vacía— seguía reclamando su espacio `flex-1`. Ahora el Mixer es una vista a pantalla completa como Browser/Timeline/FX cuando es la pestaña activa en móvil, y solo el dock compacto de escritorio usa la altura fija.
+
+Deliberadamente diferido (arquitectura nueva, no a medias):
+- [ ] Sends (2 auxiliares por canal) y buses/grupos — requiere un subsistema de ruteo nuevo (entidad `Bus`, nodos de retorno en `AudioEngine`, UI de asignación) que no existe hoy en ningún lado del código. Implementarlo parcialmente arriesgaría bugs de grafo de audio no verificables sin más tiempo dedicado; se deja para una sesión propia.
+- [ ] Salida asignable por canal (enviar a un bus en vez de a Master) — depende directamente del punto anterior.
+
+Verificado: `tsc`/`eslint`/`vitest` (265 tests) limpios. En navegador, con el beat real de 4 pistas: arrastre de fader con clamping -60..+6dB, doble-click reset, undo revierte el fader, pan/mute/solo/arm funcionando (arm respeta exclusividad), reorder ◀/▶ reordena y el Timeline lo refleja, botón FX de canal y de Master saltan correctamente a Effects (seleccionando el track o el modo Master) tanto en escritorio como saltando de pestaña en móvil, fader de Master atenúa el bus completo sin afectar los medidores individuales de cada canal, medidores muestran RMS variando en tiempo real, peak-hold sostenido y LED de clip encendiéndose con señal real (el beat generado sí satura picos) y apagándose al click. A 375px de ancho: el Mixer ahora ocupa toda la altura disponible (antes ~192px con una franja vacía arriba), sin overflow horizontal de página.
+
+## FASE 4–8
 
 Status: **no iniciadas**
