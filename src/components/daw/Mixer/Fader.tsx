@@ -69,17 +69,17 @@ export function Fader({ valueDb, onChange, height = 128, label, showScale = fals
         style={{ height, width: 44, touchAction: "none" }}
         className="relative flex shrink-0 cursor-ns-resize select-none flex-col items-center rounded active:cursor-grabbing"
       >
-        <div className="pointer-events-none absolute inset-x-3.5 bottom-0 top-0 rounded bg-neutral-900" />
+        <div className="pointer-events-none absolute inset-x-3.5 bottom-0 top-0 rounded bg-surf" />
         <div
-          className="pointer-events-none absolute inset-x-3 h-px bg-neutral-600"
+          className="pointer-events-none absolute inset-x-3 h-px bg-bone-3"
           style={{ bottom: `${zeroPct}%` }}
         />
         <div
-          className="pointer-events-none absolute inset-x-3 bottom-0 rounded-sm bg-cyan-500/25"
+          className="pointer-events-none absolute inset-x-3 bottom-0 rounded-sm bg-bone/25"
           style={{ height: `${pct}%` }}
         />
         <div
-          className="pointer-events-none absolute inset-x-1.5 h-2.5 rounded-sm bg-cyan-400 shadow"
+          className="pointer-events-none absolute inset-x-1.5 h-2.5 rounded-sm bg-bone shadow"
           style={{ bottom: `calc(${pct}% - 5px)` }}
         />
       </div>
@@ -90,7 +90,7 @@ export function Fader({ valueDb, onChange, height = 128, label, showScale = fals
             return (
               <span
                 key={db}
-                className="pointer-events-none absolute -translate-y-1/2 font-mono text-[8px] tabular-nums text-neutral-600"
+                className="pointer-events-none absolute -translate-y-1/2 font-mono text-[8px] tabular-nums text-bone-3"
                 style={{ bottom: `${markPct}%` }}
               >
                 {markLabel}

@@ -15,9 +15,9 @@ const MONITOR_LABEL: Record<MonitorMode, string> = {
   on: "Monitor: siempre (se oye la entrada mientras esté armada)",
 };
 const MONITOR_CLASS: Record<MonitorMode, string> = {
-  off: "bg-neutral-800 text-neutral-500 hover:text-neutral-200",
-  auto: "bg-cyan-950 text-cyan-400",
-  on: "bg-green-500 text-black",
+  off: "bg-surf-2 text-bone-3 hover:text-bone",
+  auto: "bg-surf-3 text-bone-2",
+  on: "bg-live text-ink",
 };
 
 export function MixerPanel() {
@@ -46,9 +46,9 @@ export function MixerPanel() {
   }
 
   return (
-    <div className="flex h-full flex-1 gap-2 overflow-x-auto border-t border-neutral-800 bg-neutral-950 p-2 md:h-auto md:min-h-64 md:flex-none">
+    <div className="flex h-full flex-1 gap-2 overflow-x-auto border-t border-line bg-ink p-2 md:h-auto md:min-h-64 md:flex-none">
       {tracks.length === 0 && (
-        <div className="flex flex-1 items-center justify-center text-xs text-neutral-700">
+        <div className="flex flex-1 items-center justify-center text-xs text-bone-3">
           Todavía no hay pistas — agrega una desde la Sesión
         </div>
       )}
@@ -57,7 +57,7 @@ export function MixerPanel() {
           key={track.id}
           onClick={() => selectTrack(track.id)}
           className={`flex w-32 shrink-0 flex-col items-center gap-1.5 rounded border p-2 ${
-            track.id === selectedTrackId ? "border-cyan-500 bg-neutral-900" : "border-neutral-800 bg-neutral-900"
+            track.id === selectedTrackId ? "border-bone bg-surf" : "border-line bg-surf"
           }`}
         >
           <div className="flex w-full items-center gap-1">
@@ -73,7 +73,7 @@ export function MixerPanel() {
               }}
               disabled={i === 0}
               title="Mover canal a la izquierda"
-              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
+              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-3 hover:text-bone-2 disabled:opacity-20"
             >
               <ChevronLeftIcon className="h-3.5 w-3.5" />
             </button>
@@ -82,7 +82,7 @@ export function MixerPanel() {
               onChange={(e) => updateTrack(track.id, { name: e.target.value })}
               onClick={(e) => e.stopPropagation()}
               title="Renombrar canal"
-              className="w-full min-w-0 truncate bg-transparent text-center text-[11px] font-medium text-neutral-200 outline-none"
+              className="w-full min-w-0 truncate bg-transparent text-center text-[11px] font-medium text-bone outline-none"
             />
             <button
               onClick={(e) => {
@@ -91,7 +91,7 @@ export function MixerPanel() {
               }}
               disabled={i === tracks.length - 1}
               title="Mover canal a la derecha"
-              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
+              className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-3 hover:text-bone-2 disabled:opacity-20"
             >
               <ChevronRightIcon className="h-3.5 w-3.5" />
             </button>
@@ -103,7 +103,7 @@ export function MixerPanel() {
               openTrackFx(track.id);
             }}
             title="Abrir cadena de inserts de este canal"
-            className="flex min-h-11 w-full items-center justify-center gap-1 rounded bg-neutral-800 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
+            className="flex min-h-11 w-full items-center justify-center gap-1 rounded bg-surf-2 text-[10px] font-medium text-bone-2 hover:text-bone"
           >
             <WaveformIcon className="h-3 w-3" />
             FX{track.inserts.length > 0 ? ` (${track.inserts.length})` : ""}
@@ -119,7 +119,7 @@ export function MixerPanel() {
             />
             <MeterBar analyser={engine.getTrackAnalyser(track.id)} />
           </div>
-          <span className="font-mono text-[10px] tabular-nums text-neutral-500">
+          <span className="font-mono text-[10px] tabular-nums text-bone-2">
             {track.volumeDb.toFixed(1)}dB
           </span>
 
@@ -142,7 +142,7 @@ export function MixerPanel() {
               }}
               title={track.muted ? "Quitar silencio" : "Silenciar"}
               className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-                track.muted ? "bg-red-500 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                track.muted ? "bg-red-500 text-black" : "bg-surf-2 text-bone-2 hover:text-bone"
               }`}
             >
               M
@@ -154,7 +154,7 @@ export function MixerPanel() {
               }}
               title={track.solo ? "Quitar solo" : "Solo"}
               className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-                track.solo ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                track.solo ? "bg-yellow-400 text-black" : "bg-surf-2 text-bone-2 hover:text-bone"
               }`}
             >
               S
@@ -167,7 +167,7 @@ export function MixerPanel() {
               disabled={isRecording}
               title="Armar para grabar"
               className={`flex h-11 w-11 items-center justify-center rounded disabled:opacity-30 ${
-                track.armed ? "bg-red-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+                track.armed ? "bg-rec text-bone" : "bg-surf-2 text-bone-2 hover:text-bone"
               }`}
             >
               <RecordIcon className="h-3.5 w-3.5" />
@@ -194,12 +194,12 @@ export function MixerPanel() {
         </div>
       ))}
 
-      <div className="ml-auto flex w-32 shrink-0 flex-col items-center gap-1.5 rounded border border-neutral-700 bg-neutral-900 p-2">
-        <span className="text-[11px] font-semibold text-neutral-200">MASTER</span>
+      <div className="ml-auto flex w-32 shrink-0 flex-col items-center gap-1.5 rounded border border-line-2 bg-surf p-2">
+        <span className="text-[11px] font-semibold text-bone">MASTER</span>
         <button
           onClick={openMasterFx}
           title="Abrir la cadena del bus master"
-          className="flex min-h-11 w-full items-center justify-center gap-1 rounded bg-neutral-800 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
+          className="flex min-h-11 w-full items-center justify-center gap-1 rounded bg-surf-2 text-[10px] font-medium text-bone-2 hover:text-bone"
         >
           <BusIcon className="h-3 w-3" />
           FX
@@ -208,7 +208,7 @@ export function MixerPanel() {
           <Fader valueDb={masterVolumeDb} onChange={setMasterVolume} height={128} label="Master" showScale />
           <MeterBar analyser={engine.getMasterAnalyser()} />
         </div>
-        <span className="font-mono text-[10px] tabular-nums text-neutral-500">{masterVolumeDb.toFixed(1)}dB</span>
+        <span className="font-mono text-[10px] tabular-nums text-bone-2">{masterVolumeDb.toFixed(1)}dB</span>
       </div>
     </div>
   );

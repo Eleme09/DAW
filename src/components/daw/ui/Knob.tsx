@@ -134,24 +134,24 @@ export function Knob({
           <path
             d={describeArc(cx, cy, r, START_ANGLE, START_ANGLE + SWEEP_DEGREES)}
             fill="none"
-            stroke="#27272a"
+            stroke="#34343a"
             strokeWidth={3}
             strokeLinecap="round"
           />
-          <path d={describeArc(cx, cy, r, START_ANGLE, angle)} fill="none" stroke="#22d3ee" strokeWidth={3} strokeLinecap="round" />
-          <circle cx={cx} cy={cy} r={r - 6} fill="#18181b" />
+          <path d={describeArc(cx, cy, r, START_ANGLE, angle)} fill="none" stroke="#f2ede4" strokeWidth={3} strokeLinecap="round" />
+          <circle cx={cx} cy={cy} r={r - 6} fill="#111112" />
           <line
             x1={cx}
             y1={cy}
             x2={polarPoint(cx, cy, r - 4, angle).x}
             y2={polarPoint(cx, cy, r - 4, angle).y}
-            stroke="#e5e5e5"
+            stroke="#f2ede4"
             strokeWidth={2}
             strokeLinecap="round"
           />
         </svg>
       </div>
-      {label && <span className="truncate text-[9px] text-neutral-500">{label}</span>}
+      {label && <span className="truncate text-[9px] text-bone-2">{label}</span>}
       {editing ? (
         <input
           autoFocus
@@ -162,10 +162,10 @@ export function Knob({
             if (e.key === "Enter") commitEdit();
             if (e.key === "Escape") setEditing(false);
           }}
-          className="w-12 rounded bg-neutral-900 px-1 text-center text-[10px] text-neutral-100 outline-none ring-1 ring-cyan-500"
+          className="w-12 rounded bg-surf px-1 text-center text-[10px] text-bone outline-none ring-1 ring-bone"
         />
       ) : (
-        <span className="font-mono text-[9px] tabular-nums text-neutral-400">
+        <span className="font-mono text-[9px] tabular-nums text-bone-2">
           {value.toFixed(decimals)}
           {unit}
         </span>
