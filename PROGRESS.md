@@ -29,6 +29,26 @@ Status: **cumple los criterios de aceptación estipulados**
 
 Verified: `tsc --noEmit`, `eslint src`, `vitest run` (256 tests) all clean after every change in this phase. Manually confirmed in-browser at 360px (no scroll, sheet opens/closes) and 1024px (full inline layout unchanged).
 
-## FASE 2–8
+## FASE 2 — Timeline de nivel profesional
+
+Status: **subset de mayor valor implementado; ítems de mayor riesgo diferidos (ver abajo)**
+
+- [x] Regla en compases y tiempos: `src/lib/timing/grid.ts` (BPM+time-signature -> beat/bar seconds, 9 tests) reemplaza los ticks de segundos del `Ruler` por números de compás; el largo del compás se muestra explícito.
+- [x] Snap a rejilla configurable (Off, 1/4, 1/8, 1/16, 1/32, 1/8t, 1/16t) — selector en la barra inferior del Timeline, aplicado a mover/recortar clips en `ClipView.tsx`.
+- [x] Clip gain: ya se aplicaba en el audio engine (`AudioEngine.ts`) pero no existía UI — agregada una línea horizontal arrastrable (-24..+12 dB) sobre cada clip.
+- [x] Fade in/out con manija: también ya aplicado en el motor; agregadas manijas triangulares en las esquinas superiores con overlay visual del triángulo de fade.
+- [x] Región de loop visible y editable: nuevo `LoopRegion.tsx`, arrastra el cuerpo para mover ambos extremos juntos o cada borde por separado.
+- [x] Duplicar clip: nueva acción `duplicateClipAtPlayhead` (store), botón "⧉ Duplicate" + atajo `D`.
+- [x] Formas de onda en Canvas con caché de picos — ya existía (`Waveform.tsx` + `computePeaks`), sin cambios.
+
+Deliberadamente diferido (no a medias — no se empezó por el riesgo/costo real):
+- [ ] Zoom con pinch e scroll inercial — necesita gestos táctiles reales para probar bien; `PIXELS_PER_SECOND` sigue fijo en 80.
+- [ ] Virtualización del renderizado — no urgente con la cantidad de pistas actual (todas las pistas/clips son DOM plano hoy); revisar si el conteo de pistas crece.
+- [ ] Crossfade entre clips adyacentes (distinto de fade in/out de un solo clip - requiere detectar solapamiento entre dos clips).
+- [ ] Marcadores nombrados arbitrarios (más allá de la región de loop).
+
+Verificado: `tsc`/`eslint`/`vitest` (265 tests, +9 nuevos) limpios. En navegador: generado un beat real (4 pistas con audio real vía Beat Generator), confirmado bar-length en la regla, arrastre de gain simulado con PointerEvent (0dB -> 10dB), undo revierte correctamente a 0dB, loop region con título/rango correcto, sin errores de consola.
+
+## FASE 3–8
 
 Status: **no iniciadas**

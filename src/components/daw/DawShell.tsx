@@ -56,6 +56,11 @@ export function DawShell() {
         useProjectStore.getState().splitClipAtPlayhead();
         return;
       }
+      if (e.key === "d" || e.key === "D") {
+        e.preventDefault();
+        useProjectStore.getState().duplicateClipAtPlayhead();
+        return;
+      }
       const isUndoRedoModifier = e.ctrlKey || e.metaKey;
       if (isUndoRedoModifier && (e.key === "z" || e.key === "Z")) {
         e.preventDefault();

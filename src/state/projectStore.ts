@@ -14,6 +14,7 @@ import {
   type TrackId,
 } from "@/types/project";
 import { createEffectInstance, type EffectInstance, type EffectType } from "@/types/effects";
+import type { GridResolution } from "@/lib/timing/grid";
 
 export type EffectTarget = TrackId | "master";
 
@@ -28,6 +29,10 @@ interface ProjectState {
   selectedTrackId: TrackId | null;
   isRecording: boolean;
   recordingError: string | null;
+  /** Timeline UI state, not project data - deliberately not part of
+   * undo/redo or persistence. */
+  snapResolution: GridResolution;
+  setSnapResolution: (resolution: GridResolution) => void;
 
   undo: () => void;
   redo: () => void;
@@ -40,6 +45,9 @@ interface ProjectState {
   updateClip: (trackId: TrackId, clipId: string, patch: Partial<AudioClip>) => void;
   removeClip: (trackId: TrackId, clipId: string) => void;
   splitClipAtPlayhead: () => void;
+  /** Duplicates the clip under the playhead on the selected track, placing
+   * the copy immediately after the original. */
+  duplicateClipAtPlayhead: () => void;
   selectTrack: (trackId: TrackId | null) => void;
 
   addEffect: (target: EffectTarget, type: EffectType) => void;
@@ -173,6 +181,8 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     selectedTrackId: null,
     isRecording: false,
     recordingError: null,
+    snapResolution: "1/16",
+    setSnapResolution: (resolution) => set({ snapResolution: resolution }),
 
     undo: () => {
       const { past, project, future } = get();
@@ -300,6 +310,22 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
               ? t
               : { ...t, clips: t.clips.flatMap((c) => (c.id === clip.id ? [left, right] : [c])) }
           ),
+        })
+      );
+    },
+
+    duplicateClipAtPlayhead: () => {
+      const { project, selectedTrackId, currentTime } = get();
+      const track = project.tracks.find((t) => t.id === selectedTrackId);
+      if (!track) return;
+      const clip = track.clips.find((c) => currentTime >= c.startTime && currentTime <= c.startTime + c.duration);
+      if (!clip) return;
+
+      const duplicate: AudioClip = { ...clip, id: crypto.randomUUID(), startTime: clip.startTime + clip.duration };
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) => (t.id !== track.id ? t : { ...t, clips: [...t.clips, duplicate] })),
         })
       );
     },
