@@ -82,13 +82,13 @@ export async function analyzeMix(
   const limitations = [...mixRead.limitations];
   if (tracksWithClips.length < 2) {
     limitations.push(
-      `Masking and gain-staging checks need at least two tracks with audio — found ${tracksWithClips.length}.`
+      `El chequeo de enmascaramiento y niveles de ganancia necesita al menos dos pistas con audio — se encontraron ${tracksWithClips.length}.`
     );
   }
   limitations.push(
-    "Mud/harshness/sibilance/low-end severity thresholds were calibrated for a solo vocal recording " +
-      "(Phase 4), not a full multi-instrument mix — treat this read as a rough guide on the summed " +
-      "signal, not a mix-specific standard."
+    "Los umbrales de severidad de barro/aspereza/sibilancia/graves se calibraron para una grabación " +
+      "vocal en solitario (Fase 4), no para una mezcla completa multi-instrumento — trata esta lectura " +
+      "como una guía aproximada sobre la señal sumada, no un estándar específico de mezcla."
   );
 
   return {

@@ -43,8 +43,8 @@ export function buildMaskingSuggestions(findings: MaskingFinding[]): EqCutSugges
   const suggestions: EqCutSuggestion[] = [];
   for (const f of findings) {
     const reason =
-      `${f.trackAName} and ${f.trackBName} both concentrate energy around ` +
-      `${Math.round(f.freqHz)}Hz (${f.band}) — cutting here on one of them can make room for the other.`;
+      `${f.trackAName} y ${f.trackBName} concentran energía cerca de ` +
+      `${Math.round(f.freqHz)}Hz (${f.band}) — cortar aquí en una de ellas puede hacerle espacio a la otra.`;
     suggestions.push({
       kind: "eqCut",
       id: crypto.randomUUID(),
@@ -79,7 +79,7 @@ export function buildGainStagingSuggestions(findings: GainStagingFinding[]): Gai
     trackName: f.trackName,
     deltaDb: Math.round(-f.deltaFromMedianDb * 10) / 10,
     reason:
-      `${f.trackName} is about ${Math.abs(f.deltaFromMedianDb).toFixed(1)}dB ${f.direction} than ` +
-      `this session's typical track level.`,
+      `${f.trackName} está unos ${Math.abs(f.deltaFromMedianDb).toFixed(1)}dB más ${f.direction === "louder" ? "alta" : "baja"} que ` +
+      `el nivel típico de pista de esta sesión.`,
   }));
 }

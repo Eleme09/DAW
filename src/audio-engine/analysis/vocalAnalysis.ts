@@ -32,16 +32,17 @@ export function analyzeVocalChannel(channelData: Float32Array, sampleRate: numbe
   const limitations: string[] = [];
   if (dynamics.clippedSampleRatio > 0.001) {
     limitations.push(
-      `${(dynamics.clippedSampleRatio * 100).toFixed(1)}% of samples are clipped. That audio is gone at those ` +
-        `points — no processing can recover it. Re-record at a lower input level if possible.`
+      `El ${(dynamics.clippedSampleRatio * 100).toFixed(1)}% de las muestras están saturadas (clipping). Ese audio ` +
+        `se perdió en esos puntos — ningún procesamiento puede recuperarlo. Vuelve a grabar con un nivel de entrada más bajo si es posible.`
     );
   } else if (dynamics.peakDb > -0.5) {
-    limitations.push("Peaks are very close to full scale — a lower input gain would leave more headroom next take.");
+    limitations.push("Los picos están muy cerca del máximo — una ganancia de entrada más baja dejaría más margen (headroom) en la próxima toma.");
   }
   if (dynamics.noiseFloorDb > -25) {
     limitations.push(
-      "The noise floor is quite high. The current toolset (Noise Gate) can silence gaps between phrases but can't " +
-        "remove noise sitting underneath the vocal itself — that needs spectral noise reduction, not built yet."
+      "El piso de ruido es bastante alto. Las herramientas actuales (Puerta de ruido) pueden silenciar los " +
+        "espacios entre frases, pero no pueden quitar el ruido que está debajo de la voz misma — eso necesita " +
+        "reducción espectral de ruido, todavía no está construida."
     );
   }
 

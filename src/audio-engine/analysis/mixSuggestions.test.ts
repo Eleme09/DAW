@@ -72,7 +72,7 @@ describe("buildGainStagingSuggestions", () => {
     expect(suggestion.deltaDb).toBeGreaterThan(0); // bring it up
     expect(suggestion.deltaDb).toBeCloseTo(14, 5);
     expect(suggestion.reason).toContain("Quiet Adlib");
-    expect(suggestion.reason).toContain("quieter");
+    expect(suggestion.reason).toContain("baja");
   });
 
   it("suggests trimming a too-loud track down", () => {
@@ -85,7 +85,7 @@ describe("buildGainStagingSuggestions", () => {
     };
     const [suggestion] = buildGainStagingSuggestions([finding]);
     expect(suggestion.deltaDb).toBeLessThan(0); // bring it down
-    expect(suggestion.reason).toContain("louder");
+    expect(suggestion.reason).toContain("alta");
   });
 
   it("returns nothing for no findings", () => {

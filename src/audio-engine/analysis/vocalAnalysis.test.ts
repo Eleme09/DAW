@@ -29,14 +29,14 @@ describe("analyzeVocalChannel", () => {
     });
     const result = analyzeVocalChannel(data, SAMPLE_RATE);
     expect(result.noise).toBe("low");
-    expect(result.limitations.some((l) => l.toLowerCase().includes("noise floor"))).toBe(false);
+    expect(result.limitations.some((l) => l.toLowerCase().includes("piso de ruido"))).toBe(false);
   });
 
   it("a signal with a loud broadband noise floor reads high noise severity", () => {
     const data = makeSignal(1, () => (Math.random() * 2 - 1) * 0.3); // ~-10dBFS RMS noise throughout
     const result = analyzeVocalChannel(data, SAMPLE_RATE);
     expect(result.noise).toBe("high");
-    expect(result.limitations.some((l) => l.toLowerCase().includes("noise floor"))).toBe(true);
+    expect(result.limitations.some((l) => l.toLowerCase().includes("piso de ruido"))).toBe(true);
   });
 
   it("energy concentrated in the sibilance band reads high sibilance, low mud", () => {
