@@ -55,9 +55,9 @@ export function Analyzer() {
     <div className="border-b border-neutral-800 p-2">
       <canvas ref={canvasRef} width={288} height={64} className="block w-full rounded bg-black" />
       <div className="mt-2 grid grid-cols-3 gap-1 text-center text-[10px]">
-        <Readout label="Peak" value={peakDb} />
+        <Readout label="Pico" value={peakDb} />
         <Readout label="RMS" value={rmsDb} />
-        <Readout label="LUFS (approx.)" value={lufsApprox} />
+        <Readout label="LUFS (aprox.)" value={lufsApprox} />
       </div>
     </div>
   );
