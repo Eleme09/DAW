@@ -42,8 +42,8 @@ export function Ruler({ width, bpm, timeSignature, onSeek }: RulerProps) {
           </div>
         );
       })}
-      <span className="pointer-events-none absolute right-1 top-0.5 text-[9px] text-neutral-700" title="Bar length">
-        {barSec.toFixed(2)}s/bar
+      <span className="pointer-events-none absolute right-1 top-0.5 text-[9px] text-neutral-700" title="Duración del compás">
+        {barSec.toFixed(2)}s/compás
       </span>
     </div>
   );

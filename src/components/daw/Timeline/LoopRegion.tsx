@@ -62,7 +62,7 @@ export function LoopRegion({ height }: { height: number }) {
     <div
       className={`absolute top-0 z-15 ${loop.enabled ? "bg-cyan-500/10" : "bg-neutral-500/5"}`}
       style={{ left, width, height }}
-      title={`Loop ${loop.startTime.toFixed(2)}s – ${loop.endTime.toFixed(2)}s — drag to move`}
+      title={`Loop ${loop.startTime.toFixed(2)}s – ${loop.endTime.toFixed(2)}s — arrastra para mover`}
     >
       <div
         onPointerDown={(e) => beginDrag(e, "move")}
