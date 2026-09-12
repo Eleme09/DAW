@@ -28,6 +28,9 @@ export type EffectTarget = TrackId | "master";
 /** Which single pane is full-width on mobile - see DawShell. Unused at `md`+,
  * where every pane renders simultaneously. */
 export type MobileView = "browser" | "timeline" | "mixer" | "effects";
+/** Which sub-tab BrowserPanel is showing - lifted out of that component so
+ * a track/effect's "Ask AI" button can jump straight to the Assistant tab. */
+export type BrowserTab = "projects" | "audio" | "match" | "mix" | "generate" | "assistant";
 
 interface ProjectState {
   project: Project;
@@ -59,6 +62,14 @@ interface ProjectState {
   /** Which parameter's lane the automation editor is showing. */
   automationParam: AutomationParam;
   setAutomationParam: (param: AutomationParam) => void;
+  browserTab: BrowserTab;
+  setBrowserTab: (tab: BrowserTab) => void;
+  /** The Assistant tab's message draft - lives here (not local component
+   * state) so a track/effect's "Ask AI" button can pre-fill it directly
+   * before jumping to the tab, the same way every other cross-panel UI
+   * state in this store works (mobileView, effectsRackMode, ...). */
+  assistantDraftMessage: string;
+  setAssistantDraftMessage: (text: string) => void;
 
   undo: () => void;
   redo: () => void;
@@ -253,6 +264,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     setAutomationTrackId: (trackId) => set({ automationTrackId: trackId }),
     automationParam: "volume",
     setAutomationParam: (param) => set({ automationParam: param }),
+    browserTab: "audio",
+    setBrowserTab: (tab) => set({ browserTab: tab }),
+    assistantDraftMessage: "",
+    setAssistantDraftMessage: (text) => set({ assistantDraftMessage: text }),
 
     undo: () => {
       const { past, project, future } = get();

@@ -4,7 +4,7 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import type { Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
-import { AutomationIcon } from "../icons";
+import { AutomationIcon, SparkleIcon } from "../icons";
 import { HEADER_WIDTH, TRACK_HEIGHT } from "./constants";
 
 interface TrackHeaderProps {
@@ -20,6 +20,9 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const isRecording = useProjectStore((s) => s.isRecording);
   const setAutomationTrackId = useProjectStore((s) => s.setAutomationTrackId);
   const hasAutomation = track.automation.volume.enabled || track.automation.pan.enabled;
+  const setAssistantDraftMessage = useProjectStore((s) => s.setAssistantDraftMessage);
+  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
+  const setMobileView = useProjectStore((s) => s.setMobileView);
   const isLiveInput = track.armed && isRecording;
 
   return (
@@ -117,6 +120,18 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }`}
         >
           <AutomationIcon className="h-3 w-3" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setAssistantDraftMessage(`${track.name}: `);
+            setBrowserTab("assistant");
+            setMobileView("browser");
+          }}
+          title="Ask AI about this track"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+        >
+          <SparkleIcon className="h-3 w-3" />
         </button>
         <input
           type="range"

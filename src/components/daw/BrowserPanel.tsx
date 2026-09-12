@@ -8,7 +8,7 @@ import { addSampleAsset, listSampleAssets } from "@/lib/storage/sampleIndex";
 import { deleteProject, listProjects } from "@/lib/storage/projectStore";
 import { analyzeVocalRecording } from "@/audio-engine/analysis/vocalAnalysis";
 import { buildPhoneMicEnhanceChain } from "@/audio-engine/analysis/autoChain";
-import { useProjectStore } from "@/state/projectStore";
+import { useProjectStore, type BrowserTab } from "@/state/projectStore";
 import { VocalAnalysisPanel } from "./VocalAnalysisPanel";
 import { PitchStudioPanel } from "./PitchStudioPanel";
 import { DenoisePanel } from "./DenoisePanel";
@@ -22,9 +22,7 @@ import { WaveformIcon, MatchIcon, MixIcon, BeatGridIcon, SparkleIcon, FolderIcon
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
-type Tab = "projects" | "audio" | "match" | "mix" | "generate" | "assistant";
-
-const TABS: { id: Tab; label: string; hint: string; Icon: ComponentType<{ className?: string }> }[] = [
+const TABS: { id: BrowserTab; label: string; hint: string; Icon: ComponentType<{ className?: string }> }[] = [
   { id: "audio", label: "Samples", hint: "Import audio and run per-sample tools", Icon: WaveformIcon },
   { id: "match", label: "Vocal Match", hint: "Match a vocal take to a beat's key and tempo", Icon: MatchIcon },
   { id: "mix", label: "AI Mix", hint: "AI-assisted mix balance across all tracks", Icon: MixIcon },
@@ -34,7 +32,8 @@ const TABS: { id: Tab; label: string; hint: string; Icon: ComponentType<{ classN
 ];
 
 export function BrowserPanel() {
-  const [tab, setTab] = useState<Tab>("audio");
+  const tab = useProjectStore((s) => s.browserTab);
+  const setTab = useProjectStore((s) => s.setBrowserTab);
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-r border-neutral-800 bg-neutral-950 md:w-64">

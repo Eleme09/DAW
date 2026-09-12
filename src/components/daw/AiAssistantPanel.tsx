@@ -13,7 +13,6 @@ import { SparkleIcon } from "./icons";
  * own. See AI_FEATURES.md/AUDIO_ENGINE.md for the full design.
  */
 export function AiAssistantPanel() {
-  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<AssistantTurnResult | null>(null);
   const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
@@ -21,6 +20,10 @@ export function AiAssistantPanel() {
   const project = useProjectStore((s) => s.project);
   const updateTrack = useProjectStore((s) => s.updateTrack);
   const setEffectChain = useProjectStore((s) => s.setEffectChain);
+  // Lives in the store, not local state, so a track/effect's "Ask AI"
+  // button can pre-fill it directly before jumping to this tab.
+  const message = useProjectStore((s) => s.assistantDraftMessage);
+  const setMessage = useProjectStore((s) => s.setAssistantDraftMessage);
 
   async function send() {
     const trimmed = message.trim();

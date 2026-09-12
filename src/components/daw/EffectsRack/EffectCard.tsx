@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useProjectStore, type EffectTarget } from "@/state/projectStore";
 import { EFFECT_LABELS, type EffectInstance } from "@/types/effects";
 import { EffectParamsEditor } from "./EffectParamsEditor";
+import { SparkleIcon } from "../icons";
 
 interface EffectCardProps {
   target: EffectTarget;
@@ -18,6 +19,18 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
   const toggleEffectBypass = useProjectStore((s) => s.toggleEffectBypass);
   const removeEffect = useProjectStore((s) => s.removeEffect);
   const moveEffect = useProjectStore((s) => s.moveEffect);
+  const targetName = useProjectStore((s) =>
+    target === "master" ? "Master" : (s.project.tracks.find((t) => t.id === target)?.name ?? target)
+  );
+  const setAssistantDraftMessage = useProjectStore((s) => s.setAssistantDraftMessage);
+  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
+  const setMobileView = useProjectStore((s) => s.setMobileView);
+
+  function askAi() {
+    setAssistantDraftMessage(`${EFFECT_LABELS[effect.type]} on ${targetName}: `);
+    setBrowserTab("assistant");
+    setMobileView("browser");
+  }
 
   return (
     <div className={`rounded border ${effect.bypassed ? "border-neutral-800 opacity-50" : "border-neutral-700"} bg-neutral-900`}>
@@ -30,6 +43,9 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           {expanded ? "▾" : "▸"}
         </button>
         <span className="flex-1 text-xs font-medium text-neutral-200">{EFFECT_LABELS[effect.type]}</span>
+        <button onClick={askAi} title="Ask AI about this effect" className="text-neutral-500 hover:text-neutral-300">
+          <SparkleIcon className="h-3.5 w-3.5" />
+        </button>
         <button
           onClick={() => moveEffect(target, effect.id, -1)}
           disabled={isFirst}
