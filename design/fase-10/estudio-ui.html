@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cabina — Sistema de Interfaz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  /* chasis: grafito cálido. hueso para el texto. el color es la señal. */
+  --ink:#0A0A0B; --surf:#111112; --surf2:#18181A; --surf3:#212125;
+  --line:#26262A; --line2:#34343A;
+  --bone:#F2EDE4; --bone2:#9A968E; --bone3:#5E5B57;
+  --rec:#E5243B; --live:#8FB89A;
+  /* señal — desaturados, fílmicos */
+  --s1:#E8C15C; --s2:#C97064; --s3:#7FA8C9; --s4:#B294C4; --s5:#8FB89A; --s6:#6E6E74;
+  --disp:'Bricolage Grotesque',Georgia,serif;
+  --ui:'Instrument Sans',system-ui,-apple-system,sans-serif;
+  --mono:'DM Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--bone);font-family:var(--ui);
+  background-image:radial-gradient(1000px 460px at 50% -14%,#17171A 0%,#0A0A0B 62%)}
+.page{max-width:1080px;margin:0 auto;padding-block:30px 60px;padding-left:16px;padding-right:16px}
+
+.masthead{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--bone3)}
+h1{font-family:var(--disp);font-size:clamp(38px,8vw,74px);line-height:.94;margin:0;font-weight:800;
+  letter-spacing:-.035em;text-wrap:balance}
+h1 em{font-style:normal;color:var(--bone3)}
+.lede{margin:0;color:var(--bone2);font-size:15.5px;line-height:1.6;max-width:60ch}
+.lede b{color:var(--bone);font-weight:600}
+.credo{margin:18px 0 0;padding:14px 18px;border-left:2px solid var(--bone);background:var(--surf);
+  font-family:var(--disp);font-size:17px;font-weight:500;line-height:1.4;letter-spacing:-.015em;max-width:52ch}
+
+.switch{display:flex;flex-wrap:wrap;gap:7px;margin:30px 0 18px}
+.switch button{font-family:var(--ui);font-size:12.5px;font-weight:600;color:var(--bone2);
+  background:transparent;border:1px solid var(--line2);padding:8px 14px;border-radius:3px;cursor:pointer;
+  transition:.14s}
+.switch button:hover{color:var(--bone);border-color:var(--bone3)}
+.switch button[aria-selected="true"]{background:var(--bone);color:var(--ink);border-color:var(--bone)}
+.switch button:focus-visible{outline:2px solid var(--bone);outline-offset:2px}
+
+.stage{display:grid;grid-template-columns:390px 1fr;gap:34px;align-items:start}
+@media (max-width:880px){.stage{grid-template-columns:1fr;gap:26px}}
+
+/* ---------------- phone ---------------- */
+.phone{width:390px;max-width:100%;height:812px;border-radius:30px;background:var(--ink);
+  border:1px solid var(--line2);box-shadow:0 0 0 7px #08080A,0 44px 90px -26px #000;overflow:hidden;
+  display:flex;flex-direction:column;position:relative;justify-self:center}
+.scr{display:flex;flex-direction:column;height:100%}
+
+.top{height:50px;display:flex;align-items:center;gap:10px;padding:0 12px;flex:0 0 auto;
+  border-bottom:1px solid var(--line);background:var(--surf)}
+.ttl{font-family:var(--disp);font-size:14px;font-weight:700;letter-spacing:-.02em}
+.tsub{font-family:var(--mono);font-size:9.5px;color:var(--bone3);margin-top:1px}
+.icobtn{width:34px;height:34px;display:grid;place-items:center;border-radius:4px;border:0;background:transparent;
+  color:var(--bone2);cursor:pointer}
+.icobtn:hover{background:var(--surf2);color:var(--bone)}
+
+.ruler{height:24px;flex:0 0 auto;background:var(--surf);border-bottom:1px solid var(--line);
+  display:flex;position:relative;overflow:hidden}
+.ruler .tc{position:absolute;left:9px;top:5px;font-family:var(--mono);font-size:10px;color:var(--bone2)}
+.ruler .marks{position:absolute;left:108px;right:0;top:0;bottom:0;display:flex}
+.ruler .bar{width:64px;flex:0 0 64px;border-left:1px solid var(--line2);position:relative}
+.ruler .bar span{position:absolute;left:4px;top:5px;font-family:var(--mono);font-size:9.5px;color:var(--bone3)}
+
+.tracks{flex:1 1 auto;overflow-y:auto;position:relative}
+.trk{display:flex;height:70px;border-bottom:1px solid var(--line)}
+.thead{width:108px;flex:0 0 108px;padding:8px 8px 7px 10px;display:flex;flex-direction:column;gap:4px;
+  border-right:1px solid var(--line);position:relative;background:var(--surf)}
+.thead::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:currentColor}
+.tname{font-size:11px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--bone)}
+.tmeta{font-family:var(--mono);font-size:9px;color:var(--bone3)}
+.micro{display:flex;gap:4px;margin-top:auto}
+.micro b{width:17px;height:17px;border-radius:3px;display:grid;place-items:center;font-size:8.5px;font-weight:700;
+  background:#ffffff0d;color:var(--bone3);font-family:var(--ui)}
+.micro b.on{background:var(--bone);color:var(--ink)}
+.micro b.arm{background:var(--rec);color:#fff}
+.clipwrap{flex:1;position:relative;overflow:hidden;
+  background:repeating-linear-gradient(90deg,transparent 0 63px,#ffffff07 63px 64px)}
+.clip{position:absolute;top:5px;bottom:5px;border-radius:3px;overflow:hidden;cursor:pointer;background:#0D0D0F;
+  border:1px solid color-mix(in srgb,currentColor 34%,transparent)}
+.clip canvas{width:100%;height:100%;display:block}
+.clip.sel{border-color:var(--bone);box-shadow:0 0 0 1px var(--bone)}
+.tag{position:absolute;right:5px;top:4px;font-family:var(--mono);font-size:8.5px;color:var(--ink);
+  background:currentColor;padding:1px 5px;border-radius:2px;font-weight:500}
+.playhead{position:absolute;top:0;bottom:0;left:190px;width:1px;background:var(--bone);z-index:5;pointer-events:none}
+.playhead::before{content:"";position:absolute;top:0;left:-4px;border:4px solid transparent;border-top-color:var(--bone)}
+.muted{opacity:.4}
+.addtrk{margin:10px;height:38px;border:1px solid var(--line2);border-radius:3px;background:transparent;
+  color:var(--bone2);font-family:var(--ui);font-size:12.5px;font-weight:600;width:calc(100% - 20px);cursor:pointer}
+
+.ctxbar{flex:0 0 auto;height:44px;display:flex;align-items:center;gap:5px;padding:0 10px;
+  background:var(--surf);border-top:1px solid var(--line)}
+.cbtn{height:28px;padding:0 9px;border-radius:3px;border:1px solid var(--line2);background:transparent;
+  color:var(--bone2);font-family:var(--ui);font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px;cursor:pointer}
+.cbtn.act{background:var(--bone);border-color:var(--bone);color:var(--ink)}
+.spacer{flex:1}
+.transport{flex:0 0 auto;height:66px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;background:var(--surf);border-top:1px solid var(--line)}
+.trec{width:48px;height:48px;border-radius:50%;background:var(--rec);border:2px solid #ffffff14;cursor:pointer}
+.tbtn{width:36px;height:36px;border:0;background:transparent;color:var(--bone);display:grid;place-items:center;cursor:pointer;border-radius:4px}
+.tbtn.q{color:var(--bone3)}
+
+/* ------- voz (hero) ------- */
+.voz{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.takebox{position:relative;height:150px;border-bottom:1px solid var(--line);background:#0C0C0E}
+.takebox canvas{width:100%;height:150px;display:block}
+.takebox .ov{position:absolute;left:10px;top:9px;font-family:var(--mono);font-size:9.5px;color:var(--bone3);letter-spacing:.08em}
+.pitchbox{position:relative;height:126px;border-bottom:1px solid var(--line);background:#0C0C0E}
+.pitchbox canvas{width:100%;height:126px;display:block}
+.pitchbox .ov{position:absolute;right:10px;top:9px;font-family:var(--mono);font-size:9.5px;color:var(--bone3)}
+.secttl{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--bone3);
+  padding:14px 14px 8px}
+.chain{display:flex;gap:6px;padding:0 14px;overflow-x:auto}
+.link{flex:0 0 auto;padding:8px 11px;border:1px solid var(--line2);border-radius:3px;background:var(--surf);
+  min-width:76px}
+.link b{display:block;font-size:11px;font-weight:700}
+.link span{display:block;font-family:var(--mono);font-size:9px;color:var(--bone3);margin-top:2px}
+.link.on{border-color:var(--bone);background:var(--surf3)}
+.link.off{opacity:.42}
+.bigbtn{margin:16px 14px 10px;height:52px;border:0;border-radius:3px;background:var(--bone);color:var(--ink);
+  font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:-.02em;cursor:pointer;width:calc(100% - 28px);
+  display:flex;align-items:center;justify-content:center;gap:9px}
+.ab{display:flex;margin:0 14px 12px;border:1px solid var(--line2);border-radius:3px;overflow:hidden}
+.ab button{flex:1;height:38px;border:0;background:transparent;color:var(--bone2);font-family:var(--ui);
+  font-size:12px;font-weight:700;cursor:pointer}
+.ab button.on{background:var(--surf3);color:var(--bone)}
+.readout{margin:0 14px 16px;padding:11px 13px;border:1px solid var(--line);border-radius:3px;background:var(--surf);
+  display:flex;gap:16px}
+.readout div{flex:1}
+.readout .k{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--bone3)}
+.readout .v{font-family:var(--mono);font-size:16px;color:var(--bone);margin-top:3px}
+.readout .v i{font-style:normal;color:var(--live)}
+
+/* ------- plugin ------- */
+.pl-head{flex:0 0 auto;height:46px;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--surf2);
+  border-bottom:1px solid var(--line2)}
+.pl-name{font-family:var(--disp);font-size:14px;font-weight:800;letter-spacing:-.02em}
+.pl-pre{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--ink);
+  border:1px solid var(--line2);border-radius:2px;height:26px;font-size:11px;font-weight:600;color:var(--bone2)}
+.mini{width:24px;height:22px;border:1px solid var(--line2);border-radius:2px;background:transparent;color:var(--bone2);
+  font-family:var(--mono);font-size:9.5px;display:grid;place-items:center;cursor:pointer}
+.mini.on{background:var(--bone);color:var(--ink);border-color:var(--bone)}
+.viz{flex:0 0 auto;background:#08080A;border-bottom:1px solid var(--line)}
+.viz canvas{width:100%;height:210px;display:block}
+.knobs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:14px 12px 10px;
+  border-bottom:1px solid var(--line)}
+.kn{text-align:center}
+.kn canvas{width:60px;height:60px;display:block;margin:0 auto}
+.kn .kl{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone3);margin-top:3px}
+.kn .kv{font-family:var(--mono);font-size:11px;color:var(--bone);margin-top:1px}
+.pl-foot{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.mrow{display:flex;align-items:center;gap:9px}
+.mrow .ml{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--bone3);width:44px}
+.mbar{flex:1;height:6px;background:#000;border:1px solid var(--line);border-radius:1px;position:relative;overflow:hidden}
+.mbar i{position:absolute;left:0;top:0;bottom:0;background:var(--live)}
+.mbar i.gr{left:auto;right:0;background:var(--s2)}
+.mrow .mv{font-family:var(--mono);font-size:10px;color:var(--bone2);width:50px;text-align:right}
+
+/* ------- afinación ------- */
+.tuner{flex:1;display:flex;flex-direction:column;align-items:center;padding:14px;overflow-y:auto}
+.keyrow{display:flex;gap:7px;width:100%;margin-bottom:8px}
+.keysel{flex:1;height:36px;border-radius:3px;background:var(--surf);border:1px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.knobwrap{position:relative;width:178px;height:178px;margin:8px 0 4px}
+.knobwrap canvas{width:178px;height:178px;display:block}
+.knoblbl{position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none}
+.knoblbl b{font-family:var(--disp);font-size:38px;font-weight:800;letter-spacing:-.05em;display:block;line-height:1}
+.knoblbl span{font-family:var(--mono);font-size:8.5px;color:var(--bone3);letter-spacing:.18em;text-transform:uppercase}
+.cents{font-family:var(--mono);font-size:10.5px;color:var(--bone2);margin-bottom:12px}
+.cents i{font-style:normal;color:var(--live)}
+.pills{display:flex;gap:6px;overflow-x:auto;width:100%;margin-bottom:12px;padding-bottom:2px}
+.pill{flex:0 0 auto;padding:6px 12px;border-radius:2px;font-size:11px;font-weight:600;
+  background:transparent;border:1px solid var(--line2);color:var(--bone2);cursor:pointer}
+.pill.on{background:var(--bone);color:var(--ink);border-color:var(--bone)}
+.styles{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:100%}
+.sty{text-align:center;cursor:pointer}
+.sty .cir{width:42px;height:42px;border-radius:50%;background:var(--surf);border:1px solid var(--line2);
+  display:grid;place-items:center;margin:0 auto 5px;color:var(--bone2)}
+.sty.on .cir{background:var(--bone);border-color:var(--bone);color:var(--ink)}
+.sty span{font-size:9px;color:var(--bone3);font-weight:600}
+.sty.on span{color:var(--bone)}
+
+/* ------- mezcla ------- */
+.mixlist{flex:1;overflow-y:auto;padding:10px 12px}
+.ch{border:1px solid var(--line);border-radius:3px;padding:9px 10px 10px;margin-bottom:7px;position:relative;background:var(--surf)}
+.ch::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:currentColor}
+.ch-top{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.ch-num{font-family:var(--mono);font-size:9.5px;color:var(--bone3);width:11px}
+.ch-nm{font-size:11.5px;font-weight:700;flex:1;color:var(--bone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-db{font-family:var(--mono);font-size:10px;color:var(--bone2)}
+.ms{display:flex;gap:3px}
+.ms b{width:19px;height:19px;border-radius:3px;display:grid;place-items:center;font-size:8.5px;font-weight:700;
+  background:#ffffff0d;color:var(--bone3)}
+.ms b.on{background:var(--bone);color:var(--ink)}
+.trk2{height:3px;background:var(--line);position:relative;margin-bottom:5px}
+.trk2 i{position:absolute;left:0;top:0;bottom:0;background:var(--bone2)}
+.trk2 u{position:absolute;top:50%;width:13px;height:13px;border-radius:1px;background:var(--bone);transform:translate(-50%,-50%)}
+.aibox{margin:4px 0 0;border:1px solid var(--bone);border-radius:3px;padding:12px;background:var(--surf2)}
+.aibox h4{font-family:var(--disp);margin:0 0 3px;font-size:14px;font-weight:800;letter-spacing:-.02em}
+.aibox p{margin:0 0 10px;font-size:11.5px;color:var(--bone2);line-height:1.45}
+.aibtn{width:100%;height:40px;border:0;background:var(--bone);color:var(--ink);font-family:var(--ui);
+  font-size:12.5px;font-weight:700;border-radius:2px;cursor:pointer}
+
+/* ---------------- notes ---------------- */
+.notes{position:sticky;top:22px}
+.notes .kicker{font-family:var(--mono);font-size:10px;color:var(--bone3);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px}
+.notes h2{font-family:var(--disp);font-size:26px;margin:0 0 10px;font-weight:800;letter-spacing:-.03em;line-height:1.02}
+.notes ul{margin:0;padding-left:17px;color:var(--bone2);font-size:13.5px;line-height:1.62}
+.notes li{margin-bottom:7px}
+.notes li b{color:var(--bone);font-weight:600}
+.note{display:none}.note[data-on="1"]{display:block}
+
+/* ---------------- anatomy ---------------- */
+.band{margin-top:58px;border-top:1px solid var(--line);padding-top:34px}
+.band h2{font-family:var(--disp);font-size:clamp(24px,4vw,34px);margin:0 0 6px;font-weight:800;letter-spacing:-.03em}
+.band .sub{color:var(--bone2);font-size:14.5px;line-height:1.6;max-width:66ch;margin:0 0 24px}
+.anat{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.anat{grid-template-columns:1fr}}
+.zone{display:flex;gap:12px;padding:13px 15px;border:1px solid var(--line);border-radius:3px;background:var(--surf)}
+.zone .no{font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--bone);width:22px;height:22px;
+  border-radius:2px;display:grid;place-items:center;flex:0 0 22px;font-weight:500}
+.zone h4{margin:0 0 3px;font-size:13px;font-weight:700}
+.zone p{margin:0;font-size:12.5px;color:var(--bone2);line-height:1.5}
+
+/* ---------------- decisions ---------------- */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.col{border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.col>header{padding:11px 15px;font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  border-bottom:1px solid var(--line)}
+.col.si>header{background:var(--bone);color:var(--ink)}
+.col.no>header{background:var(--surf3);color:var(--bone2)}
+.col ul{list-style:none;margin:0;padding:6px 0}
+.col li{padding:9px 15px;font-size:13px;line-height:1.5;border-bottom:1px solid var(--line)}
+.col li:last-child{border-bottom:0}
+.col li b{display:block;font-weight:700;margin-bottom:1px}
+.col li span{color:var(--bone3);font-size:12px}
+
+/* ---------------- tokens ---------------- */
+.sws{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:9px;margin-top:20px}
+.sw{border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.sw .c{height:42px}
+.sw .m{padding:7px 9px;font-family:var(--mono);font-size:10px;color:var(--bone3);line-height:1.5;background:var(--surf)}
+.sw .m b{display:block;color:var(--bone);font-family:var(--ui);font-size:10.5px;font-weight:700;margin-bottom:1px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="page">
+  <div class="masthead">
+    <div class="eyebrow">Sistema de interfaz · v2 · DAW móvil</div>
+    <h1>Cabina<em>.</em></h1>
+    <p class="lede">No es un multipista genérico con colores. Es una <b>cabina de voz</b>: se graba, se afina y se mezcla sola. El resto del estudio existe para servir a esa toma.</p>
+    <p class="credo">El chasis es de grafito y hueso. El único color que existe en la pantalla es la señal de audio.</p>
+  </div>
+
+  <div class="switch" role="tablist">
+    <button role="tab" aria-selected="false" data-s="voz">Voz</button>
+    <button role="tab" aria-selected="true" data-s="sesion">Sesión</button>
+    <button role="tab" aria-selected="false" data-s="plugin">Efecto</button>
+    <button role="tab" aria-selected="false" data-s="afinacion">Afinación</button>
+    <button role="tab" aria-selected="false" data-s="mezcla">Mezcla</button>
+  </div>
+
+  <div class="stage">
+    <div class="phone" id="phone"></div>
+    <div class="notes">
+      <div class="note" data-n="voz">
+        <div class="kicker">Pantalla principal</div>
+        <h2>Voz</h2>
+        <ul>
+          <li><b>Esta pantalla es el producto.</b> Ningún DAW móvil tiene una vista dedicada a la toma vocal. Es lo que nos separa de BandLab, no otro color de pista.</li>
+          <li>Arriba, la <b>toma</b>: forma de onda grande, de verdad, no un rectángulo.</li>
+          <li>Debajo, la <b>afinación real</b> dibujada sobre la rejilla de la tonalidad. El usuario ve dónde canta desafinado sin saber teoría.</li>
+          <li>La <b>cadena</b> es una fila de eslabones con su estado. Se toca uno y se abre su panel.</li>
+          <li><b>Mezclar con IA</b> es un solo botón. Después, <b>Antes / Después</b> con volumen igualado — sin eso la comparación miente.</li>
+          <li>El resultado se lee en <b>LUFS y pico</b>. Números de ingeniero, presentados sin pedir que los entienda.</li>
+        </ul>
+      </div>
+      <div class="note" data-n="sesion" data-on="1">
+        <div class="kicker">Pantalla 2</div>
+        <h2>Sesión</h2>
+        <ul>
+          <li><b>Cabeceras monocromas</b> con una barra de color de 3px en el canto. El color identifica la pista sin teñir la interfaz — eso es lo que hace BandLab y es lo que lo abarata.</li>
+          <li>Forma de onda en canvas, en el color de señal de la pista, sobre fondo casi negro.</li>
+          <li>Regla en <b>compases</b>. Cabeza de reproducción de 1px con banderín, como en Pro Tools.</li>
+          <li><b>Monitorización</b> en la barra de pista, junto a entrada y efectos. Pro Tools la tiene como botón propio (I) y por eso se puede grabar con él.</li>
+          <li>Radios de 3px, no de 14px. Las esquinas muy redondeadas leen como app de consumo, no como herramienta.</li>
+        </ul>
+      </div>
+      <div class="note" data-n="plugin">
+        <div class="kicker">Pantalla 3</div>
+        <h2>Efecto</h2>
+        <ul>
+          <li>Construido con el <b>patrón común de los plugins profesionales</b> — el mismo esqueleto en los quince efectos. Está desglosado abajo, zona por zona.</li>
+          <li>La visualización ocupa el <b>40 % de la pantalla</b> y es el control: los nodos se arrastran.</li>
+          <li>Cuatro mandos grandes para lo que se toca de verdad. Lo demás, detrás de «Avanzado».</li>
+          <li><b>Entrada, salida y la medida propia del efecto</b> siempre visibles al pie.</li>
+          <li>Cabecera idéntica en todos: nombre, navegador de preajustes, A/B, bypass.</li>
+        </ul>
+      </div>
+      <div class="note" data-n="afinacion">
+        <div class="kicker">Pantalla 4</div>
+        <h2>Afinación</h2>
+        <ul>
+          <li>Mando radial grande, monocromo, con marcas. La intensidad es el único número que importa al principio.</li>
+          <li><b>Tonalidad y escala</b> arriba, con detección automática. BandLab acierta aquí: sin tonalidad la corrección no sirve.</li>
+          <li>Estilos por <b>sonido</b>, no por parámetro: Clásico, Dúo, Armonía, Natural, Robot. BandLab tiene 24 y es su gancho.</li>
+          <li>Desviación en cents en vivo. Es la prueba de que está funcionando.</li>
+        </ul>
+      </div>
+      <div class="note" data-n="mezcla">
+        <div class="kicker">Pantalla 5</div>
+        <h2>Mezcla</h2>
+        <ul>
+          <li>Canales en vertical con fader horizontal. En un teléfono nadie mezcla con columnas de escritorio.</li>
+          <li>El bloque de <b>mezcla automática</b> va arriba del todo, no escondido al final. Es la función principal del producto.</li>
+          <li>La IA propone y muestra <b>qué cambió y por qué</b>, en una frase. Aplicar y deshacer, siempre.</li>
+          <li>Medidor bajo cada fader. Sin medidor no hay mezcla.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANATOMÍA -->
+  <div class="band">
+    <h2>Anatomía de un plugin profesional</h2>
+    <p class="sub">FabFilter, iZotope, Soundtoys, UAD y Waves no se parecen por casualidad: comparten un esqueleto. Nuestros quince efectos usan este mismo esqueleto, con nuestra identidad. Se replica la <b>estructura</b>, nunca la apariencia de marca.</p>
+    <div class="anat">
+      <div class="zone"><span class="no">1</span><div><h4>Cabecera fija</h4><p>Nombre y tipo del efecto, navegador de preajustes con flechas, A/B, bypass, deshacer. Idéntica en los quince.</p></div></div>
+      <div class="zone"><span class="no">2</span><div><h4>Visualización dominante</h4><p>Entre el 40 % y el 60 % del alto. Muestra la señal en vivo detrás y el procesamiento encima. Es el alma del plugin.</p></div></div>
+      <div class="zone"><span class="no">3</span><div><h4>La visualización es el control</h4><p>Lo que se ve, se arrastra: nodos de EC, umbral, puntos de la curva. Los mandos son el respaldo, no la vía principal.</p></div></div>
+      <div class="zone"><span class="no">4</span><div><h4>Fila de mandos grandes</h4><p>Tres a seis parámetros, los que se tocan de verdad. Valor numérico con unidad debajo de cada uno, siempre legible.</p></div></div>
+      <div class="zone"><span class="no">5</span><div><h4>Lo avanzado se pliega</h4><p>El resto de parámetros vive detrás de un desplegable. Un plugin que lo enseña todo a la vez asusta y no se usa.</p></div></div>
+      <div class="zone"><span class="no">6</span><div><h4>Medición permanente</h4><p>Entrada, salida y la medida propia del efecto: reducción de ganancia, sonoridad, correlación. Siempre al pie.</p></div></div>
+      <div class="zone"><span class="no">7</span><div><h4>Mezcla y salida en el mismo sitio</h4><p>Dry/wet y ganancia de salida ocupan la misma posición en todos los efectos. La memoria muscular es parte del diseño.</p></div></div>
+      <div class="zone"><span class="no">8</span><div><h4>Comparación honesta</h4><p>El bypass iguala el volumen. Si al desactivar baja el nivel, todo suena «mejor» encendido y el usuario se engaña.</p></div></div>
+      <div class="zone"><span class="no">9</span><div><h4>Un acento por plugin</h4><p>Monocromo salvo un color que marca el valor activo. El plugin que usa cinco colores parece una app de móvil, no una herramienta.</p></div></div>
+      <div class="zone"><span class="no">10</span><div><h4>Preajustes con nombre de músico</h4><p>«Voz al frente», no «Comp 4:1 −18 dB». El nombre técnico va en el subtítulo, para quien lo quiera.</p></div></div>
+    </div>
+  </div>
+
+  <!-- DECISIONES -->
+  <div class="band">
+    <h2>Qué entra y qué no</h2>
+    <p class="sub">Filtro único: <b>¿sirve para que una voz grabada en un teléfono suene bien sin que el usuario sepa mezclar?</b> Lo que no pasa ese filtro se aplaza, aunque los tres DAW de referencia lo tengan.</p>
+    <div class="cols">
+      <div class="col si">
+        <header>Entra</header>
+        <ul>
+          <li><b>Monitorización de entrada por pista</b><span>Pro Tools · sin esto no se puede cantar</span></li>
+          <li><b>Tomas y comping</b><span>Pro Tools · elegir la mejor pasada es el 80 % de una buena voz</span></li>
+          <li><b>Cadena vocal con preajustes de un toque</b><span>BandLab · el gancho real de su producto</span></li>
+          <li><b>Afinación con tonalidad y estilos por sonido</b><span>BandLab AutoPitch · 24 efectos, no un parámetro</span></li>
+          <li><b>Mezcla automática con IA y comparación A/B</b><span>Nuestro · es el producto</span></li>
+          <li><b>Masterización con objetivo de sonoridad</b><span>BandLab · cierra el ciclo hasta publicar</span></li>
+          <li><b>Fundidos, ganancia de clip, normalizar</b><span>Pro Tools · edición mínima de una toma</span></li>
+          <li><b>Envíos a un reverb compartido</b><span>Pro Tools · una voz sin espacio suena pegada</span></li>
+          <li><b>Bucles y beats para cantar encima</b><span>BandLab · sin base no hay toma</span></li>
+          <li><b>Proyectos en nube y autoguardado</b><span>BandLab · el teléfono se queda sin batería</span></li>
+        </ul>
+      </div>
+      <div class="col no">
+        <header>No entra todavía</header>
+        <ul>
+          <li><b>Piano roll completo</b><span>FL Studio · no hace falta para cantar; llega cuando haya instrumentos</span></li>
+          <li><b>Step sequencer y caja de ritmos</b><span>FL Studio · se cubre con bucles hasta que el resto funcione</span></li>
+          <li><b>Sintetizadores propios</b><span>FL Studio · meses de trabajo que no mejoran una voz</span></li>
+          <li><b>Automatización por nodos</b><span>Pro Tools · la mezcla la hace la IA; llega después</span></li>
+          <li><b>Colaboración en tiempo real</b><span>Soundtrap · exige servidor y estado compartido</span></li>
+          <li><b>Red social y publicar</b><span>BandLab · retiene usuarios que aún no tenemos</span></li>
+          <li><b>Elastic audio / cuadrar al tempo</b><span>Pro Tools · costoso y raro en una toma vocal</span></li>
+          <li><b>MIDI externo</b><span>Los tres · nadie enchufa un teclado al móvil para cantar</span></li>
+          <li><b>Modo sesión de clips</b><span>Ableton · es para actuar en directo, no para grabar</span></li>
+          <li><b>Vídeo y Video Mix</b><span>BandLab · producto aparte</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOKENS -->
+  <div class="band">
+    <h2>Sistema</h2>
+    <p class="sub">Bricolage Grotesque para títulos y cifras grandes. Instrument Sans para interfaz. DM Mono para todo valor medido. Radios de 2–3 px. El color sólo aparece en formas de onda, medidores y estados.</p>
+    <div class="sws" id="sw"></div>
+  </div>
+</div>
+
+<script>
+const S={s1:'#E8C15C',s2:'#C97064',s3:'#7FA8C9',s4:'#B294C4',s5:'#8FB89A',s6:'#6E6E74'};
+const BONE='#F2EDE4',BONE3='#5E5B57',LIVE='#8FB89A',REC='#E5243B';
+const I={
+ back:'<path d="M15 18l-6-6 6-6"/>',cloud:'<path d="M18 16a3.5 3.5 0 000-7 5 5 0 00-9.6-1.3A4 4 0 006 16z"/>',
+ mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v4"/>',
+ head:'<path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="2" y="13" width="5" height="7" rx="2"/><rect x="17" y="13" width="5" height="7" rx="2"/>',
+ cut:'<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M7.5 16L18 5M16.5 16L6 5"/>',
+ play:'<path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/>',
+ start:'<path d="M6 5v14M19 5l-10 7 10 7z" fill="currentColor" stroke="none"/>',
+ undo:'<path d="M9 10H5V6"/><path d="M5 10a8 8 0 1113 6"/>',
+ redo:'<path d="M15 10h4V6"/><path d="M19 10a8 8 0 10-13 6"/>',
+ metro:'<path d="M12 3l5 18H7z"/><path d="M8 15l9-6"/>',
+ mix:'<path d="M4 8h16M4 16h16"/><circle cx="9" cy="8" r="2" fill="currentColor"/><circle cx="16" cy="16" r="2" fill="currentColor"/>',
+ ai:'<path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/>',
+ keys:'<rect x="3" y="6" width="18" height="12" rx="1"/><path d="M8 6v7M12 6v7M16 6v7"/>',
+ loop:'<path d="M4 10a4 4 0 014-4h8l-2-2M20 14a4 4 0 01-4 4H8l2 2"/>',
+ star:'<path d="M12 4l2.4 5 5.6.8-4 3.9 1 5.6-5-2.7-5 2.7 1-5.6-4-3.9 5.6-.8z"/>',
+ fx:'<path d="M4 12h2M8 7v10M12 4v16M16 8v8M20 11h0"/>'
+};
+const svg=(k,s=18,w=1.6)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
+const rnd=s=>{let x=s;return()=>{x=(x*1664525+1013904223)%4294967296;return x/4294967296}};
+
+function wave(cv,color,seed,dens,thin){
+  const dpr=Math.min(devicePixelRatio||1,2),w=cv.clientWidth,h=cv.clientHeight;
+  if(!w||!h)return; cv.width=w*dpr;cv.height=h*dpr;
+  const c=cv.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);
+  const r=rnd(seed),mid=h/2,st=thin?1.6:2.2;let e=.2;
+  c.fillStyle=color;
+  for(let x=0;x<w;x+=st){
+    const t=x/w,beat=.5+.5*Math.abs(Math.sin(t*Math.PI*dens));
+    e+=(beat*(.42+r()*.58)-e)*.3;
+    const a=Math.max(1,e*mid*.92);
+    c.fillRect(x,mid-a,st-.6,a*2);
+  }
+}
+
+const TR=[
+ {n:'Beat',m:'IMG_9495',c:S.s6,s:71,x:0,w:100,d:9},
+ {n:'Voz principal',m:'3 tomas',c:S.s1,s:233,x:14,w:86,d:15,tag:'TOMAS',arm:1},
+ {n:'Ad-libs',m:'Fx propio',c:S.s2,s:517,x:42,w:58,d:19},
+ {n:'Coros',m:'Fx propio',c:S.s3,s:908,x:10,w:90,d:11},
+ {n:'Voz 3',m:'silenciada',c:S.s6,s:1201,x:28,w:62,d:7,mute:1}
+];
+
+const topbar=(t,sub)=>`<div class="top"><button class="icobtn">${svg('back',19)}</button>
+  <div><div class="ttl">${t}</div>${sub?`<div class="tsub">${sub}</div>`:''}</div>
+  <button class="icobtn" style="margin-left:auto">${svg('cloud',19)}</button></div>`;
+const ruler=()=>{let b='';for(let i=1;i<=6;i++)b+=`<div class="bar"><span>${i}</span></div>`;
+  return `<div class="ruler"><div class="tc">00:03.2 · 4/4</div><div class="marks">${b}</div></div>`};
+const ctx=()=>`<div class="ctxbar">
+  <button class="cbtn">${svg('mic',13)} Entrada</button>
+  <button class="cbtn">${svg('fx',13)} Efectos</button>
+  <button class="cbtn act">${svg('ai',13)} Afinar</button>
+  <div class="spacer"></div><button class="cbtn">${svg('cut',13)}</button>
+  <button class="cbtn act">${svg('head',13)}</button></div>`;
+const trans=()=>`<div class="transport">
+  <button class="tbtn">${svg('mix',21)}</button><button class="tbtn q">${svg('undo',19)}</button>
+  <button class="tbtn">${svg('start',19)}</button><button class="trec"></button>
+  <button class="tbtn">${svg('play',19)}</button><button class="tbtn q">${svg('redo',19)}</button>
+  <button class="tbtn q">${svg('metro',19)}</button></div>`;
+
+const SCR={
+ sesion:()=>`<div class="scr">${topbar('Sin título','12 sep · 136 BPM · Re♯m')}${ruler()}
+  <div class="tracks"><div class="playhead"></div>
+  ${TR.map(t=>`<div class="trk ${t.mute?'muted':''}">
+    <div class="thead" style="color:${t.c}">
+      <div class="tname">${t.n}</div><div class="tmeta">${t.m}</div>
+      <div class="micro"><b class="${t.mute?'on':''}">M</b><b>S</b><b class="${t.arm?'arm':''}">●</b><b>I</b></div>
+    </div>
+    <div class="clipwrap"><div class="clip" style="color:${t.c};left:${t.x}%;width:${t.w}%">
+      <canvas data-c="${t.c}" data-s="${t.s}" data-d="${t.d}"></canvas>
+      ${t.tag?`<div class="tag" style="color:${t.c}">${t.tag}</div>`:''}
+    </div></div></div>`).join('')}
+  <button class="addtrk">+ Nueva pista</button></div>${ctx()}${trans()}</div>`,
+
+ voz:()=>`<div class="scr">${topbar('Voz principal','Toma 3 de 3 · Re♯m')}
+  <div class="voz">
+    <div class="takebox"><canvas id="take"></canvas><div class="ov">TOMA</div></div>
+    <div class="pitchbox"><canvas id="pitch"></canvas><div class="ov">AFINACIÓN</div></div>
+    <div class="secttl">Cadena vocal</div>
+    <div class="chain">
+      <div class="link on"><b>Puerta</b><span>−38 dB</span></div>
+      <div class="link on"><b>Afinación</b><span>82 %</span></div>
+      <div class="link on"><b>EC</b><span>4 bandas</span></div>
+      <div class="link on"><b>Compresor</b><span>−4.1 GR</span></div>
+      <div class="link off"><b>Espacio</b><span>apagado</span></div>
+    </div>
+    <button class="bigbtn">${svg('ai',19,1.8)} Mezclar con IA</button>
+    <div class="ab"><button class="on">Después</button><button>Antes</button></div>
+    <div class="readout">
+      <div><div class="k">Sonoridad</div><div class="v"><i>−14.2</i> LUFS</div></div>
+      <div><div class="k">Pico real</div><div class="v"><i>−1.0</i> dB</div></div>
+    </div>
+  </div>${trans()}</div>`,
+
+ plugin:()=>`<div class="scr">${topbar('Voz principal','Efecto 3 de 5')}
+  <div class="pl-head">
+    <span class="pl-name">Ecualizador</span>
+    <div class="pl-pre">◀ &nbsp;Voz al frente&nbsp; ▶</div>
+    <button class="mini">A</button><button class="mini on">B</button>
+    <button class="mini">⏻</button>
+  </div>
+  <div class="viz"><canvas id="eq"></canvas></div>
+  <div class="knobs">
+    <div class="kn"><canvas data-v=".38" data-k="1"></canvas><div class="kl">Frec</div><div class="kv">300 Hz</div></div>
+    <div class="kn"><canvas data-v=".34" data-k="2"></canvas><div class="kl">Ganancia</div><div class="kv">−3.5 dB</div></div>
+    <div class="kn"><canvas data-v=".5" data-k="3"></canvas><div class="kl">Ancho</div><div class="kv">1.00 Q</div></div>
+    <div class="kn"><canvas data-v="1" data-k="4"></canvas><div class="kl">Mezcla</div><div class="kv">100 %</div></div>
+  </div>
+  <div class="pl-foot">
+    <div class="mrow"><span class="ml">Entrada</span><div class="mbar"><i style="width:64%"></i></div><span class="mv">−12.4</span></div>
+    <div class="mrow"><span class="ml">Salida</span><div class="mbar"><i style="width:71%"></i></div><span class="mv">−9.8</span></div>
+    <div class="mrow"><span class="ml">Avanzado</span><div class="mbar" style="border:0;background:transparent"></div><span class="mv">▾</span></div>
+  </div></div>`,
+
+ afinacion:()=>`<div class="scr">${topbar('Afinación','Voz principal')}
+  <div class="tuner">
+    <div class="keyrow"><div class="keysel">Re♯ / Mi♭ menor</div><div class="keysel" style="flex:0 0 104px">Automática</div></div>
+    <div class="knobwrap"><canvas id="knob"></canvas>
+      <div class="knoblbl"><div><b>82</b><span>Intensidad</span></div></div></div>
+    <div class="cents">Fa♯3 → <i>Sol3</i> · −18 cents</div>
+    <div class="pills"><div class="pill on">Esenciales</div><div class="pill">Hip Hop</div><div class="pill">Hyperpop</div><div class="pill">Raro</div></div>
+    <div class="styles">
+      <div class="sty on"><div class="cir">${svg('ai',18)}</div><span>Clásico</span></div>
+      <div class="sty"><div class="cir">${svg('mic',18)}</div><span>Dúo</span></div>
+      <div class="sty"><div class="cir">${svg('keys',18)}</div><span>Armonía</span></div>
+      <div class="sty"><div class="cir">${svg('star',18)}</div><span>Natural</span></div>
+      <div class="sty"><div class="cir">${svg('loop',18)}</div><span>Robot</span></div>
+    </div>
+  </div>${ctx()}${trans()}</div>`,
+
+ mezcla:()=>`<div class="scr">${topbar('Mezcla','5 pistas')}
+  <div class="mixlist">
+    <div class="aibox">
+      <h4>Mezcla automática</h4>
+      <p>Subí la voz 2.5 dB, le quité 3 dB en 300 Hz para que no tape el beat y bajé los ad-libs 4 dB.</p>
+      <button class="aibtn">Aplicar · comparar antes / después</button>
+    </div>
+    <div class="secttl" style="padding:16px 0 8px">Canales</div>
+    ${TR.map((t,i)=>`<div class="ch" style="color:${t.c}">
+      <div class="ch-top"><span class="ch-num">${i+1}</span><span class="ch-nm">${t.n}</span>
+        <span class="ch-db">${['−3.0','+2.5','−4.0','−1.5','−∞'][i]} dB</span>
+        <div class="ms"><b class="${t.mute?'on':''}">M</b><b>S</b></div></div>
+      <div class="trk2"><i style="width:${[70,78,48,60,0][i]}%"></i><u style="left:${[70,78,48,60,0][i]}%"></u></div>
+      <div class="mbar"><i style="width:${[58,74,30,44,0][i]}%;background:${t.c}"></i></div>
+    </div>`).join('')}
+  </div>${trans()}</div>`
+};
+
+/* EQ */
+function drawEQ(){
+  const cv=document.getElementById('eq');if(!cv)return;
+  const dpr=Math.min(devicePixelRatio||1,2),w=cv.clientWidth,h=210;
+  cv.width=w*dpr;cv.height=h*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);
+  c.strokeStyle='#1C1C20';c.lineWidth=1;c.font='9px "DM Mono"';c.fillStyle=BONE3;
+  [[.12,'100'],[.32,'500'],[.52,'2k'],[.72,'8k'],[.9,'20k']].forEach(([p,l])=>{
+    c.beginPath();c.moveTo(w*p,0);c.lineTo(w*p,h);c.stroke();c.fillText(l,w*p+4,h-6)});
+  for(let i=1;i<4;i++){c.beginPath();c.moveTo(0,h*i/4);c.lineTo(w,h*i/4);c.stroke()}
+  const r=rnd(4242);c.fillStyle='#F2EDE40E';c.beginPath();c.moveTo(0,h);
+  for(let x=0;x<=w;x+=3){const t=x/w;
+    const b=Math.exp(-Math.pow((t-.2)*3,2))*.86+Math.exp(-Math.pow((t-.55)*4.1,2))*.48+.07;
+    c.lineTo(x,h-b*(.72+r()*.28)*h*.8)}
+  c.lineTo(w,h);c.closePath();c.fill();
+  c.strokeStyle=BONE;c.lineWidth=1.8;c.beginPath();
+  for(let x=0;x<=w;x+=2){const t=x/w;let y=.5;
+    y+=-.30*Math.exp(-Math.pow((t-.12)*7,2));y+=.10*Math.exp(-Math.pow((t-.32)*9,2));
+    y+=-.20*Math.exp(-Math.pow((t-.52)*7,2));y+=-.13*Math.exp(-Math.pow((t-.72)*8,2));
+    y=Math.min(.93,Math.max(.07,y));x===0?c.moveTo(0,y*h):c.lineTo(x,y*h)}
+  c.stroke();
+  [[.12,.71],[.32,.61],[.52,.31],[.72,.37]].forEach(([px,py],i)=>{
+    c.beginPath();c.arc(w*px,h*py,i===1?8:6.5,0,7);
+    c.fillStyle=i===1?S.s1:'#0A0A0B';c.fill();
+    c.strokeStyle=i===1?S.s1:BONE;c.lineWidth=1.6;c.stroke();
+    c.fillStyle=i===1?'#0A0A0B':BONE;c.font='500 9px "DM Mono"';c.textAlign='center';
+    c.fillText(i+1,w*px,h*py+3.2);c.textAlign='left'});
+}
+/* knob generic */
+function knob(cv,val,size,accent){
+  const dpr=Math.min(devicePixelRatio||1,2),s=size;
+  cv.width=s*dpr;cv.height=s*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,s,s);
+  const cx=s/2,cy=s/2,R=s/2-2,N=Math.round(s/3),st=Math.PI*.75,sw=Math.PI*1.5;
+  for(let i=0;i<N;i++){const t=i/(N-1),a=st+sw*t,on=t<=val;
+    const len=on?s*.09:s*.055;
+    c.strokeStyle=on?(accent||BONE):'#2A2A2E';c.lineWidth=Math.max(1.4,s*.018);c.lineCap='butt';
+    c.beginPath();c.moveTo(cx+Math.cos(a)*(R-len),cy+Math.sin(a)*(R-len));
+    c.lineTo(cx+Math.cos(a)*R,cy+Math.sin(a)*R);c.stroke()}
+  const g=c.createLinearGradient(0,cy-s*.3,0,cy+s*.3);
+  g.addColorStop(0,'#1D1D21');g.addColorStop(1,'#0D0D0F');
+  c.beginPath();c.arc(cx,cy,R-s*.14,0,7);c.fillStyle=g;c.fill();
+  c.strokeStyle='#2E2E34';c.lineWidth=1;c.stroke();
+  const a=st+sw*val;c.strokeStyle=BONE;c.lineWidth=Math.max(1.8,s*.016);c.lineCap='round';
+  c.beginPath();c.moveTo(cx+Math.cos(a)*(R-s*.30),cy+Math.sin(a)*(R-s*.30));
+  c.lineTo(cx+Math.cos(a)*(R-s*.17),cy+Math.sin(a)*(R-s*.17));c.stroke();
+}
+/* pitch curve */
+function drawPitch(){
+  const cv=document.getElementById('pitch');if(!cv)return;
+  const dpr=Math.min(devicePixelRatio||1,2),w=cv.clientWidth,h=126;
+  cv.width=w*dpr;cv.height=h*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);c.clearRect(0,0,w,h);
+  const rows=7,rh=h/rows;
+  for(let i=0;i<rows;i++){
+    c.fillStyle=[1,3,5].includes(i)?'#131316':'#0C0C0E';c.fillRect(0,i*rh,w,rh);
+    c.strokeStyle='#1A1A1E';c.lineWidth=1;c.beginPath();c.moveTo(0,i*rh);c.lineTo(w,i*rh);c.stroke()}
+  c.font='9px "DM Mono"';c.fillStyle=BONE3;
+  ['Si3','La♯3','La3','Sol♯3','Sol3','Fa♯3','Fa3'].forEach((n,i)=>c.fillText(n,5,i*rh+rh/2+3));
+  // target blocks
+  const segs=[[.10,.20,4],[.22,.34,2],[.36,.46,4],[.50,.64,1],[.66,.76,4],[.78,.94,2]];
+  segs.forEach(([a,b,row])=>{c.fillStyle=BONE+'22';c.fillRect(w*a,row*rh+3,w*(b-a),rh-6)});
+  // sung curve
+  const r=rnd(99);c.strokeStyle=S.s1;c.lineWidth=2;c.beginPath();
+  let started=false;
+  segs.forEach(([a,b,row])=>{
+    for(let x=w*a;x<=w*b;x+=2){
+      const t=(x-w*a)/(w*(b-a));
+      const drift=Math.sin(t*9)*rh*.16+(r()-.5)*rh*.1+(t<.18?rh*.4*(1-t/.18):0);
+      const y=row*rh+rh/2+drift;
+      started?c.lineTo(x,y):(c.moveTo(x,y),started=true)}
+    started=false;c.stroke();c.beginPath()});
+  c.strokeStyle=BONE;c.lineWidth=1;c.beginPath();c.moveTo(w*.58,0);c.lineTo(w*.58,h);c.stroke();
+}
+
+const phone=document.getElementById('phone');
+function render(n){
+  phone.innerHTML=SCR[n]();
+  requestAnimationFrame(()=>{
+    phone.querySelectorAll('.clip canvas').forEach(cv=>wave(cv,cv.dataset.c,+cv.dataset.s,+cv.dataset.d));
+    const tk=document.getElementById('take'); if(tk) wave(tk,S.s1,233,15,true);
+    drawPitch();drawEQ();
+    phone.querySelectorAll('.kn canvas').forEach(cv=>knob(cv,+cv.dataset.v,60,+cv.dataset.k===4?null:S.s1));
+    const kb=document.getElementById('knob'); if(kb) knob(kb,.82,178,S.s1);
+  });
+  document.querySelectorAll('.note').forEach(x=>x.dataset.on=x.dataset.n===n?'1':'0');
+}
+document.querySelectorAll('.switch button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.switch button').forEach(x=>x.setAttribute('aria-selected','false'));
+  b.setAttribute('aria-selected','true');render(b.dataset.s)}));
+
+document.getElementById('sw').innerHTML=[
+ ['Chasis','#0A0A0B'],['Superficie','#111112'],['Elevada','#18181A'],['Línea','#26262A'],
+ ['Hueso','#F2EDE4'],['Hueso 2','#9A968E'],['Hueso 3','#5E5B57'],['Grabar','#E5243B'],['Señal viva','#8FB89A'],
+ ['Señal 1','#E8C15C'],['Señal 2','#C97064'],['Señal 3','#7FA8C9'],['Señal 4','#B294C4'],['Señal 5','#6E6E74']
+].map(([n,h])=>`<div class="sw"><div class="c" style="background:${h}"></div><div class="m"><b>${n}</b>${h}</div></div>`).join('');
+
+render('sesion');
+addEventListener('resize',()=>{
+  phone.querySelectorAll('.clip canvas').forEach(cv=>wave(cv,cv.dataset.c,+cv.dataset.s,+cv.dataset.d));
+  const tk=document.getElementById('take');if(tk)wave(tk,S.s1,233,15,true);
+  drawPitch();drawEQ();
+});
+</script>
+
+</body>
+</html>
