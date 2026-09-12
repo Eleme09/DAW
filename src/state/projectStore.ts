@@ -6,10 +6,13 @@ import { addSampleAsset } from "@/lib/storage/sampleIndex";
 import { hydrateProjectSamples } from "@/lib/audio/sampleLoader";
 import {
   createEmptyProject,
+  createDefaultAutomation,
   createMidiClip,
   createNote,
   createTrack,
   type AudioClip,
+  type AutomationParam,
+  type AutomationPoint,
   type Instrument,
   type MidiClip,
   type Note,
@@ -50,6 +53,12 @@ interface ProjectState {
   /** Which MIDI clip the piano roll bottom sheet is showing - null when closed. */
   pianoRollClipId: string | null;
   setPianoRollClipId: (clipId: string | null) => void;
+  /** Which track's automation bottom sheet is showing - null when closed. */
+  automationTrackId: TrackId | null;
+  setAutomationTrackId: (trackId: TrackId | null) => void;
+  /** Which parameter's lane the automation editor is showing. */
+  automationParam: AutomationParam;
+  setAutomationParam: (param: AutomationParam) => void;
 
   undo: () => void;
   redo: () => void;
@@ -89,6 +98,16 @@ interface ProjectState {
     trackId: TrackId,
     patch: Partial<Pick<Instrument, "attack" | "decay" | "sustain" | "release">>
   ) => void;
+
+  setAutomationLaneEnabled: (trackId: TrackId, param: AutomationParam, enabled: boolean) => void;
+  addAutomationPoint: (trackId: TrackId, param: AutomationParam, point: Omit<AutomationPoint, "id">) => void;
+  updateAutomationPoint: (
+    trackId: TrackId,
+    param: AutomationParam,
+    pointId: string,
+    patch: Partial<AutomationPoint>
+  ) => void;
+  removeAutomationPoint: (trackId: TrackId, param: AutomationParam, pointId: string) => void;
 
   addEffect: (target: EffectTarget, type: EffectType) => void;
   setEffectChain: (target: EffectTarget, inserts: EffectInstance[]) => void;
@@ -230,6 +249,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     setEffectsRackMode: (mode) => set({ effectsRackMode: mode }),
     pianoRollClipId: null,
     setPianoRollClipId: (clipId) => set({ pianoRollClipId: clipId }),
+    automationTrackId: null,
+    setAutomationTrackId: (trackId) => set({ automationTrackId: trackId }),
+    automationParam: "volume",
+    setAutomationParam: (param) => set({ automationParam: param }),
 
     undo: () => {
       const { past, project, future } = get();
@@ -579,6 +602,88 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       );
     },
 
+    setAutomationLaneEnabled: (trackId, param, enabled) => {
+      const project = get().project;
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) =>
+            t.id !== trackId
+              ? t
+              : { ...t, automation: { ...t.automation, [param]: { ...t.automation[param], enabled } } }
+          ),
+        })
+      );
+    },
+
+    addAutomationPoint: (trackId, param, point) => {
+      const project = get().project;
+      const newPoint: AutomationPoint = { id: crypto.randomUUID(), time: point.time, value: point.value };
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) =>
+            t.id !== trackId
+              ? t
+              : {
+                  ...t,
+                  automation: {
+                    ...t.automation,
+                    [param]: { ...t.automation[param], points: [...t.automation[param].points, newPoint] },
+                  },
+                }
+          ),
+        })
+      );
+    },
+
+    updateAutomationPoint: (trackId, param, pointId, patch) => {
+      const project = get().project;
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) =>
+            t.id !== trackId
+              ? t
+              : {
+                  ...t,
+                  automation: {
+                    ...t.automation,
+                    [param]: {
+                      ...t.automation[param],
+                      points: t.automation[param].points.map((p) => (p.id === pointId ? { ...p, ...patch } : p)),
+                    },
+                  },
+                }
+          ),
+        }),
+        { coalesce: true }
+      );
+    },
+
+    removeAutomationPoint: (trackId, param, pointId) => {
+      const project = get().project;
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) =>
+            t.id !== trackId
+              ? t
+              : {
+                  ...t,
+                  automation: {
+                    ...t.automation,
+                    [param]: {
+                      ...t.automation[param],
+                      points: t.automation[param].points.filter((p) => p.id !== pointId),
+                    },
+                  },
+                }
+          ),
+        })
+      );
+    },
+
     addEffect: (target, type) => {
       const instance = createEffectInstance(type);
       mutateInserts(target, (inserts) => [...inserts, instance]);
@@ -631,11 +736,11 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       set({ isPlaying: true });
     },
     pause: () => {
-      getAudioEngine().pause();
+      getAudioEngine().pause(get().project.tracks);
       set({ isPlaying: false, currentTime: getAudioEngine().getCurrentTime() });
     },
     stop: () => {
-      getAudioEngine().stop();
+      getAudioEngine().stop(get().project.tracks);
       set({ isPlaying: false, currentTime: 0 });
     },
     seek: (time) => {
@@ -734,6 +839,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
           type: t.type ?? "audio",
           midiClips: t.midiClips ?? [],
           instrument: t.instrument ?? null,
+          automation: t.automation ?? createDefaultAutomation(),
         })),
       };
       set({ project: normalized, currentTime: 0, isPlaying: false, selectedTrackId: null, past: [], future: [] });

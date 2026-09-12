@@ -287,6 +287,66 @@ describe("comping (overlapping re-recorded takes)", () => {
   });
 });
 
+describe("track automation", () => {
+  beforeEach(resetStore);
+
+  it("addAutomationPoint appends a point to the given lane", () => {
+    const { addTrack, addAutomationPoint } = useProjectStore.getState();
+    const track = addTrack("Beat");
+
+    addAutomationPoint(track.id, "volume", { time: 0, value: -60 });
+    addAutomationPoint(track.id, "volume", { time: 4, value: 0 });
+
+    const lane = useProjectStore.getState().project.tracks[0].automation.volume;
+    expect(lane.points).toHaveLength(2);
+    expect(lane.points.map((p) => p.value)).toEqual([-60, 0]);
+    // the other lane is untouched
+    expect(useProjectStore.getState().project.tracks[0].automation.pan.points).toHaveLength(0);
+  });
+
+  it("setAutomationLaneEnabled toggles only the targeted parameter", () => {
+    const { addTrack, setAutomationLaneEnabled } = useProjectStore.getState();
+    const track = addTrack("Beat");
+
+    setAutomationLaneEnabled(track.id, "pan", true);
+
+    const automation = useProjectStore.getState().project.tracks[0].automation;
+    expect(automation.pan.enabled).toBe(true);
+    expect(automation.volume.enabled).toBe(false);
+  });
+
+  it("updateAutomationPoint coalesces consecutive drags into one undo step", () => {
+    const { addTrack, addAutomationPoint, updateAutomationPoint, undo } = useProjectStore.getState();
+    const track = addTrack("Beat");
+    addAutomationPoint(track.id, "volume", { time: 0, value: 0 });
+    const pointId = useProjectStore.getState().project.tracks[0].automation.volume.points[0].id;
+    const pastAfterAdd = useProjectStore.getState().past.length;
+
+    updateAutomationPoint(track.id, "volume", pointId, { value: -10 });
+    updateAutomationPoint(track.id, "volume", pointId, { value: -20 });
+
+    expect(useProjectStore.getState().past.length).toBe(pastAfterAdd + 1);
+    expect(useProjectStore.getState().project.tracks[0].automation.volume.points[0].value).toBe(-20);
+
+    undo();
+    expect(useProjectStore.getState().project.tracks[0].automation.volume.points[0].value).toBe(0);
+  });
+
+  it("removeAutomationPoint removes only the targeted point", () => {
+    const { addTrack, addAutomationPoint, removeAutomationPoint } = useProjectStore.getState();
+    const track = addTrack("Beat");
+    addAutomationPoint(track.id, "volume", { time: 0, value: 0 });
+    addAutomationPoint(track.id, "volume", { time: 4, value: -20 });
+    const [first] = useProjectStore.getState().project.tracks[0].automation.volume.points;
+
+    removeAutomationPoint(track.id, "volume", first.id);
+
+    const remaining = useProjectStore.getState().project.tracks[0].automation.volume.points;
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].value).toBe(-20);
+  });
+});
+
 describe("instrument tracks and patterns", () => {
   beforeEach(resetStore);
 

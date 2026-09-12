@@ -78,6 +78,29 @@ export interface SamplerInstrument {
 
 export type Instrument = SynthInstrument | SamplerInstrument;
 
+export type AutomationParam = "volume" | "pan";
+
+export interface AutomationPoint {
+  id: string;
+  /** Absolute timeline position, in seconds. */
+  time: number;
+  /** Same units/range as the parameter it automates: dB for volume, -1..1 for pan. */
+  value: number;
+}
+
+/** A breakpoint curve for one parameter. While `enabled` is false, or there
+ * are no points, playback uses the track's static value (`volumeDb`/`pan`)
+ * exactly as if automation didn't exist - this is purely additive. */
+export interface AutomationLane {
+  enabled: boolean;
+  points: AutomationPoint[];
+}
+
+export interface TrackAutomation {
+  volume: AutomationLane;
+  pan: AutomationLane;
+}
+
 export interface Track {
   id: TrackId;
   name: string;
@@ -92,6 +115,7 @@ export interface Track {
   /** Only used when type === "instrument". */
   midiClips: MidiClip[];
   instrument: Instrument | null;
+  automation: TrackAutomation;
   order: number;
   /** Insert effect chain, applied in array order at the track's input point. */
   inserts: EffectInstance[];
@@ -183,8 +207,16 @@ export function createTrack(name: string, order: number, type: Track["type"] = "
     clips: [],
     midiClips: [],
     instrument: type === "instrument" ? createDefaultInstrument() : null,
+    automation: createDefaultAutomation(),
     order,
     inserts: [],
+  };
+}
+
+export function createDefaultAutomation(): TrackAutomation {
+  return {
+    volume: { enabled: false, points: [] },
+    pan: { enabled: false, points: [] },
   };
 }
 

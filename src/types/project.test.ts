@@ -25,6 +25,10 @@ describe("createTrack", () => {
     expect(track.muted).toBe(false);
     expect(track.volumeDb).toBe(0);
     expect(track.instrument).toBeNull();
+    expect(track.automation).toEqual({
+      volume: { enabled: false, points: [] },
+      pan: { enabled: false, points: [] },
+    });
   });
 
   it("creates an instrument track with a default synth and no clips", () => {

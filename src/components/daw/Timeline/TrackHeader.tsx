@@ -4,6 +4,7 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import type { Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
+import { AutomationIcon } from "../icons";
 import { HEADER_WIDTH, TRACK_HEIGHT } from "./constants";
 
 interface TrackHeaderProps {
@@ -17,6 +18,8 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const armTrack = useProjectStore((s) => s.armTrack);
   const isRecording = useProjectStore((s) => s.isRecording);
+  const setAutomationTrackId = useProjectStore((s) => s.setAutomationTrackId);
+  const hasAutomation = track.automation.volume.enabled || track.automation.pan.enabled;
   const isLiveInput = track.armed && isRecording;
 
   return (
@@ -102,6 +105,18 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }`}
         >
           ●
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setAutomationTrackId(track.id);
+          }}
+          title="Automation"
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+            hasAutomation ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
+          }`}
+        >
+          <AutomationIcon className="h-3 w-3" />
         </button>
         <input
           type="range"

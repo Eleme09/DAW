@@ -2,7 +2,8 @@ import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { midiToFrequency } from "./pitch/noteUtils";
-import type { AudioClip, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
+import { interpolateAutomation } from "@/lib/automation/automation";
+import type { AudioClip, AutomationLane, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
 import type { LivePitchInfo, LivePitchMonitorSettings } from "@/types/pitch";
 
@@ -290,6 +291,7 @@ export class AudioEngine {
     this.playing = true;
 
     this.scheduleClips(tracks, fromTime, ctx.currentTime);
+    this.scheduleAutomation(tracks, fromTime, ctx.currentTime);
 
     if (this.metronomeEnabled) {
       this.startMetronome(fromTime, bpm);
@@ -298,21 +300,26 @@ export class AudioEngine {
     this.startClock(tracks, loop, bpm);
   }
 
-  pause(): void {
+  /** `tracks`, when given, re-syncs volume/pan/etc. back to their static
+   * values - otherwise an automated fader/pan stays wherever the last
+   * ramp left it instead of returning to the track's base value. */
+  pause(tracks?: Track[]): void {
     if (!this.playing) return;
     this.playheadAtPlay = this.getCurrentTime();
     this.playing = false;
     this.stopSources();
     this.stopMetronome();
     this.stopClock();
+    if (tracks) this.syncTracks(tracks);
   }
 
-  stop(): void {
+  stop(tracks?: Track[]): void {
     this.playing = false;
     this.playheadAtPlay = 0;
     this.stopSources();
     this.stopMetronome();
     this.stopClock();
+    if (tracks) this.syncTracks(tracks);
     this.emitTime();
   }
 
@@ -324,6 +331,7 @@ export class AudioEngine {
     if (wasPlaying && this.ctx) {
       this.contextTimeAtPlay = this.ctx.currentTime;
       this.scheduleClips(tracks, this.playheadAtPlay, this.ctx.currentTime);
+      this.scheduleAutomation(tracks, this.playheadAtPlay, this.ctx.currentTime);
       if (this.metronomeEnabled) this.startMetronome(this.playheadAtPlay, bpm);
     }
     this.emitTime();
@@ -352,6 +360,36 @@ export class AudioEngine {
       for (const clip of track.clips) {
         this.scheduleClip(clip, graph, fromTime, ctxStartTime);
       }
+    }
+  }
+
+  /** Schedules volume/pan automation curves onto their real AudioParams for
+   * every track, anchored at (fromTime -> ctxStartTime) exactly like clip
+   * playback - re-called on every play/seek so a loop or scrub re-anchors
+   * the curve instead of replaying it from wherever it was left. */
+  private scheduleAutomation(tracks: Track[], fromTime: number, ctxStartTime: number): void {
+    for (const track of tracks) {
+      const graph = this.tracks.get(track.id);
+      if (!graph) continue;
+      this.scheduleParamAutomation(track.automation.volume, graph.volume.gain, fromTime, ctxStartTime, dbToGain);
+      this.scheduleParamAutomation(track.automation.pan, graph.pan.pan, fromTime, ctxStartTime, (v) => v);
+    }
+  }
+
+  private scheduleParamAutomation(
+    lane: AutomationLane,
+    param: AudioParam,
+    fromTime: number,
+    ctxStartTime: number,
+    toParamValue: (value: number) => number
+  ): void {
+    if (!lane.enabled || lane.points.length === 0) return;
+    const points = [...lane.points].sort((a, b) => a.time - b.time);
+    param.cancelScheduledValues(ctxStartTime);
+    param.setValueAtTime(toParamValue(interpolateAutomation(points, fromTime)), ctxStartTime);
+    for (const p of points) {
+      if (p.time <= fromTime) continue;
+      param.linearRampToValueAtTime(toParamValue(p.value), ctxStartTime + (p.time - fromTime));
     }
   }
 
@@ -674,6 +712,7 @@ export class AudioEngine {
     this.contextTimeAtPlay = ctx.currentTime;
     this.playing = true;
     this.scheduleClips(tracks, fromTime, ctx.currentTime);
+    this.scheduleAutomation(tracks, fromTime, ctx.currentTime);
     if (this.metronomeEnabled) this.startMetronome(fromTime, bpm);
     this.startClock(tracks, loop, bpm);
 

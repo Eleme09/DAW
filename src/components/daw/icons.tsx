@@ -147,6 +147,16 @@ export function MicIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function AutomationIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 17c3 0 3-10 6-10s3 12 6 12 3-8 6-8" />
+      <circle cx="9" cy="7" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="19" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function BusIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

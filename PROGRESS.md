@@ -103,6 +103,23 @@ Verificado: `tsc`/`eslint`/`vitest` (278 tests, +5 nuevos de comping) limpios. E
 Deliberadamente diferido (no a medias):
 - [ ] Comping a nivel de fragmento (combinar partes de distintas tomas dentro de una misma región, estilo lanes de Pro Tools) — hoy el comping es de toma completa: eliges cuál toma entera suena, no mezclas mitades de dos tomas distintas. Requeriría una vista de carriles dedicada; se deja para una sesión propia si hace falta ese nivel de control.
 
-## FASE 6–8
+## FASE 6 — Automatización
+
+Status: **volumen y pan por curva de puntos, funcional de punta a punta**
+
+Auditoría antes de tocar nada: no existía absolutamente nada de automatización en el código (ni tipos, ni motor, ni UI) - fase enteramente nueva.
+
+- [x] Modelo de datos: `Track.automation: { volume: AutomationLane, pan: AutomationLane }`, cada lane con `enabled` + `points: AutomationPoint[]` (`{id, time, value}`). Mientras una lane está deshabilitada o vacía, la reproducción usa el valor estático (`volumeDb`/`pan`) exactamente igual que antes de esta fase - es puramente aditivo, cero riesgo para proyectos existentes (normalizado en `loadProject` igual que `masterVolumeDb`/`instrument`).
+- [x] Motor: `AudioEngine.scheduleAutomation` programa la curva completa sobre el `AudioParam` real (`gain`/`pan`) con `setValueAtTime`/`linearRampToValueAtTime`, re-anclada en cada `play()`/`seek()`/`startRecording()` - mismo mecanismo que ya usan los fades de clip. `pause()`/`stop()` ahora re-sincronizan `volumeDb`/`pan` a su valor estático (antes un fader automatizado se quedaba "pegado" en el último valor rampeado tras detener la reproducción).
+- [x] Editor: `Automation/AutomationEditor.tsx`, bottom sheet (no un carril inline en el Timeline - ver nota de diseño abajo) con selector Volumen/Pan, toggle de habilitado, y una curva editable: tap en espacio vacío agrega un punto, arrastrar un punto lo mueve, doble-click lo borra. Botón de acceso nuevo en `TrackHeader` (ícono propio `AutomationIcon`, se enciende en cian cuando el track tiene alguna lane habilitada).
+- [x] Nota de diseño: se descartó deliberadamente un carril de automatización inline dentro del Timeline (como en Pro Tools) porque el cálculo de alturas de `Timeline.tsx`/`TrackLane.tsx`/`LoopRegion.tsx` asume `TRACK_HEIGHT` uniforme por track (ya verificado y estable desde FASE 2/3) - agregar una fila expandible por track requería alturas dinámicas, con riesgo real de regresión en el ruler/loop/playhead ya probados. El bottom sheet reutiliza el mismo componente y vocabulario de interacción que el piano roll, sin tocar el Timeline en absoluto.
+
+Verificado: `tsc`/`eslint`/`vitest` (286 tests, +8 nuevos: 4 de `interpolateAutomation` puro, 4 del store) limpios. En navegador: agregar/arrastrar/borrar puntos con clicks/pointer events reales, habilitar la lane, y **reproducción real confirmada por el medidor** - el canal de Bass bajó de 84% a 48% de señal entre el punto de automatización en 0s y el de 3.75s, seguido exactamente por el patrón dibujado; al detener, el medidor vuelve a 0% (no se queda "pegado" en el último valor automatizado). Sin errores de consola reales (una sesión de depuración encontró un error de compilación obsoleto en el buffer de logs del navegador que sobrevivió a un reinicio completo del dev server - confirmado como un log histórico atascado, no un error en vivo, verificando el contenido real de la página en cada paso).
+
+Deliberadamente diferido (no a medias):
+- [ ] Automatización de parámetros de efectos individuales (ej. cutoff de un filtro) - por ahora solo volumen y pan a nivel de track, los dos targets de mayor valor. Extenderlo requeriría un selector de "qué efecto + qué parámetro" por lane; se deja para cuando haya una necesidad concreta.
+- [ ] El fader/pan visual en el Mixer no sigue el valor automatizado en vivo durante la reproducción - solo el audio real sigue la curva, el control estático de la UI no se anima con el playhead (como sí hace Pro Tools). Puro pulido visual, no afecta el resultado sonoro.
+
+## FASE 7–8
 
 Status: **no iniciadas**

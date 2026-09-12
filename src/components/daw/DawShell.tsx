@@ -10,6 +10,7 @@ import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { LivePitchMonitorPanel } from "./LivePitchMonitorPanel";
 import { PianoRoll } from "./PianoRoll/PianoRoll";
+import { AutomationEditor } from "./Automation/AutomationEditor";
 import { FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
 import type { ComponentType } from "react";
 
@@ -99,6 +100,7 @@ export function DawShell() {
       <TransportBar />
       <LivePitchMonitorPanel />
       <PianoRoll />
+      <AutomationEditor />
       <div className="flex flex-1 overflow-hidden">
         <div className={`${mobileView === "browser" ? "block" : "hidden"} w-full md:contents`}>
           <BrowserPanel />
