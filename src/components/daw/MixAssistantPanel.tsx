@@ -7,9 +7,12 @@ import { analyzeMix } from "@/audio-engine/analysis/mixAnalysis";
 import { PLATFORM_LABELS, suggestMasteringGain, type MasteringPlatform } from "@/audio-engine/masteringTargets";
 import { createEffectInstance } from "@/types/effects";
 import { useProjectStore } from "@/state/projectStore";
+import { httpAssistantProvider } from "@/lib/ai/assistantProvider";
+import { applyEffectAction } from "@/lib/ai/applyAssistantAction";
 import type { MixAnalysisResult, MixSuggestion } from "@/types/mixAnalysis";
 import type { Severity } from "@/types/analysis";
-import { MixIcon } from "./icons";
+import type { AssistantProposedAction, AssistantTurnResult } from "@/types/assistant";
+import { MixIcon, SparkleIcon } from "./icons";
 
 const PLATFORMS = Object.keys(PLATFORM_LABELS) as MasteringPlatform[];
 
@@ -27,6 +30,9 @@ export function MixAssistantPanel() {
   const [error, setError] = useState<string | null>(null);
   const [platform, setPlatform] = useState<MasteringPlatform>("spotify");
   const [masterGainApplied, setMasterGainApplied] = useState(false);
+  const [aiTurn, setAiTurn] = useState<AssistantTurnResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiAppliedIds, setAiAppliedIds] = useState<Set<string>>(new Set());
 
   const project = useProjectStore((s) => s.project);
   const setEffectChain = useProjectStore((s) => s.setEffectChain);
@@ -40,6 +46,8 @@ export function MixAssistantPanel() {
     setResult(null);
     setAppliedIds(new Set());
     setMasterGainApplied(false);
+    setAiTurn(null);
+    setAiAppliedIds(new Set());
     try {
       const sampleIds = Array.from(
         new Set(project.tracks.flatMap((t) => t.clips.map((c) => c.sampleId)))
@@ -77,6 +85,74 @@ export function MixAssistantPanel() {
     }
     setEffectChain("master", [...project.masterInserts, gainStage]);
     setMasterGainApplied(true);
+  }
+
+  /** Sends the DSP analysis already computed above to the same Claude-backed
+   * assistant AiAssistantPanel uses, asking for a natural-language read
+   * grounded in those real numbers (see route.ts's buildMixSection) rather
+   * than a second, disconnected "AI opinion". */
+  async function askAiForMixRead() {
+    if (!result) return;
+    setAiLoading(true);
+    setAiTurn(null);
+    setAiAppliedIds(new Set());
+    try {
+      const context = {
+        bpm: project.bpm,
+        tracks: project.tracks.map((t) => ({ id: t.id, name: t.name })),
+        mix: {
+          lowEnd: result.mix.lowEnd,
+          mud: result.mix.mud,
+          harshness: result.mix.harshness,
+          sibilance: result.mix.sibilance,
+          peakDb: result.mix.peakDb,
+          rmsDb: result.mix.rmsDb,
+          integratedLufs: result.mix.integratedLufs,
+          masking: result.masking.map((m) => ({
+            trackAName: m.trackAName,
+            trackBName: m.trackBName,
+            band: m.band,
+            freqHz: m.freqHz,
+          })),
+          gainStaging: result.gainStaging.map((g) => ({
+            trackName: g.trackName,
+            deltaFromMedianDb: g.deltaFromMedianDb,
+            direction: g.direction,
+          })),
+        },
+      };
+      const turn = await httpAssistantProvider.sendCommand(
+        "Give me a professional read of this mix and propose concrete fixes.",
+        context
+      );
+      setAiTurn(turn);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function applyAiAction(proposed: AssistantProposedAction) {
+    const track = project.tracks.find((t) => t.id === proposed.action.trackId);
+    if (!track) return;
+    const { action } = proposed;
+    switch (action.kind) {
+      case "setTrackVolume":
+        updateTrack(track.id, { volumeDb: action.volumeDb });
+        break;
+      case "setTrackPan":
+        updateTrack(track.id, { pan: action.pan });
+        break;
+      case "setTrackMute":
+        updateTrack(track.id, { muted: action.muted });
+        break;
+      case "setTrackSolo":
+        updateTrack(track.id, { solo: action.solo });
+        break;
+      default:
+        setEffectChain(track.id, applyEffectAction(track.inserts, action));
+        break;
+    }
+    setAiAppliedIds((prev) => new Set(prev).add(proposed.id));
   }
 
   return (
@@ -128,6 +204,49 @@ export function MixAssistantPanel() {
                 </span>
               </div>
             </div>
+          </section>
+
+          <section className="rounded border border-neutral-800 bg-neutral-950 p-2">
+            <div className="mb-1 flex items-center gap-1.5 font-semibold text-neutral-400">
+              <SparkleIcon className="h-3 w-3 text-cyan-400" />
+              AI READ
+            </div>
+            {!aiTurn ? (
+              <button
+                onClick={askAiForMixRead}
+                disabled={aiLoading}
+                className="w-full rounded bg-neutral-800 py-1.5 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-50"
+              >
+                {aiLoading ? "Asking…" : "Get AI mix read"}
+              </button>
+            ) : !aiTurn.configured ? (
+              <p className="text-[11px] text-neutral-500">
+                AI assistant not configured. Set <code className="text-neutral-400">ANTHROPIC_API_KEY</code> in
+                your environment to enable this — the analysis above works without it.
+              </p>
+            ) : aiTurn.errorMessage ? (
+              <p className="text-[11px] text-red-400">{aiTurn.errorMessage}</p>
+            ) : (
+              <div className="space-y-2">
+                {aiTurn.reply && <p className="text-[11px] text-neutral-300">{aiTurn.reply}</p>}
+                {aiTurn.proposedActions.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {aiTurn.proposedActions.map((proposed) => (
+                      <li key={proposed.id} className="rounded bg-neutral-900 p-2 text-[11px]">
+                        <p className="text-neutral-400">{proposed.description}</p>
+                        <button
+                          onClick={() => applyAiAction(proposed)}
+                          disabled={aiAppliedIds.has(proposed.id)}
+                          className="mt-1.5 w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                        >
+                          {aiAppliedIds.has(proposed.id) ? "Applied" : "Apply"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="rounded border border-neutral-800 bg-neutral-950 p-2">

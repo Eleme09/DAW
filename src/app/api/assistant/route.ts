@@ -23,6 +23,29 @@ interface AssistantRequestBody {
   context?: AssistantContext;
 }
 
+function buildMixSection(mix: AssistantContext["mix"]): string {
+  if (!mix) return "";
+  const masking = mix.masking.length
+    ? mix.masking.map((m) => `${m.trackAName} vs ${m.trackBName} around ${Math.round(m.freqHz)}Hz (${m.band})`).join("; ")
+    : "none detected";
+  const gainStaging = mix.gainStaging.length
+    ? mix.gainStaging
+        .map((g) => `${g.trackName} is ${Math.abs(g.deltaFromMedianDb).toFixed(1)}dB ${g.direction} than typical`)
+        .join("; ")
+    : "levels look balanced";
+  const lufs = Number.isFinite(mix.integratedLufs) ? mix.integratedLufs.toFixed(1) : "-inf";
+
+  return [
+    "",
+    "A DSP analysis of the actual rendered mix has already been measured - ground your reply and any tool",
+    "calls in these real numbers instead of generic mixing advice:",
+    `- Low end: ${mix.lowEnd}, mud: ${mix.mud}, harshness: ${mix.harshness}, sibilance: ${mix.sibilance}`,
+    `- Peak ${mix.peakDb.toFixed(1)}dB, RMS ${mix.rmsDb.toFixed(1)}dB, integrated loudness ${lufs} LUFS`,
+    `- Frequency masking: ${masking}`,
+    `- Gain staging: ${gainStaging}`,
+  ].join("\n");
+}
+
 function buildSystemPrompt(context: AssistantContext): string {
   const trackList = context.tracks.length
     ? context.tracks.map((t) => `- "${t.name}" (id: ${t.id})`).join("\n")
@@ -32,6 +55,7 @@ function buildSystemPrompt(context: AssistantContext): string {
     "You are the in-app assistant for a personal DAW (digital audio workstation) used for vocal/beat production.",
     `The project is at ${context.bpm} BPM and has these tracks:`,
     trackList,
+    buildMixSection(context.mix),
     "",
     "When the user asks for a change, call one or more of the provided tools to propose concrete parameter " +
       "changes on a specific track (reference it by its id from the list above, never by guessing an id). " +

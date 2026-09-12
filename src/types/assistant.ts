@@ -1,5 +1,6 @@
 import type { EqBand, ReverbParams, SaturationParams } from "./effects";
 import type { TrackId } from "./project";
+import type { Severity } from "./analysis";
 
 /**
  * Phase 13 (part 2) — natural-language AI Music Assistant. The assistant
@@ -52,8 +53,26 @@ export interface AssistantTrackSummary {
   name: string;
 }
 
+/** A condensed version of MixAnalysisResult (see types/mixAnalysis.ts) sent
+ * to the assistant so its reply is grounded in the actual measured mix
+ * instead of generic advice - the AI Mix panel's real DSP analysis, read
+ * out in natural language rather than a second, separate "AI opinion". */
+export interface AssistantMixSummary {
+  lowEnd: Severity;
+  mud: Severity;
+  harshness: Severity;
+  sibilance: Severity;
+  peakDb: number;
+  rmsDb: number;
+  integratedLufs: number;
+  masking: { trackAName: string; trackBName: string; band: string; freqHz: number }[];
+  gainStaging: { trackName: string; deltaFromMedianDb: number; direction: "louder" | "quieter" }[];
+}
+
 /** Minimal project context sent with each command — just enough for the assistant to reference tracks by id. */
 export interface AssistantContext {
   bpm: number;
   tracks: AssistantTrackSummary[];
+  /** Present only when called from the AI Mix panel, after analysis has run. */
+  mix?: AssistantMixSummary;
 }
