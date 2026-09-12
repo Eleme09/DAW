@@ -23,12 +23,12 @@ import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
 const TABS: { id: BrowserTab; label: string; hint: string; Icon: ComponentType<{ className?: string }> }[] = [
-  { id: "audio", label: "Samples", hint: "Import audio and run per-sample tools", Icon: WaveformIcon },
-  { id: "match", label: "Vocal Match", hint: "Match a vocal take to a beat's key and tempo", Icon: MatchIcon },
-  { id: "mix", label: "AI Mix", hint: "AI-assisted mix balance across all tracks", Icon: MixIcon },
-  { id: "generate", label: "Beat Gen", hint: "Generate a new beat pattern", Icon: BeatGridIcon },
-  { id: "assistant", label: "AI Assistant", hint: "Ask for changes in plain language", Icon: SparkleIcon },
-  { id: "projects", label: "Projects", hint: "Open or save a project", Icon: FolderIcon },
+  { id: "audio", label: "Muestras", hint: "Importa audio y usa herramientas por muestra", Icon: WaveformIcon },
+  { id: "match", label: "Ajustar voz", hint: "Ajusta una toma vocal a la tonalidad y tempo del beat", Icon: MatchIcon },
+  { id: "mix", label: "Mezcla IA", hint: "Balance de mezcla asistido por IA en todas las pistas", Icon: MixIcon },
+  { id: "generate", label: "Generar beat", hint: "Genera un nuevo patrón de beat", Icon: BeatGridIcon },
+  { id: "assistant", label: "Asistente IA", hint: "Pide cambios en lenguaje natural", Icon: SparkleIcon },
+  { id: "projects", label: "Proyectos", hint: "Abre o guarda un proyecto", Icon: FolderIcon },
 ];
 
 export function BrowserPanel() {
@@ -178,7 +178,7 @@ function AudioTab() {
           disabled={importing}
           className="w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
         >
-          {importing ? "Importing…" : "Import Audio"}
+          {importing ? "Importando…" : "Importar audio"}
         </button>
         <input
           ref={fileInputRef}
@@ -191,14 +191,14 @@ function AudioTab() {
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2 text-xs">
         {samples.length === 0 && (
-          <p className="mt-4 text-center text-neutral-600">No audio imported yet.</p>
+          <p className="mt-4 text-center text-neutral-600">Todavía no importaste audio.</p>
         )}
         {samples.map((s) => (
           <div key={s.id} className="mb-1 rounded bg-neutral-900 px-2 py-2 text-neutral-300">
             <button
               onClick={() => addSampleToTimeline(s)}
               className="block w-full truncate text-left hover:text-neutral-100"
-              title={`Add "${s.name}" to timeline`}
+              title={`Agregar "${s.name}" a la sesión`}
             >
               <div className="truncate font-medium text-neutral-200">{s.name}</div>
               <div className="text-neutral-500">{s.durationSec.toFixed(1)}s</div>
@@ -209,19 +209,19 @@ function AudioTab() {
                 disabled={analyzingId === s.id}
                 className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
               >
-                {analyzingId === s.id ? "Analyzing…" : "Analyze"}
+                {analyzingId === s.id ? "Analizando…" : "Analizar"}
               </button>
               <button
                 onClick={() => setEngineerOpenId((prev) => (prev === s.id ? null : s.id))}
                 className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
               >
-                Engineer
+                Ingeniero
               </button>
               <button
                 onClick={() => setPitchOpenId((prev) => (prev === s.id ? null : s.id))}
                 className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
               >
-                Pitch
+                Tono
               </button>
               <button
                 onClick={() => setBeatOpenId((prev) => (prev === s.id ? null : s.id))}
@@ -233,7 +233,7 @@ function AudioTab() {
                 onClick={() => setDenoiseOpenId((prev) => (prev === s.id ? null : s.id))}
                 className="rounded bg-neutral-800 py-1 text-[11px] text-neutral-300 hover:bg-neutral-700"
               >
-                Denoise
+                Reducir ruido
               </button>
             </div>
             {analysisResults[s.id] && (
@@ -271,7 +271,7 @@ function ProjectsTab() {
     try {
       setEntries(await listProjects());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load projects");
+      setError(err instanceof Error ? err.message : "No se pudieron cargar los proyectos");
     } finally {
       setLoaded(true);
     }
@@ -283,7 +283,7 @@ function ProjectsTab() {
   useEffect(() => {
     listProjects()
       .then(setEntries)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load projects"))
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudieron cargar los proyectos"))
       .finally(() => setLoaded(true));
   }, []);
 
@@ -292,7 +292,7 @@ function ProjectsTab() {
     try {
       await openProjectById(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to open project");
+      setError(err instanceof Error ? err.message : "No se pudo abrir el proyecto");
     }
   }
 
@@ -302,7 +302,7 @@ function ProjectsTab() {
       await deleteProject(id);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete project");
+      setError(err instanceof Error ? err.message : "No se pudo eliminar el proyecto");
     }
   }
 
@@ -316,7 +316,7 @@ function ProjectsTab() {
           }}
           className="flex-1 rounded bg-neutral-800 px-2 py-1.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-700"
         >
-          New
+          Nuevo
         </button>
         <button
           onClick={async () => {
@@ -325,18 +325,18 @@ function ProjectsTab() {
               await persist();
               await refresh();
             } catch (err) {
-              setError(err instanceof Error ? err.message : "Failed to save project");
+              setError(err instanceof Error ? err.message : "No se pudo guardar el proyecto");
             }
           }}
           className="flex-1 rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
         >
-          Save
+          Guardar
         </button>
       </div>
       {error && <p className="px-2 pb-2 text-[11px] text-red-400">{error}</p>}
       <div className="flex-1 overflow-y-auto px-2 pb-2 text-xs">
         {loaded && entries.length === 0 && (
-          <p className="mt-4 text-center text-neutral-600">No saved projects yet.</p>
+          <p className="mt-4 text-center text-neutral-600">Todavía no hay proyectos guardados.</p>
         )}
         {entries.map((e) => (
           <div
@@ -352,8 +352,8 @@ function ProjectsTab() {
             <button
               onClick={() => handleDelete(e.id)}
               className="ml-2 shrink-0 text-neutral-500 hover:text-red-400"
-              title="Delete project"
-              aria-label="Delete project"
+              title="Eliminar proyecto"
+              aria-label="Eliminar proyecto"
             >
               ✕
             </button>
