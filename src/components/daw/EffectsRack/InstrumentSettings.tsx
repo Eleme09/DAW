@@ -14,9 +14,9 @@ interface InstrumentSettingsProps {
 }
 
 const WAVEFORM_OPTIONS: { value: OscillatorType; label: string }[] = [
-  { value: "sine", label: "Sine" },
-  { value: "square", label: "Square" },
-  { value: "sawtooth", label: "Saw" },
+  { value: "sine", label: "Seno" },
+  { value: "square", label: "Cuad" },
+  { value: "sawtooth", label: "Sierra" },
   { value: "triangle", label: "Tri" },
 ];
 
@@ -70,15 +70,15 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
         <div className="space-y-2">
           <Picker
             value={instrument.sampleId ?? ""}
-            options={[{ value: "", label: "No sample assigned" }, ...samples.map((s) => ({ value: s.id, label: s.name }))]}
-            title="Sample"
+            options={[{ value: "", label: "Sin muestra asignada" }, ...samples.map((s) => ({ value: s.id, label: s.name }))]}
+            title="Muestra"
             onChange={(sampleId) => {
               setInstrument(track.id, { ...instrument, sampleId: sampleId || null });
               if (sampleId) void ensureSampleLoaded(sampleId);
             }}
           />
           <ParamSlider
-            label="Root note"
+            label="Nota raíz"
             value={instrument.rootNote}
             min={24}
             max={96}
@@ -91,7 +91,7 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
 
       <div className="flex flex-wrap gap-x-3 gap-y-2">
         <ParamSlider
-          label="Attack"
+          label="Ataque"
           value={instrument.attack}
           min={0.001}
           max={2}
@@ -101,7 +101,7 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
           onChange={(v) => updateInstrumentEnvelope(track.id, { attack: v })}
         />
         <ParamSlider
-          label="Decay"
+          label="Caída"
           value={instrument.decay}
           min={0}
           max={2}
@@ -111,7 +111,7 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
           onChange={(v) => updateInstrumentEnvelope(track.id, { decay: v })}
         />
         <ParamSlider
-          label="Sustain"
+          label="Sostenido"
           value={instrument.sustain}
           min={0}
           max={1}
@@ -119,7 +119,7 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
           onChange={(v) => updateInstrumentEnvelope(track.id, { sustain: v })}
         />
         <ParamSlider
-          label="Release"
+          label="Liberación"
           value={instrument.release}
           min={0.001}
           max={3}
