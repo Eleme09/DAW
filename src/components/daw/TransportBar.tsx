@@ -8,9 +8,9 @@ import { UndoIcon, RedoIcon, MoreIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 
 const CONSTRAINT_LABELS: Record<keyof MonitorInputConstraints, string> = {
-  echoCancellation: "Echo cancellation",
-  noiseSuppression: "Noise suppression",
-  autoGainControl: "Auto-gain",
+  echoCancellation: "Cancelación de eco",
+  noiseSuppression: "Supresión de ruido",
+  autoGainControl: "Ganancia automática",
 };
 
 function formatTime(seconds: number): string {
@@ -65,7 +65,7 @@ export function TransportBar() {
     try {
       await exportProjectToWav(project);
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : "Export failed");
+      setExportError(err instanceof Error ? err.message : "Error al exportar");
     } finally {
       setIsExporting(false);
     }
@@ -77,14 +77,14 @@ export function TransportBar() {
     try {
       await exportStemsToWav(project);
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : "Stem export failed");
+      setExportError(err instanceof Error ? err.message : "Error al exportar los stems");
     } finally {
       setIsExportingStems(false);
     }
   }
 
   const bpmField = (
-    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Tempo, in beats per minute">
+    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Tempo, en pulsos por minuto">
       <label className="font-medium">BPM</label>
       <input
         type="number"
@@ -98,8 +98,8 @@ export function TransportBar() {
   );
 
   const timeSigField = (
-    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Time signature">
-      <label className="font-medium">TIME</label>
+    <div className="flex items-center gap-1 text-xs text-neutral-400" title="Compás">
+      <label className="font-medium">COMPÁS</label>
       <input
         type="number"
         min={1}
@@ -123,7 +123,7 @@ export function TransportBar() {
   const loopButton = (
     <button
       onClick={() => setLoop({ enabled: !project.loop.enabled })}
-      title="Loop playback between the loop markers"
+      title="Reproducir en bucle entre los marcadores de loop"
       className={`min-h-11 rounded px-2 text-xs font-medium ${
         project.loop.enabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
       }`}
@@ -135,7 +135,7 @@ export function TransportBar() {
   const clickButton = (
     <button
       onClick={toggleMetronome}
-      title="Metronome click while playing/recording"
+      title="Clic del metrónomo al reproducir/grabar"
       className={`min-h-11 rounded px-2 text-xs font-medium ${
         project.metronomeEnabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-300"
       }`}
@@ -159,18 +159,18 @@ export function TransportBar() {
         <button
           onClick={() => (isPlaying ? pause() : play())}
           disabled={isRecording}
-          title={isPlaying ? "Pause" : "Play"}
+          title={isPlaying ? "Pausar" : "Reproducir"}
           className="flex h-11 w-11 items-center justify-center rounded bg-cyan-500 font-bold text-black hover:bg-cyan-400 active:bg-cyan-400 disabled:opacity-40"
-          aria-label={isPlaying ? "Pause" : "Play"}
+          aria-label={isPlaying ? "Pausar" : "Reproducir"}
         >
           {isPlaying && !isRecording ? "❚❚" : "▶"}
         </button>
         <button
           onClick={stop}
           disabled={isRecording}
-          title="Stop"
+          title="Detener"
           className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-700 disabled:opacity-40"
-          aria-label="Stop"
+          aria-label="Detener"
         >
           ■
         </button>
@@ -181,8 +181,8 @@ export function TransportBar() {
               ? "animate-pulse bg-red-600 text-white"
               : "bg-neutral-800 text-red-500 hover:bg-neutral-700 active:bg-neutral-700"
           }`}
-          aria-label={isRecording ? "Stop recording" : "Record"}
-          title={isRecording ? "Stop recording" : "Record onto the armed track"}
+          aria-label={isRecording ? "Detener grabación" : "Grabar"}
+          title={isRecording ? "Detener grabación" : "Graba sobre la pista armada"}
         >
           ●
         </button>
@@ -192,7 +192,7 @@ export function TransportBar() {
         <button
           onClick={undo}
           disabled={!canUndo}
-          title="Undo (Ctrl+Z)"
+          title="Deshacer (Ctrl+Z)"
           className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
         >
           <UndoIcon className="h-4 w-4" />
@@ -200,19 +200,19 @@ export function TransportBar() {
         <button
           onClick={redo}
           disabled={!canRedo}
-          title="Redo (Ctrl+Shift+Z)"
+          title="Rehacer (Ctrl+Mayús+Z)"
           className="flex h-11 w-11 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 disabled:opacity-30"
         >
           <RedoIcon className="h-4 w-4" />
         </button>
       </div>
 
-      <span className="shrink-0 font-mono text-sm tabular-nums text-neutral-100 sm:text-base" title="Playhead position">
+      <span className="shrink-0 font-mono text-sm tabular-nums text-neutral-100 sm:text-base" title="Posición de reproducción">
         {formatTime(currentTime)}
       </span>
       {recordingError && (
         <span className="hidden max-w-xs truncate text-xs text-red-400 sm:inline" title={recordingError}>
-          Mic error: {recordingError}
+          Error de micrófono: {recordingError}
         </span>
       )}
 
@@ -224,46 +224,46 @@ export function TransportBar() {
       <div className="hidden shrink-0 sm:block">{clickButton}</div>
 
       {exportError && (
-        <span className="hidden max-w-xs truncate text-xs text-red-400 sm:inline">Export error: {exportError}</span>
+        <span className="hidden max-w-xs truncate text-xs text-red-400 sm:inline">Error de exportación: {exportError}</span>
       )}
 
       <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex">
         <button
           onClick={handleExport}
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
-          title={hasAudio ? "Render the full mix and download as WAV" : "Add audio to the timeline first"}
+          title={hasAudio ? "Renderiza la mezcla completa y descárgala en WAV" : "Agrega audio a la línea de tiempo primero"}
           className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
         >
-          {isExporting ? "Exporting…" : "Export"}
+          {isExporting ? "Exportando…" : "Exportar"}
         </button>
         <button
           onClick={handleExportStems}
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
-          title={hasAudio ? "Download each track as its own WAV file" : "Add audio to the timeline first"}
+          title={hasAudio ? "Descarga cada pista como su propio archivo WAV" : "Agrega audio a la línea de tiempo primero"}
           className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
         >
-          {isExportingStems ? "Exporting…" : "Export Stems"}
+          {isExportingStems ? "Exportando…" : "Exportar stems"}
         </button>
         <button
           onClick={persist}
           className="rounded bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-200 hover:bg-neutral-700"
         >
-          Save Project
+          Guardar proyecto
         </button>
       </div>
 
       <button
         onClick={() => setMoreOpen(true)}
-        title="More transport controls"
-        aria-label="More transport controls"
+        title="Más controles de transporte"
+        aria-label="Más controles de transporte"
         className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 sm:hidden"
       >
         <MoreIcon className="h-5 w-5" />
       </button>
 
-      <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Transport">
+      <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Transporte">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Project name</span>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">Nombre del proyecto</span>
           <input
             value={project.name}
             onChange={(e) => renameProject(e.target.value)}
@@ -277,14 +277,14 @@ export function TransportBar() {
             disabled={!canUndo}
             className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-30"
           >
-            <UndoIcon className="h-4 w-4" /> Undo
+            <UndoIcon className="h-4 w-4" /> Deshacer
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
             className="flex h-11 flex-1 items-center justify-center gap-2 rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-30"
           >
-            <RedoIcon className="h-4 w-4" /> Redo
+            <RedoIcon className="h-4 w-4" /> Rehacer
           </button>
         </div>
 
@@ -300,12 +300,12 @@ export function TransportBar() {
 
         <div className="space-y-1.5 border-t border-neutral-800 pt-3">
           <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
-            Mic input {latencySec !== null && <span className="normal-case text-neutral-600">— {Math.round(latencySec * 1000)}ms measured latency</span>}
+            Entrada de micrófono {latencySec !== null && <span className="normal-case text-neutral-600">— {Math.round(latencySec * 1000)}ms de latencia medida</span>}
           </span>
           <p className="text-xs text-neutral-600">
-            Off by default for both — they degrade a music signal designed for a phone/earbud recording
-            setup, not a phone call. Turn them on only if the room is genuinely noisy and you have no
-            other option.
+            Apagados por defecto los dos — degradan una señal musical pensada para grabar con
+            teléfono/auriculares, no para una llamada. Actívalos solo si el ambiente es realmente
+            ruidoso y no tienes otra opción.
           </p>
           <div className="flex flex-col gap-2">
             {(Object.keys(CONSTRAINT_LABELS) as (keyof MonitorInputConstraints)[]).map((key) => (
@@ -317,7 +317,7 @@ export function TransportBar() {
                 }`}
               >
                 {CONSTRAINT_LABELS[key]}
-                <span>{micConstraints[key] ? "On" : "Off"}</span>
+                <span>{micConstraints[key] ? "Activado" : "Desactivado"}</span>
               </button>
             ))}
           </div>
@@ -332,20 +332,20 @@ export function TransportBar() {
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
           className="h-11 w-full rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-40"
         >
-          {isExporting ? "Exporting…" : hasAudio ? "Export mix as WAV" : "Add audio to the timeline first"}
+          {isExporting ? "Exportando…" : hasAudio ? "Exportar mezcla como WAV" : "Agrega audio a la línea de tiempo primero"}
         </button>
         <button
           onClick={handleExportStems}
           disabled={isExporting || isExportingStems || isRecording || !hasAudio}
           className="h-11 w-full rounded bg-neutral-800 text-sm font-medium text-neutral-200 disabled:opacity-40"
         >
-          {isExportingStems ? "Exporting…" : "Export stems (one WAV per track)"}
+          {isExportingStems ? "Exportando…" : "Exportar stems (un WAV por pista)"}
         </button>
         <button
           onClick={persist}
           className="h-11 w-full rounded bg-cyan-500 text-sm font-semibold text-black"
         >
-          Save Project
+          Guardar proyecto
         </button>
       </BottomSheet>
     </div>
