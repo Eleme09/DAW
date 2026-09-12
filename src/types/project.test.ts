@@ -50,7 +50,7 @@ describe("createTrack", () => {
 describe("nextTrackColor", () => {
   it("cycles deterministically", () => {
     const first = nextTrackColor(0);
-    const eighth = nextTrackColor(8); // palette has 8 entries
-    expect(first).toBe(eighth);
+    const seventh = nextTrackColor(6); // palette has 6 entries (FASE 10B)
+    expect(first).toBe(seventh);
   });
 });

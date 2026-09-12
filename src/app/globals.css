@@ -23,13 +23,43 @@
   --state-mute: #ef4444;
   --state-clip: #ef4444;
   --state-selected: #22d3ee;
+
+  /* Identidad "Cabina" (FASE 10B) — tokens extraídos literalmente de
+     estudio-ui.html, la referencia obligatoria de FASE 10. Chasis de
+     grafito cálido, hueso para el texto, señal de audio como único color.
+     Coexisten con los tokens de FASE 1 de arriba: la migración pantalla
+     por pantalla (10C-10H) es la que reemplaza las clases neutral/cyan
+     de Tailwind por estos, una pantalla a la vez. */
+  --cabina-ink: #0a0a0b; /* chasis */
+  --cabina-surf: #111112;
+  --cabina-surf-2: #18181a;
+  --cabina-surf-3: #212125;
+  --cabina-line: #26262a;
+  --cabina-line-2: #34343a;
+  --cabina-bone: #f2ede4; /* texto */
+  --cabina-bone-2: #9a968e;
+  --cabina-bone-3: #5e5b57;
+  --cabina-rec: #e5243b; /* grabar */
+  --cabina-live: #8fb89a; /* señal viva */
+  /* señal — desaturados, fílmicos. También la paleta de 6 colores de pista
+     (nextTrackColor en types/project.ts). */
+  --cabina-s1: #e8c15c;
+  --cabina-s2: #c97064;
+  --cabina-s3: #7fa8c9;
+  --cabina-s4: #b294c4;
+  --cabina-s5: #8fb89a;
+  --cabina-s6: #6e6e74;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Instrument Sans para interfaz, DM Mono para todo valor medido (tiempo,
+     dB, Hz, compás), Bricolage Grotesque para títulos y cifras grandes -
+     ninguna pantalla debe quedar con la fuente por defecto de Next.js. */
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-value);
+  --font-display: var(--font-bricolage);
 }
 
 html,

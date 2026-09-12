@@ -185,15 +185,16 @@ export function createEmptyProject(name = "Sin título"): Project {
   };
 }
 
+// Paleta de señal "Cabina" (estudio-ui.html, FASE 10B): seis colores fijos,
+// desaturados y fílmicos - no ocho tonos saturados de app genérica. El color
+// de una pista viaja a su cabecera, forma de onda, chips y fila de mezclador.
 const TRACK_COLORS = [
-  "#ec4899",
-  "#22c55e",
-  "#38bdf8",
-  "#a855f7",
-  "#f43f5e",
-  "#eab308",
-  "#14b8a6",
-  "#6366f1",
+  "#e8c15c",
+  "#c97064",
+  "#7fa8c9",
+  "#b294c4",
+  "#8fb89a",
+  "#6e6e74",
 ];
 
 export function nextTrackColor(existingCount: number): string {
