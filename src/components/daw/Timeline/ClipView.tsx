@@ -164,7 +164,10 @@ export function ClipView({ clip }: ClipViewProps) {
           </div>
         )}
       </div>
-      <Waveform buffer={buffer} width={width} height={contentHeight - 16} color="rgba(255,255,255,0.85)" />
+      {/* Forma de onda en el color de señal de la pista, no blanco genérico
+         (estudio-ui.html: "en el color de señal de la pista, sobre fondo
+         casi negro"). */}
+      <Waveform buffer={buffer} width={width} height={contentHeight - 16} color={clip.color} />
 
       {(clip.fadeInSec > 0 || fadeInPx > 0) && (
         <div
