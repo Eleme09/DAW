@@ -69,11 +69,11 @@ export function AiAssistantPanel() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-2 text-xs">
-      <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <SparkleIcon className="h-3.5 w-3.5 text-cyan-400" />
+      <div className="mb-2 flex items-center gap-1.5 border-b border-line pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-bone-2">
+        <SparkleIcon className="h-3.5 w-3.5 text-bone" />
         Asistente IA
       </div>
-      <p className="mb-2 text-neutral-500">
+      <p className="mb-2 text-bone-2">
         Describe un cambio en lenguaje natural (ej. &quot;oscurece la voz&quot;, &quot;agrega algo de
         reverb al beat&quot;). El asistente propone cambios concretos de parámetros — nada se aplica
         hasta que hagas clic en Aplicar.
@@ -87,21 +87,21 @@ export function AiAssistantPanel() {
             if (e.key === "Enter") send();
           }}
           placeholder="Pide un cambio…"
-          className="flex-1 rounded bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none focus:ring-1 focus:ring-cyan-500"
+          className="flex-1 rounded bg-surf px-2 py-1.5 text-bone outline-none focus:ring-1 focus:ring-bone"
         />
         <button
           onClick={send}
           disabled={sending || !message.trim()}
-          className="rounded bg-cyan-500 px-3 py-1.5 font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+          className="rounded bg-bone px-3 py-1.5 font-semibold text-ink hover:opacity-90 disabled:opacity-50"
         >
           {sending ? "…" : "Enviar"}
         </button>
       </div>
 
       {result && !result.configured && (
-        <div className="mt-3 rounded border border-neutral-800 bg-neutral-950 p-2 text-neutral-500">
-          El asistente de IA no está configurado. Define <code className="text-neutral-400">ANTHROPIC_API_KEY</code> en
-          tu entorno (ver <code className="text-neutral-400">.env.example</code>) para activarlo —
+        <div className="mt-3 rounded border border-line bg-ink p-2 text-bone-2">
+          El asistente de IA no está configurado. Define <code className="text-bone-2">ANTHROPIC_API_KEY</code> en
+          tu entorno (ver <code className="text-bone-2">.env.example</code>) para activarlo —
           el resto del DAW funciona igual sin él.
         </div>
       )}
@@ -115,19 +115,19 @@ export function AiAssistantPanel() {
       {result?.configured && !result.errorMessage && (
         <div className="mt-3 space-y-2">
           {result.reply && (
-            <div className="rounded border border-neutral-800 bg-neutral-950 p-2 text-neutral-300">
+            <div className="rounded border border-line bg-ink p-2 text-bone-2">
               {result.reply}
             </div>
           )}
           {result.proposedActions.length > 0 && (
             <ul className="space-y-1.5">
               {result.proposedActions.map((proposed) => (
-                <li key={proposed.id} className="rounded bg-neutral-900 p-2">
-                  <p className="text-neutral-400">{proposed.description}</p>
+                <li key={proposed.id} className="rounded bg-surf p-2">
+                  <p className="text-bone-2">{proposed.description}</p>
                   <button
                     onClick={() => applyAction(proposed)}
                     disabled={appliedIds.has(proposed.id)}
-                    className="mt-1.5 w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                    className="mt-1.5 w-full rounded bg-surf-2 py-1 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-40"
                   >
                     {appliedIds.has(proposed.id) ? "Aplicado" : "Aplicar"}
                   </button>

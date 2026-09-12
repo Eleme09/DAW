@@ -124,16 +124,16 @@ export function VocalBeatMatchPanel() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto p-2 text-xs">
-      <div className="mb-2 flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <MatchIcon className="h-3.5 w-3.5 text-cyan-400" />
+      <div className="mb-2 flex items-center gap-1.5 border-b border-line pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-bone-2">
+        <MatchIcon className="h-3.5 w-3.5 text-bone" />
         Ajustar voz
       </div>
       {samples.length < 2 ? (
-        <p className="mt-4 text-center text-neutral-600">Importa primero una toma vocal y un beat.</p>
+        <p className="mt-4 text-center text-bone-3">Importa primero una toma vocal y un beat.</p>
       ) : (
         <>
           <label className="mb-2 block">
-            <span className="mb-1 block text-neutral-500">Voz</span>
+            <span className="mb-1 block text-bone-2">Voz</span>
             <Picker
               value={vocalId}
               options={[{ value: "", label: "Selecciona una muestra…" }, ...samples.map((s) => ({ value: s.id, label: s.name }))]}
@@ -142,7 +142,7 @@ export function VocalBeatMatchPanel() {
             />
           </label>
           <label className="mb-2 block">
-            <span className="mb-1 block text-neutral-500">Beat</span>
+            <span className="mb-1 block text-bone-2">Beat</span>
             <Picker
               value={beatId}
               options={[{ value: "", label: "Selecciona una muestra…" }, ...samples.map((s) => ({ value: s.id, label: s.name }))]}
@@ -154,37 +154,37 @@ export function VocalBeatMatchPanel() {
           <button
             onClick={compare}
             disabled={!vocalId || !beatId || comparing}
-            className="min-h-11 rounded bg-cyan-500 px-2 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="min-h-11 rounded bg-bone px-2 text-xs font-semibold text-ink hover:opacity-90 disabled:opacity-50"
           >
             {comparing ? "Comparando…" : "Comparar"}
           </button>
 
           {result && (
-            <div className="mt-3 rounded border border-neutral-800 bg-neutral-950 p-2">
+            <div className="mt-3 rounded border border-line bg-ink p-2">
               <p className={result.compatible ? "text-green-400" : "text-yellow-400"}>{result.message}</p>
-              <div className="mt-2 space-y-0.5 text-neutral-400">
+              <div className="mt-2 space-y-0.5 text-bone-2">
                 <div className="flex justify-between">
                   <span>Tonalidad del beat</span>
-                  <span className="text-neutral-200">
+                  <span className="text-bone">
                     {NOTE_NAMES[result.beatKey.key]} {result.beatKey.scale} (
                     {Math.round(result.beatKey.confidence * 100)}%)
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tonalidad de la voz</span>
-                  <span className="text-neutral-200">
+                  <span className="text-bone">
                     {NOTE_NAMES[result.vocalKey.key]} {result.vocalKey.scale} (
                     {Math.round(result.vocalKey.confidence * 100)}%)
                   </span>
                 </div>
               </div>
               {result.notesOutsideScale.length > 0 && (
-                <p className="mt-2 text-neutral-500">
+                <p className="mt-2 text-bone-2">
                   Notas fuera de la escala del beat: {result.notesOutsideScale.map((pc) => NOTE_NAMES[pc]).join(", ")}
                 </p>
               )}
               {result.compatible ? null : (
-                <p className="mt-2 text-neutral-600">
+                <p className="mt-2 text-bone-3">
                   Usa la pestaña Tono para corregir la voz hacia {NOTE_NAMES[result.beatKey.key]}{" "}
                   {result.beatKey.scale}.
                 </p>
@@ -193,18 +193,18 @@ export function VocalBeatMatchPanel() {
           )}
 
           {treatment && (
-            <div className="mt-2 rounded border border-neutral-800 bg-neutral-950 p-2">
-              <div className="mb-1 font-semibold text-neutral-400">NIVEL Y ESPACIO</div>
-              <div className="space-y-0.5 text-neutral-400">
+            <div className="mt-2 rounded border border-line bg-ink p-2">
+              <div className="mb-1 font-semibold text-bone-2">NIVEL Y ESPACIO</div>
+              <div className="space-y-0.5 text-bone-2">
                 <div className="flex justify-between">
                   <span>RMS voz / beat</span>
-                  <span className="text-neutral-200">
+                  <span className="text-bone">
                     {treatment.vocalRmsDb.toFixed(1)} / {treatment.beatRmsDb.toFixed(1)} dB
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tempo del beat</span>
-                  <span className="text-neutral-200">
+                  <span className="text-bone">
                     {Math.round(treatment.beatBpm)} BPM ({Math.round(treatment.beatTempoConfidence * 100)}%)
                   </span>
                 </div>
@@ -212,7 +212,7 @@ export function VocalBeatMatchPanel() {
               <button
                 onClick={applyLevel}
                 disabled={levelApplied || Math.abs(treatment.levelDeltaDb) < 0.3}
-                className="mt-2 w-full rounded bg-neutral-800 min-h-11 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                className="mt-2 w-full rounded bg-surf-2 min-h-11 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-40"
               >
                 {levelApplied
                   ? "Nivel aplicado"
@@ -223,13 +223,13 @@ export function VocalBeatMatchPanel() {
               <button
                 onClick={applyDelay}
                 disabled={delayApplied}
-                className="mt-1.5 w-full rounded bg-neutral-800 min-h-11 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                className="mt-1.5 w-full rounded bg-surf-2 min-h-11 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-40"
               >
                 {delayApplied
                   ? "Delay aplicado"
                   : `Aplicar delay sincronizado al tempo (${Math.round(treatment.suggestedDelayMs)}ms)`}
               </button>
-              <p className="mt-1.5 text-[10px] text-neutral-600">
+              <p className="mt-1.5 text-[10px] text-bone-3">
                 Nivel ajusta la pista vocal en relación a la sonoridad del beat. Delay es un eco de
                 corchea sincronizado al tempo del beat, sutil por defecto (15% mix) - un punto de
                 partida, ajústalo a gusto en la pestaña FX.

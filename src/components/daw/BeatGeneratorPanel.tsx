@@ -108,11 +108,11 @@ export function BeatGeneratorPanel() {
 
   return (
     <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-2 text-xs">
-      <div className="flex items-center gap-1.5 border-b border-neutral-800 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-        <BeatGridIcon className="h-3.5 w-3.5 text-cyan-400" />
+      <div className="flex items-center gap-1.5 border-b border-line pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-bone-2">
+        <BeatGridIcon className="h-3.5 w-3.5 text-bone" />
         Generador de beats
       </div>
-      <p className="text-neutral-500">
+      <p className="text-bone-2">
         Genera un boceto de batería/bajo/acordes/melodía por reglas en 4 pistas nuevas, usando el
         BPM actual del proyecto ({project.bpm}). Instrumentos sintetizados de referencia (osciladores
         + ruido filtrado), no producción con samples — pensado para mezclarse, reemplazarse o
@@ -120,7 +120,7 @@ export function BeatGeneratorPanel() {
       </p>
 
       <label className="flex flex-col gap-1">
-        <span className="text-neutral-500">Tonalidad</span>
+        <span className="text-bone-2">Tonalidad</span>
         <Picker
           value={String(key)}
           options={NOTE_NAMES.map((name, i) => ({ value: String(i), label: name }))}
@@ -130,12 +130,12 @@ export function BeatGeneratorPanel() {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-neutral-500">Escala</span>
+        <span className="text-bone-2">Escala</span>
         <SegmentedControl value={scale} options={SCALE_OPTIONS} onChange={setScale} />
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-neutral-500">Género</span>
+        <span className="text-bone-2">Género</span>
         <Picker
           value={genre}
           options={Object.entries(GENRE_LABELS).map(([id, label]) => ({ value: id as GenGenre, label }))}
@@ -145,7 +145,7 @@ export function BeatGeneratorPanel() {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-neutral-500">Ánimo</span>
+        <span className="text-bone-2">Ánimo</span>
         <Picker
           value={mood}
           options={Object.entries(MOOD_LABELS).map(([id, label]) => ({ value: id as GenMood, label }))}
@@ -155,22 +155,22 @@ export function BeatGeneratorPanel() {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-neutral-500">Semilla (misma semilla = mismo resultado)</span>
+        <span className="text-bone-2">Semilla (misma semilla = mismo resultado)</span>
         <input
           type="number"
           value={seed}
           onChange={(e) => setSeed(Number(e.target.value) || 0)}
-          className="min-h-11 rounded bg-neutral-900 px-2 text-neutral-300"
+          className="min-h-11 rounded bg-surf px-2 text-bone-2"
         />
       </label>
 
       {error && <p className="text-red-400">{error}</p>}
-      {lastSummary && <p className="text-neutral-500">{lastSummary}</p>}
+      {lastSummary && <p className="text-bone-2">{lastSummary}</p>}
 
       <button
         onClick={handleGenerate}
         disabled={generating}
-        className="mt-1 min-h-11 rounded bg-cyan-500 px-2 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+        className="mt-1 min-h-11 rounded bg-bone px-2 text-xs font-semibold text-ink hover:opacity-90 disabled:opacity-50"
       >
         {generating ? "Generando…" : "Generar beat"}
       </button>
