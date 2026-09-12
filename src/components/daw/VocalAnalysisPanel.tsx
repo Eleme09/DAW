@@ -1,7 +1,7 @@
 "use client";
 
 import type { Severity, VocalAnalysisResult } from "@/types/analysis";
-import { WaveformIcon } from "./icons";
+import { WaveformIcon, WarningIcon } from "./icons";
 
 const SEVERITY_COLOR: Record<Severity, string> = {
   low: "text-green-400",
@@ -50,8 +50,8 @@ export function VocalAnalysisPanel({ result, onEnhance, enhancing }: VocalAnalys
       {result.limitations.length > 0 && (
         <div className="mt-2 space-y-1 border-t border-neutral-800 pt-1.5">
           {result.limitations.map((msg, i) => (
-            <p key={i} className="text-neutral-500">
-              ⚠ {msg}
+            <p key={i} className="flex items-start gap-1.5 text-neutral-500">
+              <WarningIcon className="h-3.5 w-3.5 shrink-0 translate-y-px" /> {msg}
             </p>
           ))}
         </div>

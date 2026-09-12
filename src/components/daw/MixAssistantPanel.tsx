@@ -12,7 +12,7 @@ import { applyEffectAction } from "@/lib/ai/applyAssistantAction";
 import type { MixAnalysisResult, MixSuggestion } from "@/types/mixAnalysis";
 import type { Severity } from "@/types/analysis";
 import type { AssistantProposedAction, AssistantTurnResult } from "@/types/assistant";
-import { MixIcon, SparkleIcon } from "./icons";
+import { MixIcon, SparkleIcon, WarningIcon } from "./icons";
 import { Picker } from "./ui/Picker";
 
 const PLATFORMS = Object.keys(PLATFORM_LABELS) as MasteringPlatform[];
@@ -356,8 +356,8 @@ export function MixAssistantPanel() {
           {result.limitations.length > 0 && (
             <section className="space-y-1 border-t border-neutral-800 pt-2">
               {result.limitations.map((msg, i) => (
-                <p key={i} className="text-[11px] text-neutral-600">
-                  ⚠ {msg}
+                <p key={i} className="flex items-start gap-1.5 text-[11px] text-neutral-600">
+                  <WarningIcon className="h-3.5 w-3.5 shrink-0 translate-y-px" /> {msg}
                 </p>
               ))}
             </section>

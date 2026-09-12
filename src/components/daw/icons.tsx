@@ -274,3 +274,13 @@ export function CloseIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function WarningIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3.5l9.5 16.5H2.5z" />
+      <line x1="12" y1="10" x2="12" y2="14" />
+      <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
