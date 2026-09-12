@@ -6,6 +6,9 @@ import { ParamSlider } from "./ParamSlider";
 import { EqPanel } from "./EqPanel";
 import { PitchCorrectionPanel } from "./PitchCorrectionPanel";
 
+const TONE_LABEL: Record<"warm" | "neutral" | "bright", string> = { warm: "cálido", neutral: "neutro", bright: "brillante" };
+const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
+
 interface EffectParamsEditorProps {
   target: EffectTarget;
   effect: EffectInstance;
@@ -24,12 +27,12 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Threshold" value={p.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
+          <ParamSlider label="Umbral" value={p.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
           <ParamSlider label="Ratio" value={p.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...p, ratio: v })} />
-          <ParamSlider label="Attack" value={p.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
-          <ParamSlider label="Release" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
+          <ParamSlider label="Ataque" value={p.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
+          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
           <ParamSlider label="Knee" value={p.kneeDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, kneeDb: v })} />
-          <ParamSlider label="Makeup" value={p.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, makeupDb: v })} />
+          <ParamSlider label="Compensación" value={p.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, makeupDb: v })} />
         </>
       );
     }
@@ -38,8 +41,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Freq" value={p.freq} min={2000} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, freq: v })} />
-          <ParamSlider label="Threshold" value={p.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
+          <ParamSlider label="Frec" value={p.freq} min={2000} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, freq: v })} />
+          <ParamSlider label="Umbral" value={p.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
           <ParamSlider label="Ratio" value={p.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...p, ratio: v })} />
         </>
       );
@@ -58,12 +61,12 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
                   p.tone === tone ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
-                {tone}
+                {TONE_LABEL[tone]}
               </button>
             ))}
           </div>
           <ParamSlider label="Drive" value={p.driveDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, driveDb: v })} />
-          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
         </>
       );
     }
@@ -72,9 +75,9 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Threshold" value={p.thresholdDb} min={-30} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
-          <ParamSlider label="Release" value={p.releaseMs} min={10} max={500} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
-          <ParamSlider label="Ceiling" value={p.ceilingDb} min={-3} max={0} step={0.1} unit=" dB" onChange={(v) => onChange({ ...p, ceilingDb: v })} />
+          <ParamSlider label="Umbral" value={p.thresholdDb} min={-30} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
+          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={500} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
+          <ParamSlider label="Techo" value={p.ceilingDb} min={-3} max={0} step={0.1} unit=" dB" onChange={(v) => onChange({ ...p, ceilingDb: v })} />
         </>
       );
     }
@@ -82,7 +85,7 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "clipper": {
       const p = effect.params;
       return (
-        <ParamSlider label="Ceiling" value={p.ceilingDb} min={-6} max={0} step={0.1} unit=" dB" onChange={(v) => onChange({ ...p, ceilingDb: v })} />
+        <ParamSlider label="Techo" value={p.ceilingDb} min={-6} max={0} step={0.1} unit=" dB" onChange={(v) => onChange({ ...p, ceilingDb: v })} />
       );
     }
 
@@ -90,10 +93,10 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Threshold" value={p.thresholdDb} min={-80} max={0} step={1} unit=" dB" decimals={0} onChange={(v) => onChange({ ...p, thresholdDb: v })} />
-          <ParamSlider label="Attack" value={p.attackMs} min={0.1} max={50} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
-          <ParamSlider label="Release" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
-          <ParamSlider label="Hold" value={p.holdMs} min={0} max={500} step={5} unit=" ms" onChange={(v) => onChange({ ...p, holdMs: v })} />
+          <ParamSlider label="Umbral" value={p.thresholdDb} min={-80} max={0} step={1} unit=" dB" decimals={0} onChange={(v) => onChange({ ...p, thresholdDb: v })} />
+          <ParamSlider label="Ataque" value={p.attackMs} min={0.1} max={50} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
+          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
+          <ParamSlider label="Retención" value={p.holdMs} min={0} max={500} step={5} unit=" ms" onChange={(v) => onChange({ ...p, holdMs: v })} />
         </>
       );
     }
@@ -111,12 +114,12 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
                   p.sizeType === sizeType ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
-                {sizeType}
+                {SIZE_LABEL[sizeType]}
               </button>
             ))}
           </div>
-          <ParamSlider label="Decay" value={p.decaySec} min={0.2} max={6} step={0.1} unit=" s" onChange={(v) => onChange({ ...p, decaySec: v })} />
-          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+          <ParamSlider label="Caída" value={p.decaySec} min={0.2} max={6} step={0.1} unit=" s" onChange={(v) => onChange({ ...p, decaySec: v })} />
+          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
         </>
       );
     }
@@ -125,10 +128,10 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Time" value={p.timeMs} min={10} max={2000} step={10} unit=" ms" decimals={0} onChange={(v) => onChange({ ...p, timeMs: v })} />
+          <ParamSlider label="Tiempo" value={p.timeMs} min={10} max={2000} step={10} unit=" ms" decimals={0} onChange={(v) => onChange({ ...p, timeMs: v })} />
           <ParamSlider label="Feedback" value={p.feedback * 100} min={0} max={95} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, feedback: v / 100 })} />
-          <ParamSlider label="Tone" value={p.filterFreq} min={500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, filterFreq: v })} />
-          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+          <ParamSlider label="Tono" value={p.filterFreq} min={500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, filterFreq: v })} />
+          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
         </>
       );
     }
@@ -145,13 +148,13 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       );
       return (
         <>
-          <ParamSlider label="Low/Mid" value={p.lowMidFreq} min={40} max={1000} step={10} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, lowMidFreq: v })} />
-          <ParamSlider label="Mid/High" value={p.midHighFreq} min={500} max={10000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, midHighFreq: v })} />
-          <ParamSlider label="Attack" value={p.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
-          <ParamSlider label="Release" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
-          {bandEditor("Low", p.low, "low")}
-          {bandEditor("Mid", p.mid, "mid")}
-          {bandEditor("High", p.high, "high")}
+          <ParamSlider label="Grave/Medio" value={p.lowMidFreq} min={40} max={1000} step={10} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, lowMidFreq: v })} />
+          <ParamSlider label="Medio/Agudo" value={p.midHighFreq} min={500} max={10000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, midHighFreq: v })} />
+          <ParamSlider label="Ataque" value={p.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
+          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
+          {bandEditor("Graves", p.low, "low")}
+          {bandEditor("Medios", p.mid, "mid")}
+          {bandEditor("Agudos", p.high, "high")}
         </>
       );
     }
@@ -160,9 +163,9 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Rate" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
-          <ParamSlider label="Depth" value={p.depthMs} min={0.5} max={15} step={0.5} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
-          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+          <ParamSlider label="Velocidad" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
+          <ParamSlider label="Profundidad" value={p.depthMs} min={0.5} max={15} step={0.5} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
+          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
         </>
       );
     }
@@ -171,10 +174,10 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Rate" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
-          <ParamSlider label="Depth" value={p.depthMs} min={0.2} max={10} step={0.2} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
+          <ParamSlider label="Velocidad" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
+          <ParamSlider label="Profundidad" value={p.depthMs} min={0.2} max={10} step={0.2} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
           <ParamSlider label="Feedback" value={p.feedback * 100} min={0} max={90} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, feedback: v / 100 })} />
-          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
         </>
       );
     }
@@ -183,9 +186,9 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Freq" value={p.freq} min={1500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, freq: v })} />
+          <ParamSlider label="Frec" value={p.freq} min={1500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, freq: v })} />
           <ParamSlider label="Drive" value={p.driveDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, driveDb: v })} />
-          <ParamSlider label="Mix" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
+          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
         </>
       );
     }
@@ -194,8 +197,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       const p = effect.params;
       return (
         <>
-          <ParamSlider label="Rate" value={p.rateHz} min={0.05} max={8} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
-          <ParamSlider label="Depth" value={p.depth * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, depth: v / 100 })} />
+          <ParamSlider label="Velocidad" value={p.rateHz} min={0.05} max={8} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
+          <ParamSlider label="Profundidad" value={p.depth * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, depth: v / 100 })} />
         </>
       );
     }
@@ -203,7 +206,7 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "stereoWidth": {
       const p = effect.params;
       return (
-        <ParamSlider label="Width" value={p.width * 100} min={0} max={200} step={5} unit="%" decimals={0} onChange={(v) => onChange({ ...p, width: v / 100 })} />
+        <ParamSlider label="Ancho" value={p.width * 100} min={0} max={200} step={5} unit="%" decimals={0} onChange={(v) => onChange({ ...p, width: v / 100 })} />
       );
     }
   }
