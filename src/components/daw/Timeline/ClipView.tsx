@@ -136,7 +136,7 @@ export function ClipView({ clip }: ClipViewProps) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onDoubleClick={() => removeClip(clip.trackId, clip.id)}
-      title={`${clip.name} — drag to move, drag edges to trim, drag corners for fades, drag the center line for gain, double-click to delete`}
+      title={`${clip.name} — arrastra para mover, arrastra los bordes para recortar, arrastra las esquinas para fundidos, arrastra la línea central para ganancia, doble clic para eliminar`}
       style={{
         position: "absolute",
         left: clip.startTime * PIXELS_PER_SECOND,
@@ -157,8 +157,8 @@ export function ClipView({ clip }: ClipViewProps) {
           <div className="w-20 shrink-0" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
             <Picker
               value={clip.id}
-              options={takes.map((t, i) => ({ value: t.id, label: `Take ${i + 1}/${takes.length}` }))}
-              title="This region has multiple takes recorded over it - pick which one plays"
+              options={takes.map((t, i) => ({ value: t.id, label: `Toma ${i + 1}/${takes.length}` }))}
+              title="Esta región tiene varias tomas grabadas encima - elige cuál suena"
               onChange={(id) => selectTake(clip.trackId, clip.takeGroupId!, id)}
             />
           </div>
@@ -183,7 +183,7 @@ export function ClipView({ clip }: ClipViewProps) {
         onPointerDown={(e) => beginDrag(e, { mode: "gain", startY: e.clientY, gainDb: clip.gainDb })}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        title={`Gain ${clip.gainDb.toFixed(1)} dB — drag up/down`}
+        title={`Ganancia ${clip.gainDb.toFixed(1)} dB — arrastra arriba/abajo`}
         className="absolute left-0 right-0 h-2 -translate-y-1/2 cursor-ns-resize"
         style={{ top: gainY }}
       >
@@ -220,7 +220,7 @@ export function ClipView({ clip }: ClipViewProps) {
             onPointerDown={(e) => beginDrag(e, { mode: "fade-in", startX: e.clientX, fadeInSec: clip.fadeInSec })}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            title={`Fade in ${clip.fadeInSec.toFixed(2)}s — drag right`}
+            title={`Fundido de entrada ${clip.fadeInSec.toFixed(2)}s — arrastra a la derecha`}
             style={{ width: FADE_HANDLE_SIZE, height: FADE_HANDLE_SIZE }}
             className="absolute left-0 top-0 cursor-ew-resize rounded-br bg-white/40 opacity-0 group-hover:opacity-100"
           />
@@ -228,7 +228,7 @@ export function ClipView({ clip }: ClipViewProps) {
             onPointerDown={(e) => beginDrag(e, { mode: "fade-out", startX: e.clientX, fadeOutSec: clip.fadeOutSec })}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            title={`Fade out ${clip.fadeOutSec.toFixed(2)}s — drag left`}
+            title={`Fundido de salida ${clip.fadeOutSec.toFixed(2)}s — arrastra a la izquierda`}
             style={{ width: FADE_HANDLE_SIZE, height: FADE_HANDLE_SIZE }}
             className="absolute right-0 top-0 cursor-ew-resize rounded-bl bg-white/40 opacity-0 group-hover:opacity-100"
           />
