@@ -63,21 +63,21 @@ export function PianoRoll() {
       {track && clip && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-neutral-400">
-            <span>{clip.notes.length} notes</span>
+            <span>{clip.notes.length} notas</span>
             <div className="flex items-center gap-1">
-              <span>Length</span>
+              <span>Longitud</span>
               <button
                 onClick={() => updateMidiClip(track.id, clip.id, { duration: Math.max(bar, clip.duration - bar) })}
                 className="h-6 w-6 rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                title="Remove one bar"
+                title="Quitar un compás"
               >
                 −
               </button>
-              <span className="w-16 text-center tabular-nums">{(clip.duration / bar).toFixed(2)} bars</span>
+              <span className="w-16 text-center tabular-nums">{(clip.duration / bar).toFixed(2)} compases</span>
               <button
                 onClick={() => updateMidiClip(track.id, clip.id, { duration: clip.duration + bar })}
                 className="h-6 w-6 rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                title="Add one bar"
+                title="Agregar un compás"
               >
                 +
               </button>
@@ -126,7 +126,7 @@ export function PianoRoll() {
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-neutral-600">Tap a cell to add a note, tap again to remove it.</p>
+          <p className="text-[10px] text-neutral-600">Toca una celda para agregar una nota, tócala de nuevo para quitarla.</p>
         </div>
       )}
     </BottomSheet>
