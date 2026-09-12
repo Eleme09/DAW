@@ -10,6 +10,7 @@ import { addSampleAsset } from "@/lib/storage/sampleIndex";
 import { useProjectStore } from "@/state/projectStore";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import { WaveformIcon } from "./icons";
+import { Knob } from "./ui/Knob";
 
 interface DenoisePanelProps {
   sample: SampleAsset;
@@ -102,18 +103,17 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
             <span className="text-neutral-300">{noiseLevel < 0.0005 ? "very low" : noiseLevel < 0.003 ? "low" : "noticeable"}</span>
           </div>
 
-          <label className="mt-2 flex items-center gap-2 text-neutral-400">
-            <span className="w-16 shrink-0">Strength</span>
-            <input
-              type="range"
+          <label className="mt-2 flex items-center justify-center gap-2 text-neutral-400">
+            <Knob
+              value={strength * 100}
               min={0}
               max={100}
-              step={1}
-              value={strength * 100}
-              onChange={(e) => setStrength(Number(e.target.value) / 100)}
-              className="h-1 flex-1 accent-cyan-500"
+              defaultValue={50}
+              decimals={0}
+              unit="%"
+              label="Strength"
+              onChange={(v) => setStrength(v / 100)}
             />
-            <span className="w-10 shrink-0 text-right tabular-nums text-neutral-300">{Math.round(strength * 100)}%</span>
           </label>
 
           <p className="mt-2 text-neutral-600">
@@ -126,7 +126,7 @@ export function DenoisePanel({ sample, onNewSample }: DenoisePanelProps) {
           <button
             onClick={applyDenoise}
             disabled={applying}
-            className="mt-2 w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
             {applying ? "Rendering…" : "Apply Denoise"}
           </button>

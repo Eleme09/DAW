@@ -19,6 +19,14 @@ import {
 } from "@/types/pitch";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import { NoteIcon } from "./icons";
+import { Picker } from "./ui/Picker";
+import { Knob } from "./ui/Knob";
+
+const SCALE_OPTIONS: { value: ScaleName; label: string }[] = [
+  { value: "major", label: "Major" },
+  { value: "naturalMinor", label: "Minor" },
+  { value: "chromatic", label: "Chromatic" },
+];
 
 interface PitchStudioPanelProps {
   sample: SampleAsset;
@@ -122,26 +130,22 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
           <PitchTrackCanvas frames={frames} duration={duration} />
 
           <div className="mt-2 flex gap-1">
-            <select
-              value={settings.key}
-              onChange={(e) => setSettings((prev) => ({ ...prev, key: Number(e.target.value) }))}
-              className="flex-1 rounded bg-neutral-800 px-1 py-1 text-neutral-300"
-            >
-              {NOTE_NAMES.map((name, i) => (
-                <option key={name} value={i}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={settings.scale}
-              onChange={(e) => setSettings((prev) => ({ ...prev, scale: e.target.value as ScaleName }))}
-              className="flex-1 rounded bg-neutral-800 px-1 py-1 text-neutral-300"
-            >
-              <option value="major">Major</option>
-              <option value="naturalMinor">Minor</option>
-              <option value="chromatic">Chromatic</option>
-            </select>
+            <div className="flex-1">
+              <Picker
+                value={String(settings.key)}
+                options={NOTE_NAMES.map((name, i) => ({ value: String(i), label: name }))}
+                title="Key"
+                onChange={(v) => setSettings((prev) => ({ ...prev, key: Number(v) }))}
+              />
+            </div>
+            <div className="flex-1">
+              <Picker
+                value={settings.scale}
+                options={SCALE_OPTIONS}
+                title="Scale"
+                onChange={(scale) => setSettings((prev) => ({ ...prev, scale }))}
+              />
+            </div>
           </div>
 
           <div className="mt-2 flex gap-1">
@@ -149,7 +153,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
               <button
                 key={mode}
                 onClick={() => applyMode(mode)}
-                className={`flex-1 rounded px-1 py-1 text-[10px] uppercase ${
+                className={`min-h-11 flex-1 rounded px-1 text-[10px] uppercase ${
                   settings.mode === mode ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-400"
                 }`}
               >
@@ -158,34 +162,28 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
             ))}
           </div>
 
-          <label className="mt-2 flex items-center gap-2 text-neutral-400">
-            <span className="w-20 shrink-0">Retune</span>
-            <input
-              type="range"
+          <div className="mt-2 flex justify-center gap-4">
+            <Knob
+              value={settings.retuneSpeedMs}
               min={0}
               max={300}
-              step={5}
-              value={settings.retuneSpeedMs}
-              onChange={(e) => setSettings((prev) => ({ ...prev, retuneSpeedMs: Number(e.target.value) }))}
-              className="h-1 flex-1 accent-cyan-500"
+              defaultValue={120}
+              decimals={0}
+              unit=" ms"
+              label="Retune"
+              onChange={(v) => setSettings((prev) => ({ ...prev, retuneSpeedMs: v }))}
             />
-            <span className="w-12 shrink-0 text-right tabular-nums text-neutral-300">{settings.retuneSpeedMs}ms</span>
-          </label>
-          <label className="mt-1 flex items-center gap-2 text-neutral-400">
-            <span className="w-20 shrink-0">Humanize</span>
-            <input
-              type="range"
+            <Knob
+              value={settings.humanizeAmount * 100}
               min={0}
               max={100}
-              step={1}
-              value={settings.humanizeAmount * 100}
-              onChange={(e) => setSettings((prev) => ({ ...prev, humanizeAmount: Number(e.target.value) / 100 }))}
-              className="h-1 flex-1 accent-cyan-500"
+              defaultValue={40}
+              decimals={0}
+              unit="%"
+              label="Humanize"
+              onChange={(v) => setSettings((prev) => ({ ...prev, humanizeAmount: v / 100 }))}
             />
-            <span className="w-12 shrink-0 text-right tabular-nums text-neutral-300">
-              {Math.round(settings.humanizeAmount * 100)}%
-            </span>
-          </label>
+          </div>
 
           <p className="mt-2 text-neutral-600">
             Renders a new, separate take — your original recording is never overwritten. No formant
@@ -195,7 +193,7 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
           <button
             onClick={applyCorrection}
             disabled={applying}
-            className="mt-2 w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
             {applying ? "Rendering…" : "Apply Pitch Correction"}
           </button>
@@ -227,7 +225,7 @@ function PitchTrackCanvas({ frames, duration }: { frames: PitchFrame[]; duration
     const maxMidi = Math.max(...midiValues) + 2;
     const range = Math.max(1, maxMidi - minMidi);
 
-    ctx.fillStyle = "#f97316";
+    ctx.fillStyle = "#22d3ee";
     for (const frame of frames) {
       if (frame.frequencyHz === null) continue;
       const midi = frequencyToMidi(frame.frequencyHz);

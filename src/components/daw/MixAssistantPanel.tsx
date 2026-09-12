@@ -13,6 +13,7 @@ import type { MixAnalysisResult, MixSuggestion } from "@/types/mixAnalysis";
 import type { Severity } from "@/types/analysis";
 import type { AssistantProposedAction, AssistantTurnResult } from "@/types/assistant";
 import { MixIcon, SparkleIcon } from "./icons";
+import { Picker } from "./ui/Picker";
 
 const PLATFORMS = Object.keys(PLATFORM_LABELS) as MasteringPlatform[];
 
@@ -253,20 +254,17 @@ export function MixAssistantPanel() {
               Applies as a master-bus gain trim (a 1:1-ratio compressor stage used purely for its
               makeup gain) — review before exporting.
             </p>
-            <select
-              value={platform}
-              onChange={(e) => {
-                setPlatform(e.target.value as MasteringPlatform);
-                setMasterGainApplied(false);
-              }}
-              className="mb-2 w-full rounded bg-neutral-900 px-2 py-1.5 text-[11px] text-neutral-300"
-            >
-              {PLATFORMS.map((p) => (
-                <option key={p} value={p}>
-                  {PLATFORM_LABELS[p]}
-                </option>
-              ))}
-            </select>
+            <div className="mb-2">
+              <Picker
+                value={platform}
+                options={PLATFORMS.map((p) => ({ value: p, label: PLATFORM_LABELS[p] }))}
+                title="Mastering target"
+                onChange={(p) => {
+                  setPlatform(p);
+                  setMasterGainApplied(false);
+                }}
+              />
+            </div>
             {(() => {
               const suggestion = suggestMasteringGain(result.mix.integratedLufs, platform);
               return (

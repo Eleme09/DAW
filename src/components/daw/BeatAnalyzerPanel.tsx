@@ -23,7 +23,7 @@ interface BeatAnalyzerPanelProps {
 }
 
 const DRUM_COLOR: Record<DrumHitType, string> = {
-  kick: "#f97316",
+  kick: "#ec4899",
   snare: "#38bdf8",
   hihat: "#eab308",
   other: "#525252",

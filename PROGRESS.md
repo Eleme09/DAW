@@ -215,13 +215,17 @@ Esta fase se declaró explícitamente bloqueante para el resto del proyecto ("no
 - Botones con `width<44 || height<44` visibles: **Timeline → 1** (el ícono "Open piano roll" de arriba, dejado abierto a propósito). **Mixer → 0. FX → 0.**
 - `tsc --noEmit` / `eslint src` / `vitest run` (289 tests) limpios después de cada cambio de esta sección.
 
+**Controles nativos restantes en los paneles de IA — eliminados esta pasada:**
+- [x] `MixAssistantPanel.tsx` (select de plataforma de masterizado → `Picker`), `VocalBeatMatchPanel.tsx` (2 selects de sample → `Picker`, + botones a 44px), `VocalEngineerPanel.tsx` (select con `<optgroup>` de estilo/género → `Picker` con la nueva prop `group` — encabezados de sección dentro de la hoja, sin perder el agrupamiento visual), `PitchStudioPanel.tsx` (2 selects → `Picker`, 2 ranges → `Knob`), `DenoisePanel.tsx` (1 range → `Knob`), `BeatGeneratorPanel.tsx` (4 selects → mezcla de `Picker`/`SegmentedControl` según cuántas opciones tenía cada uno). `Timeline/ClipView.tsx`'s selector de tomas (comping) también convertido a `Picker` — confirmado que, a diferencia del ícono de `MidiClipView.tsx`, éste SÍ vive fuera de cualquier restricción de altura fija, así que el arreglo es real (la fila de cabecera del clip simplemente crece).
+- [x] `Picker.tsx` ganó una prop `group` opcional (encabezado de sección entre opciones cuando cambia) — necesaria para reemplazar el `<optgroup>` de Character/Genre de `VocalEngineerPanel` sin perder esa agrupación.
+- [x] Colores naranja restantes eliminados: `Analyzer.tsx`, `PitchStudioPanel.tsx`'s `PitchTrackCanvas` (ambos → cian), `BeatAnalyzerPanel.tsx`'s color de "kick" en su leyenda (→ rosa, mismo tono que el nuevo `TRACK_COLORS[0]`).
+- [x] **Medido tras esta limpieza**: `grep` de `type="range"` y `<select` en todo `src/components` → **0 resultados reales** (el único hit es un comentario de documentación en `Picker.tsx` que menciona `<select>` en prosa). `document.querySelectorAll('input[type=range], select').length` en las pestañas Browser/Timeline/Mixer/FX → **0** en todas.
+
 **Pendiente real, todavía abierto (la fase NO se declara cumplida):**
 - [ ] Configuración de entrada completa (adenda punto 3): toggles de echo-cancellation/noise-suppression expuestos al usuario (el motor ya soporta `setMonitorConstraints`, falta la UI), selección de dispositivo, medición/compensación de latencia real, advertencia de feedback con altavoz, medidor de entrada junto a Arm mostrado de forma más prominente antes de grabar (hoy existe pero es una barra delgada de 8px).
 - [ ] Hoja contextual de clip estilo BandLab (adenda punto 1) — tap-para-abrir, long-press, doble-tap a editor completo.
 - [ ] Visualización propia para los otros 14 efectos (Compressor, Multiband, Limiter, Clipper, Noise Gate, De-Esser, Reverb, Delay, Saturation, Exciter, Chorus, Flanger, AutoPan, Stereo Width) y rediseño de Synth/Sampler.
 - [ ] Rediseño completo del piano roll (hoy sigue siendo la rejilla de casillas de FASE 4).
 - [ ] Waveforms reales de timeline con cache de picos (verificar/actualizar `Waveform.tsx` contra el estándar de esta fase).
-- [ ] `<select>`/`<input type=range>` nativos restantes: `MixAssistantPanel`, `VocalBeatMatchPanel`, `VocalEngineerPanel`, `PitchStudioPanel`, `DenoisePanel`, `BeatGeneratorPanel`.
-- [ ] `Analyzer.tsx` y `PitchStudioPanel.tsx`'s `PitchTrackCanvas` todavía usan `#f97316` (naranja).
 - [ ] Preservación de formantes en Pitch Correction (ver nota arriba).
 - [ ] EQ/ADSR/compresor no comparten todavía presets (`CurveEditor` está listo para ADSR/compresor pero no adoptado ahí aún); ningún efecto salvo Pitch Correction tiene ≥5 presets, un criterio explícito de la fase para cada plugin.

@@ -10,6 +10,7 @@ import type { VocalAnalysisResult } from "@/types/analysis";
 import type { GenreStyle, VocalCharacter } from "@/types/vocalStyle";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import { SparkleIcon } from "./icons";
+import { Picker } from "./ui/Picker";
 
 interface VocalEngineerPanelProps {
   sample: SampleAsset;
@@ -89,26 +90,23 @@ export function VocalEngineerPanel({ sample }: VocalEngineerPanelProps) {
 
       {analysis && (
         <>
-          <select
+          <Picker
             value={choice}
-            onChange={(e) => setChoice(e.target.value as StyleChoice)}
-            className="w-full rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
-          >
-            <optgroup label="Character">
-              {Object.entries(VOCAL_CHARACTER_PRESETS).map(([id, preset]) => (
-                <option key={id} value={`character:${id}`}>
-                  {preset.label}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Genre-inspired">
-              {Object.entries(GENRE_STYLE_PRESETS).map(([id, preset]) => (
-                <option key={id} value={`genre:${id}`}>
-                  {preset.label}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+            options={[
+              ...Object.entries(VOCAL_CHARACTER_PRESETS).map(([id, preset]) => ({
+                value: `character:${id}` as StyleChoice,
+                label: preset.label,
+                group: "Character",
+              })),
+              ...Object.entries(GENRE_STYLE_PRESETS).map(([id, preset]) => ({
+                value: `genre:${id}` as StyleChoice,
+                label: preset.label,
+                group: "Genre-inspired",
+              })),
+            ]}
+            title="Style"
+            onChange={setChoice}
+          />
           <p className="mt-1 text-neutral-500">{style.description}</p>
 
           <p className="mt-2 text-neutral-600">
@@ -120,7 +118,7 @@ export function VocalEngineerPanel({ sample }: VocalEngineerPanelProps) {
           <button
             onClick={makeProfessional}
             disabled={applying}
-            className="mt-2 w-full rounded bg-cyan-500 px-2 py-1 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="mt-2 min-h-11 w-full rounded bg-cyan-500 px-2 text-[11px] font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
             {applying ? "Applying…" : "Make Vocal Professional"}
           </button>

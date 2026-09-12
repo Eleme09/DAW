@@ -14,6 +14,13 @@ import type { ScaleName } from "@/types/pitch";
 import type { GenGenre, GenMood } from "@/types/beatGen";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import { BeatGridIcon } from "./icons";
+import { Picker } from "./ui/Picker";
+import { SegmentedControl } from "./ui/SegmentedControl";
+
+const SCALE_OPTIONS: { value: ScaleName; label: string }[] = [
+  { value: "major", label: "Major" },
+  { value: "naturalMinor", label: "Nat. Minor" },
+];
 
 const GENRE_LABELS: Record<GenGenre, string> = {
   trap: "Trap",
@@ -114,59 +121,37 @@ export function BeatGeneratorPanel() {
 
       <label className="flex flex-col gap-1">
         <span className="text-neutral-500">Key</span>
-        <select
-          value={key}
-          onChange={(e) => setKey(Number(e.target.value))}
-          className="rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
-        >
-          {NOTE_NAMES.map((name, i) => (
-            <option key={name} value={i}>
-              {name}
-            </option>
-          ))}
-        </select>
+        <Picker
+          value={String(key)}
+          options={NOTE_NAMES.map((name, i) => ({ value: String(i), label: name }))}
+          title="Key"
+          onChange={(v) => setKey(Number(v))}
+        />
       </label>
 
       <label className="flex flex-col gap-1">
         <span className="text-neutral-500">Scale</span>
-        <select
-          value={scale}
-          onChange={(e) => setScale(e.target.value as ScaleName)}
-          className="rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
-        >
-          <option value="major">Major</option>
-          <option value="naturalMinor">Natural Minor</option>
-        </select>
+        <SegmentedControl value={scale} options={SCALE_OPTIONS} onChange={setScale} />
       </label>
 
       <label className="flex flex-col gap-1">
         <span className="text-neutral-500">Genre</span>
-        <select
+        <Picker
           value={genre}
-          onChange={(e) => setGenre(e.target.value as GenGenre)}
-          className="rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
-        >
-          {Object.entries(GENRE_LABELS).map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
+          options={Object.entries(GENRE_LABELS).map(([id, label]) => ({ value: id as GenGenre, label }))}
+          title="Genre"
+          onChange={setGenre}
+        />
       </label>
 
       <label className="flex flex-col gap-1">
         <span className="text-neutral-500">Mood</span>
-        <select
+        <Picker
           value={mood}
-          onChange={(e) => setMood(e.target.value as GenMood)}
-          className="rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
-        >
-          {Object.entries(MOOD_LABELS).map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
+          options={Object.entries(MOOD_LABELS).map(([id, label]) => ({ value: id as GenMood, label }))}
+          title="Mood"
+          onChange={setMood}
+        />
       </label>
 
       <label className="flex flex-col gap-1">
@@ -175,7 +160,7 @@ export function BeatGeneratorPanel() {
           type="number"
           value={seed}
           onChange={(e) => setSeed(Number(e.target.value) || 0)}
-          className="rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
+          className="min-h-11 rounded bg-neutral-900 px-2 text-neutral-300"
         />
       </label>
 
@@ -185,7 +170,7 @@ export function BeatGeneratorPanel() {
       <button
         onClick={handleGenerate}
         disabled={generating}
-        className="mt-1 rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+        className="mt-1 min-h-11 rounded bg-cyan-500 px-2 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
       >
         {generating ? "Generating…" : "Generate Beat"}
       </button>

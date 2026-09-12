@@ -20,6 +20,7 @@ import { listSampleAssets } from "@/lib/storage/sampleIndex";
 import type { VocalBeatMatchResult } from "@/types/match";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import { MatchIcon } from "./icons";
+import { Picker } from "./ui/Picker";
 
 export function VocalBeatMatchPanel() {
   const [samples, setSamples] = useState<SampleAsset[]>([]);
@@ -133,39 +134,27 @@ export function VocalBeatMatchPanel() {
         <>
           <label className="mb-2 block">
             <span className="mb-1 block text-neutral-500">Vocal</span>
-            <select
+            <Picker
               value={vocalId}
-              onChange={(e) => setVocalId(e.target.value)}
-              className="w-full rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
-            >
-              <option value="">Select a sample…</option>
-              {samples.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              options={[{ value: "", label: "Select a sample…" }, ...samples.map((s) => ({ value: s.id, label: s.name }))]}
+              title="Vocal sample"
+              onChange={setVocalId}
+            />
           </label>
           <label className="mb-2 block">
             <span className="mb-1 block text-neutral-500">Beat</span>
-            <select
+            <Picker
               value={beatId}
-              onChange={(e) => setBeatId(e.target.value)}
-              className="w-full rounded bg-neutral-900 px-2 py-1.5 text-neutral-300"
-            >
-              <option value="">Select a sample…</option>
-              {samples.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              options={[{ value: "", label: "Select a sample…" }, ...samples.map((s) => ({ value: s.id, label: s.name }))]}
+              title="Beat sample"
+              onChange={setBeatId}
+            />
           </label>
 
           <button
             onClick={compare}
             disabled={!vocalId || !beatId || comparing}
-            className="rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+            className="min-h-11 rounded bg-cyan-500 px-2 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
           >
             {comparing ? "Comparing…" : "Compare"}
           </button>
@@ -223,7 +212,7 @@ export function VocalBeatMatchPanel() {
               <button
                 onClick={applyLevel}
                 disabled={levelApplied || Math.abs(treatment.levelDeltaDb) < 0.3}
-                className="mt-2 w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                className="mt-2 w-full rounded bg-neutral-800 min-h-11 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
               >
                 {levelApplied
                   ? "Level applied"
@@ -234,7 +223,7 @@ export function VocalBeatMatchPanel() {
               <button
                 onClick={applyDelay}
                 disabled={delayApplied}
-                className="mt-1.5 w-full rounded bg-neutral-800 py-1 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
+                className="mt-1.5 w-full rounded bg-neutral-800 min-h-11 text-[11px] font-semibold text-neutral-200 hover:bg-neutral-700 disabled:opacity-40"
               >
                 {delayApplied
                   ? "Delay applied"
