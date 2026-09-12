@@ -65,7 +65,7 @@ export function Fader({ valueDb, onChange, height = 128, label, showScale = fals
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onDoubleClick={() => onChange(0)}
-        title={`${label ? label + " — " : ""}${valueDb.toFixed(1)} dB — drag to adjust, double-click to reset to 0dB`}
+        title={`${label ? label + " — " : ""}${valueDb.toFixed(1)} dB — arrastra para ajustar, doble clic para reiniciar a 0dB`}
         style={{ height, width: 44, touchAction: "none" }}
         className="relative flex shrink-0 cursor-ns-resize select-none flex-col items-center rounded active:cursor-grabbing"
       >
