@@ -10,9 +10,9 @@ import { Fader } from "./Fader";
 
 const MONITOR_NEXT: Record<MonitorMode, MonitorMode> = { off: "auto", auto: "on", on: "off" };
 const MONITOR_LABEL: Record<MonitorMode, string> = {
-  off: "Monitor: off (never hear input)",
-  auto: "Monitor: auto (hear input while stopped or recording)",
-  on: "Monitor: on (always hear input while armed)",
+  off: "Monitor: apagado (nunca se oye la entrada)",
+  auto: "Monitor: automático (se oye la entrada al detener o grabar)",
+  on: "Monitor: siempre (se oye la entrada mientras esté armada)",
 };
 const MONITOR_CLASS: Record<MonitorMode, string> = {
   off: "bg-neutral-800 text-neutral-500 hover:text-neutral-200",
@@ -49,7 +49,7 @@ export function MixerPanel() {
     <div className="flex h-full flex-1 gap-2 overflow-x-auto border-t border-neutral-800 bg-neutral-950 p-2 md:h-auto md:min-h-64 md:flex-none">
       {tracks.length === 0 && (
         <div className="flex flex-1 items-center justify-center text-xs text-neutral-700">
-          No tracks yet — add one from the Timeline
+          Todavía no hay pistas — agrega una desde la Sesión
         </div>
       )}
       {tracks.map((track, i) => (
@@ -64,7 +64,7 @@ export function MixerPanel() {
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ background: track.color }}
-              title="Track color"
+              title="Color de la pista"
             />
             <button
               onClick={(e) => {
@@ -72,7 +72,7 @@ export function MixerPanel() {
                 moveTrack(track.id, -1);
               }}
               disabled={i === 0}
-              title="Move channel left"
+              title="Mover canal a la izquierda"
               className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-[10px] text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
             >
               ◀
@@ -81,7 +81,7 @@ export function MixerPanel() {
               value={track.name}
               onChange={(e) => updateTrack(track.id, { name: e.target.value })}
               onClick={(e) => e.stopPropagation()}
-              title="Rename channel"
+              title="Renombrar canal"
               className="w-full min-w-0 truncate bg-transparent text-center text-[11px] font-medium text-neutral-200 outline-none"
             />
             <button
@@ -90,7 +90,7 @@ export function MixerPanel() {
                 moveTrack(track.id, 1);
               }}
               disabled={i === tracks.length - 1}
-              title="Move channel right"
+              title="Mover canal a la derecha"
               className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-[10px] text-neutral-600 hover:text-neutral-300 disabled:opacity-20"
             >
               ▶
@@ -102,7 +102,7 @@ export function MixerPanel() {
               e.stopPropagation();
               openTrackFx(track.id);
             }}
-            title="Open insert chain for this channel"
+            title="Abrir cadena de inserts de este canal"
             className="flex min-h-11 w-full items-center justify-center gap-1 rounded bg-neutral-800 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
           >
             <WaveformIcon className="h-3 w-3" />
@@ -140,7 +140,7 @@ export function MixerPanel() {
                 e.stopPropagation();
                 updateTrack(track.id, { muted: !track.muted });
               }}
-              title={track.muted ? "Unmute" : "Mute"}
+              title={track.muted ? "Quitar silencio" : "Silenciar"}
               className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
                 track.muted ? "bg-red-500 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               }`}
@@ -152,7 +152,7 @@ export function MixerPanel() {
                 e.stopPropagation();
                 updateTrack(track.id, { solo: !track.solo });
               }}
-              title={track.solo ? "Unsolo" : "Solo"}
+              title={track.solo ? "Quitar solo" : "Solo"}
               className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
                 track.solo ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               }`}
@@ -165,7 +165,7 @@ export function MixerPanel() {
                 armTrack(track.id);
               }}
               disabled={isRecording}
-              title="Arm for recording"
+              title="Armar para grabar"
               className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold disabled:opacity-30 ${
                 track.armed ? "bg-red-600 text-white" : "bg-neutral-800 text-neutral-400 hover:text-neutral-200"
               }`}
@@ -198,7 +198,7 @@ export function MixerPanel() {
         <span className="text-[11px] font-semibold text-neutral-200">MASTER</span>
         <button
           onClick={openMasterFx}
-          title="Open the master bus chain"
+          title="Abrir la cadena del bus master"
           className="flex min-h-11 w-full items-center justify-center gap-1 rounded bg-neutral-800 text-[10px] font-medium text-neutral-400 hover:text-neutral-200"
         >
           <BusIcon className="h-3 w-3" />
