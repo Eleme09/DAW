@@ -35,7 +35,7 @@ export function EffectsRackPanel() {
         <button
           onClick={() => setMode("track")}
           title="Effects on the selected track only"
-          className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
+          className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
             mode === "track"
               ? "border-cyan-500 bg-neutral-900 text-cyan-400"
               : "border-transparent text-neutral-500 hover:text-neutral-300"
@@ -47,7 +47,7 @@ export function EffectsRackPanel() {
         <button
           onClick={() => setMode("master")}
           title="Effects on the master bus, applied to the full mix"
-          className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
+          className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
             mode === "master"
               ? "border-cyan-500 bg-neutral-900 text-cyan-400"
               : "border-transparent text-neutral-500 hover:text-neutral-300"
@@ -83,7 +83,7 @@ export function EffectsRackPanel() {
           <div className="relative border-t border-neutral-800 p-2">
             <button
               onClick={() => setShowAddMenu((v) => !v)}
-              className="w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-black hover:bg-cyan-400"
+              className="min-h-11 w-full rounded bg-cyan-500 px-2 text-xs font-semibold text-black hover:bg-cyan-400"
             >
               + Add Effect
             </button>
@@ -96,7 +96,7 @@ export function EffectsRackPanel() {
                       addEffect(target, type);
                       setShowAddMenu(false);
                     }}
-                    className="block w-full px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+                    className="block min-h-11 w-full px-3 text-left text-xs text-neutral-300 hover:bg-neutral-800"
                   >
                     {EFFECT_LABELS[type]}
                   </button>

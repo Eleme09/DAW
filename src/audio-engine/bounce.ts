@@ -17,6 +17,7 @@ import { scheduleParamAutomation } from "@/lib/automation/automation";
 import type { AudioClip, Instrument, MidiClip, Project } from "@/types/project";
 
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
+const PITCH_CORRECTION_WORKLET_URL = "/worklets/realtime-pitch-processor.js";
 /** Let reverb/delay tails ring out past the last clip instead of getting cut off. */
 const TAIL_PADDING_SEC = 3;
 
@@ -24,9 +25,9 @@ export interface BounceOptions {
   sampleRate?: number;
 }
 
-function projectUsesNoiseGate(project: Project): boolean {
+function projectUsesEffect(project: Project, type: string): boolean {
   const chains = [project.masterInserts, ...project.tracks.map((t) => t.inserts)];
-  return chains.some((inserts) => inserts.some((i) => i.type === "noiseGate"));
+  return chains.some((inserts) => inserts.some((i) => i.type === type));
 }
 
 function projectDurationSec(project: Project): number {
@@ -58,15 +59,20 @@ export async function bounceProject(
   const length = Math.max(1, Math.ceil((durationSec + TAIL_PADDING_SEC) * sampleRate));
   const ctx = new OfflineAudioContext(2, length, sampleRate);
 
-  // Unlike the live engine, there's no benefit to lazy-loading the worklet
+  // Unlike the live engine, there's no benefit to lazy-loading a worklet
   // here — a one-shot render can just await it up front and skip the
   // placeholder-swap dance EffectChain does for the live context.
-  if (projectUsesNoiseGate(project)) {
+  if (projectUsesEffect(project, "noiseGate")) {
     await ctx.audioWorklet.addModule(NOISE_GATE_WORKLET_URL);
+  }
+  if (projectUsesEffect(project, "pitchCorrection")) {
+    await ctx.audioWorklet.addModule(PITCH_CORRECTION_WORKLET_URL);
   }
   const deps: EffectChainDeps = {
     isNoiseGateWorkletLoaded: () => true,
     ensureNoiseGateWorklet: () => Promise.resolve(),
+    isPitchCorrectionWorkletLoaded: () => true,
+    ensurePitchCorrectionWorklet: () => Promise.resolve(),
   };
 
   const master = ctx.createGain();

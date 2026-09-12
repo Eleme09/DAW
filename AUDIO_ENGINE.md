@@ -860,26 +860,41 @@ when the key is unset. Whoever adds a real key should do one live
 end-to-end pass (a command that should map to a tool call, one that
 shouldn't) before trusting this in daily use.
 
-## Real-time pitch monitor
+## Pitch Correction (insert effect)
 
-`public/worklets/realtime-pitch-processor.js` + `AudioEngine.
-enableLivePitchMonitor`/`disableLivePitchMonitor`/
-`updateLivePitchMonitorSettings` + `LivePitchMonitorPanel.tsx` (the "🎤
-Live Tune" bar under the transport). Lets you hear your own voice
-corrected toward the nearest scale note **while singing**, not just
+`public/worklets/realtime-pitch-processor.js` +
+`audio-engine/effects/PitchCorrectionEffect.ts`, wired into `EffectChain`
+like any other insert (worklet-backed the same way as `noiseGate` — a
+`PassthroughEffect` placeholder until the module finishes loading). UI:
+`EffectsRack/PitchCorrectionPanel.tsx`. Lets you hear a track corrected
+toward the nearest scale note **while singing/playing it back**, not just
 after recording — a genuinely different feature from Pitch Studio's
 offline "record, then correct" pipeline (still the right choice for a
-polished final take; this is for finding the note in the moment).
+polished final take; this is for finding the note in the moment, and for
+correcting audio that's already in the timeline without leaving the
+effect chain).
 
-**Deliberate, narrow exception to a standing rule.** Every other part of
-this engine never connects the raw mic to `ctx.destination` (see
-"Recording" above) specifically to avoid feedback. This feature does,
-because hearing yourself is the entire point — it is strictly opt-in (the
-"🎤 Live Tune" button, off by default) and the UI carries a persistent,
-unmissable warning to use headphones. Recording itself is untouched: it
-still always captures the dry mic signal, never the monitor's corrected
-output — this is purely what you hear while singing, not what gets
-written to a track.
+**Formerly a global transport-bar toggle ("🎤 Live Tune"), now a normal
+insert.** The old `AudioEngine.enableLivePitchMonitor`/
+`disableLivePitchMonitor`/`LivePitchMonitorPanel.tsx` routed the mic
+straight to `ctx.destination`, bypassing every track's own chain — it
+couldn't be positioned, reordered, bypassed, saved with the project, or
+differ per track, and it hard-required the mic (no way to correct a
+clip already sitting in the timeline). Removed entirely per the FASE 9
+addendum; this section now describes its replacement. As an insert, this
+effect sits inline in a track's `graph.input → effectChain → volume →
+pan` path (see "Track graph" above) — for a **live armed track with
+input monitoring on** (`Track.monitorMode`, see "Input monitoring"
+below) that means you hear yourself corrected, with any other effects
+already in the chain (reverb, EQ, ...) applied on top, through whatever
+headphone/speaker setup input monitoring already warns about — there is
+no separate feedback exception to document here anymore, monitoring's
+own warning covers it. For a **recorded clip's track**, it corrects
+playback the same way any other insert processes that track's audio,
+live, without consolidating/re-rendering the clip (an offline "apply and
+consolidate" pass, if wanted, is what Pitch Studio's `correctPitchBuffer`
+already does — a separate, non-destructive-by-default tool, not merged
+with this effect).
 
 **Why this is a from-scratch reimplementation, not a reuse of Phase 5.**
 The offline pipeline (`pitchDetection.ts` → `correctionCurve.ts` →
@@ -924,19 +939,42 @@ sync with the offline math where the algorithm allows:
    and a 6-second render showed no NaNs or runaway amplitude.
 
 **Config is an AudioParam, not a port message — this also bit once.**
-`key`/`scaleIndex`/`retuneSpeedMs`/`humanizeAmount`/`bypassed` are all
-k-rate `AudioParam`s, not values sent via `port.postMessage`. A port
-message is a genuine async round-trip; for a one-shot
-`OfflineAudioContext` render in particular, rendering can finish before
-the message is even delivered, so the worklet would silently run with
-its default instead of the value actually requested. This was caught the
-same way as the drift bug: a verification render requested `scale:
-"major"`, the worklet used its default `"naturalMinor"` instead (missed
-message), and the output snapped to a note outside the requested scale.
-`scaleIndex` (0/1/2 for major/naturalMinor/chromatic) went through the
-same `AudioParam` path as the others once this was understood — a value
-set via `.value =` on the main thread is guaranteed in effect from the
-very first render quantum, with no such race.
+`key`/`scaleIndex`/`customMask`/`retuneSpeedMs`/`humanizeAmount`/`mix`/
+`referenceHz`/`detectMinHz`/`detectMaxHz`/`bypassed` are all k-rate
+`AudioParam`s, not values sent via `port.postMessage`. A port message is
+a genuine async round-trip; for a one-shot `OfflineAudioContext` render
+in particular, rendering can finish before the message is even
+delivered, so the worklet would silently run with its default instead of
+the value actually requested. This was caught the same way as the drift
+bug: a verification render requested `scale: "major"`, the worklet used
+its default `"naturalMinor"` instead (missed message), and the output
+snapped to a note outside the requested scale. Every config value added
+since (as the effect grew from the original 5 params to today's 10) went
+through the same `AudioParam` path for the same reason — a value set via
+`.value =` on the main thread is guaranteed in effect from the very
+first render quantum, with no such race.
+
+**Params beyond the original 5 (key/scale/retune/humanize/bypass):**
+- `scaleIndex` now covers 5 scales, not 3: major/naturalMinor/
+  harmonicMinor/chromatic/**custom**. `custom` checks `customMask` (a
+  12-bit bitmask, bit N = pitch class N allowed) instead of a fixed
+  interval table — the UI keyboard's "tap a note to exclude it" toggles
+  bits in this mask, seeded from the previously-selected scale's own
+  interval set when the user first taps a key.
+- `mix` (0..1) blends dry input with the corrected/shifted output —
+  the original worklet was 100% wet or fully bypassed, no in-between;
+  the addendum's "intensity" control needed a real dry/wet blend.
+- `referenceHz` (default 440) replaces the hardcoded A440 assumption in
+  `frequencyToMidi`/`midiToFrequency` — lets correction target a backing
+  track that's tuned slightly off standard pitch.
+- `detectMinHz`/`detectMaxHz` expose the YIN search range (previously
+  fixed constants) — narrowing it away from a voice's natural range cuts
+  down octave-detection errors.
+- The port message gained `snappedMidi` (the *unsmoothed* nearest scale
+  note) and `centsOff` (detected vs. that unsmoothed note) alongside the
+  original `detectedHz`/`targetHz`/`confidence`/`pitchRatio` — a
+  tuner-style "how far off" reading distinct from `targetHz`, which is
+  the *smoothed* target and lags behind what was actually just sung.
 
 **Real, honest limitations, not hidden:**
 - Total latency is roughly 30-50ms (mostly the 2048-sample analysis
@@ -947,13 +985,23 @@ very first render quantum, with no such race.
   synced to the signal's own period (unlike PSOLA), so it can land
   anywhere in the waveform's cycle. Infrequent for realistic correction
   amounts, not imperceptible.
-- No formant preservation, same as the offline PSOLA — larger
-  corrections can sound thinner.
+- **No formant preservation** — same as the offline PSOLA pipeline, and
+  still not implemented here despite being requested by the FASE 9
+  addenda. Real formant preservation needs spectral-envelope separation
+  (cepstral liftering or LPC) reapplied after the pitch shift; the
+  delay-line shifter this effect uses has no such stage, so a large
+  correction narrows/widens the voice's formants along with its pitch
+  (the "chipmunk"/"demon" effect on extreme corrections). No UI control
+  claims to do this — it's absent, not a no-op toggle.
 - Pitch ratio is clamped to roughly 0.7x-1.4x (about ±6 semitones) —
   intentional: this project's corrections are meant to nudge toward a
   nearby scale tone, not perform arbitrary pitch transposition, and the
   clamp also keeps the delay-drift math working within the buffer's safe
   bounds.
+- Mono in, mono out (`channelCount: 1`) — a stereo track passing through
+  this effect is downmixed to mono from this insert onward. Expected for
+  a vocal-focused effect; named in `PitchCorrectionEffect.ts` rather than
+  a silent surprise on a stereo import.
 
 ## Additional effects (post-launch)
 

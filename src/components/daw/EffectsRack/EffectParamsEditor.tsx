@@ -1,18 +1,24 @@
 "use client";
 
+import type { EffectTarget } from "@/state/projectStore";
 import type { EffectInstance, MultibandBandParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
 import { EqPanel } from "./EqPanel";
+import { PitchCorrectionPanel } from "./PitchCorrectionPanel";
 
 interface EffectParamsEditorProps {
+  target: EffectTarget;
   effect: EffectInstance;
   onChange: (params: EffectInstance["params"]) => void;
 }
 
-export function EffectParamsEditor({ effect, onChange }: EffectParamsEditorProps) {
+export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEditorProps) {
   switch (effect.type) {
     case "eq":
       return <EqPanel bands={effect.params.bands} onChange={(bands) => onChange({ bands })} />;
+
+    case "pitchCorrection":
+      return <PitchCorrectionPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "compressor": {
       const p = effect.params;

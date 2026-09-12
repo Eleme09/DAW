@@ -173,27 +173,27 @@ export function EqPanel({ bands, onChange }: { bands: EqBand[]; onChange: (bands
       <p className="text-[9px] text-neutral-600">Double-tap to add a band, drag a node off the graph to remove it.</p>
       <div className="space-y-2">
         {bands.map((band) => (
-          <div key={band.id} className="flex items-center gap-2 rounded border border-neutral-800 p-1.5">
-            <button
-              onClick={() => updateBand(band.id, { enabled: !band.enabled })}
-              title={band.enabled ? "Disable band" : "Enable band"}
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded text-[10px] font-bold ${
-                band.enabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-500"
-              }`}
-            >
-              {band.enabled ? "ON" : "OFF"}
-            </button>
-            <div className="flex-1">
-              <SegmentedControl value={band.type} options={TYPE_OPTIONS} onChange={(type) => updateBand(band.id, { type })} />
+          <div key={band.id} className="space-y-1.5 rounded border border-neutral-800 p-1.5">
+            <SegmentedControl value={band.type} options={TYPE_OPTIONS} onChange={(type) => updateBand(band.id, { type })} />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => updateBand(band.id, { enabled: !band.enabled })}
+                title={band.enabled ? "Disable band" : "Enable band"}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded text-[10px] font-bold ${
+                  band.enabled ? "bg-cyan-500 text-black" : "bg-neutral-800 text-neutral-500"
+                }`}
+              >
+                {band.enabled ? "ON" : "OFF"}
+              </button>
+              <Knob value={band.q} min={0.1} max={10} defaultValue={1} decimals={1} label="Q" size={36} onChange={(q) => updateBand(band.id, { q })} />
+              <button
+                onClick={() => handleRemovePoint(band.id)}
+                title="Remove band"
+                className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-600 hover:text-red-400"
+              >
+                ✕
+              </button>
             </div>
-            <Knob value={band.q} min={0.1} max={10} defaultValue={1} decimals={1} label="Q" size={36} onChange={(q) => updateBand(band.id, { q })} />
-            <button
-              onClick={() => handleRemovePoint(band.id)}
-              title="Remove band"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-neutral-600 hover:text-red-400"
-            >
-              ✕
-            </button>
           </div>
         ))}
       </div>

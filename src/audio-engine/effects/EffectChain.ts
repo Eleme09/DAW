@@ -14,12 +14,23 @@ import { FlangerEffect } from "./FlangerEffect";
 import { ExciterEffect } from "./ExciterEffect";
 import { AutoPanEffect } from "./AutoPanEffect";
 import { StereoWidthEffect } from "./StereoWidthEffect";
+import { PitchCorrectionEffect } from "./PitchCorrectionEffect";
 import type { EffectInstance, EffectType } from "@/types/effects";
 
 export interface EffectChainDeps {
   isNoiseGateWorkletLoaded: () => boolean;
   ensureNoiseGateWorklet: () => Promise<void>;
+  isPitchCorrectionWorkletLoaded: () => boolean;
+  ensurePitchCorrectionWorklet: () => Promise<void>;
 }
+
+/** Effect types backed by an AudioWorklet, which must finish loading its
+ * module before the real node can be constructed - see `instantiate()`'s
+ * placeholder-while-loading branch below. */
+const WORKLET_BACKED_TYPES: Partial<Record<EffectType, { isLoaded: (deps: EffectChainDeps) => boolean; ensure: (deps: EffectChainDeps) => Promise<void> }>> = {
+  noiseGate: { isLoaded: (d) => d.isNoiseGateWorkletLoaded(), ensure: (d) => d.ensureNoiseGateWorklet() },
+  pitchCorrection: { isLoaded: (d) => d.isPitchCorrectionWorkletLoaded(), ensure: (d) => d.ensurePitchCorrectionWorklet() },
+};
 
 /** No-op passthrough, used as a placeholder while the noise-gate worklet loads. */
 class PassthroughEffect implements Effect<unknown> {
@@ -71,6 +82,8 @@ function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unkno
       return new AutoPanEffect(ctx) as unknown as Effect<unknown>;
     case "stereoWidth":
       return new StereoWidthEffect(ctx) as unknown as Effect<unknown>;
+    case "pitchCorrection":
+      return new PitchCorrectionEffect(ctx) as unknown as Effect<unknown>;
   }
 }
 
@@ -130,10 +143,11 @@ export class EffectChain {
   }
 
   private instantiate(ins: EffectInstance): void {
-    if (ins.type === "noiseGate" && !this.deps.isNoiseGateWorkletLoaded()) {
+    const worklet = WORKLET_BACKED_TYPES[ins.type];
+    if (worklet && !worklet.isLoaded(this.deps)) {
       const placeholder = new PassthroughEffect(this.ctx);
       this.effects.set(ins.id, { instance: placeholder, type: ins.type });
-      this.deps.ensureNoiseGateWorklet().then(() => {
+      worklet.ensure(this.deps).then(() => {
         if (!this.effects.has(ins.id)) return; // removed while loading
         placeholder.dispose();
         const real = createEffectNode(this.ctx, ins.type);
@@ -160,6 +174,13 @@ export class EffectChain {
       node = entry.instance.outputNode;
     }
     node.connect(this.output);
+  }
+
+  /** The live audio-node instance behind one insert, if it exists and has
+   * finished loading (a worklet-backed effect is a passthrough placeholder
+   * until then) - see AudioEngine.getEffectNode. */
+  getEffect(id: string): Effect<unknown> | undefined {
+    return this.effects.get(id)?.instance;
   }
 
   dispose(): void {

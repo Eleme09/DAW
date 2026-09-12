@@ -34,24 +34,3 @@ export const PITCH_MODE_PRESETS: Record<PitchMode, { retuneSpeedMs: number; huma
   modernTrap: { retuneSpeedMs: 5, humanizeAmount: 0.05 },
   extreme: { retuneSpeedMs: 0, humanizeAmount: 0 },
 };
-
-/**
- * Live pitch monitor (real-time autotune-while-singing) settings — the
- * streaming counterpart to PitchCorrectionSettings above. See
- * public/worklets/realtime-pitch-processor.js and AUDIO_ENGINE.md
- * "Real-time pitch monitor" for why this is a separate, causal
- * reimplementation rather than a reuse of the offline pipeline.
- */
-export interface LivePitchMonitorSettings {
-  key: number;
-  scale: ScaleName;
-  retuneSpeedMs: number;
-  humanizeAmount: number;
-}
-
-/** Posted from the worklet roughly every ~23ms so the UI can show a live detected/target note readout. */
-export interface LivePitchInfo {
-  detectedHz: number | null;
-  targetHz: number | null;
-  confidence: number;
-}

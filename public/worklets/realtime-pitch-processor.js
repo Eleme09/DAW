@@ -47,8 +47,12 @@
 const SCALE_INTERVALS = {
   major: [0, 2, 4, 5, 7, 9, 11],
   naturalMinor: [0, 2, 3, 5, 7, 8, 10],
+  harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
   chromatic: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
 };
+// index 4 ("custom") isn't in here - it's a runtime bitmask (customMask
+// param), not a fixed interval set, checked separately in nearestScaleMidi.
+const SCALE_NAMES_BY_INDEX = ["major", "naturalMinor", "harmonicMinor", "chromatic", "custom"];
 
 const YIN_THRESHOLD = 0.15;
 const MIN_HZ = 70;
@@ -80,22 +84,27 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function frequencyToMidi(freq) {
-  return 69 + 12 * Math.log2(freq / 440);
+function frequencyToMidi(freq, refHz) {
+  return 69 + 12 * Math.log2(freq / refHz);
 }
 
-function midiToFrequency(midi) {
-  return 440 * Math.pow(2, (midi - 69) / 12);
+function midiToFrequency(midi, refHz) {
+  return refHz * Math.pow(2, (midi - 69) / 12);
 }
 
-function nearestScaleMidi(midi, key, scale) {
-  const intervals = SCALE_INTERVALS[scale] || SCALE_INTERVALS.chromatic;
+/** `scale === "custom"` checks `customMask` (bit N set = pitch class N
+ * allowed) instead of a fixed interval table - see the addendum's "tap a
+ * key to exclude that note" requirement, which needs an arbitrary,
+ * user-editable note set rather than one of the fixed named scales. */
+function nearestScaleMidi(midi, key, scale, customMask) {
+  const intervals = scale === "custom" ? null : SCALE_INTERVALS[scale] || SCALE_INTERVALS.chromatic;
   const rounded = Math.round(midi);
   let best = rounded;
   let bestDist = Infinity;
   for (let candidate = rounded - 12; candidate <= rounded + 12; candidate++) {
     const pc = (((candidate - key) % 12) + 12) % 12;
-    if (intervals.indexOf(pc) === -1) continue;
+    const allowed = intervals ? intervals.indexOf(pc) !== -1 : (customMask & (1 << pc)) !== 0;
+    if (!allowed) continue;
     const dist = Math.abs(candidate - midi);
     if (dist < bestDist) {
       bestDist = dist;
@@ -187,15 +196,19 @@ function readDelayLinear(buffer, size, pos) {
 // remembering if another "occasional config" ever seems like a port-message
 // candidate: if it needs to be correct from sample zero, it needs to be an
 // AudioParam, not a message.
-const SCALE_BY_INDEX = ["major", "naturalMinor", "chromatic"];
 
 class RealtimePitchProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
       { name: "key", defaultValue: 0, minValue: 0, maxValue: 11 },
-      { name: "scaleIndex", defaultValue: 1, minValue: 0, maxValue: 2 },
+      { name: "scaleIndex", defaultValue: 1, minValue: 0, maxValue: 4 },
+      { name: "customMask", defaultValue: 2741, minValue: 0, maxValue: 4095 },
       { name: "retuneSpeedMs", defaultValue: 120, minValue: 0, maxValue: 500 },
       { name: "humanizeAmount", defaultValue: 0, minValue: 0, maxValue: 1 },
+      { name: "mix", defaultValue: 1, minValue: 0, maxValue: 1 },
+      { name: "referenceHz", defaultValue: 440, minValue: 400, maxValue: 480 },
+      { name: "detectMinHz", defaultValue: MIN_HZ, minValue: 40, maxValue: 300 },
+      { name: "detectMaxHz", defaultValue: MAX_HZ, minValue: 300, maxValue: 2000 },
       { name: "bypassed", defaultValue: 0, minValue: 0, maxValue: 1 },
     ];
   }
@@ -216,6 +229,7 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     this.confidence = 0;
     this.targetHz = null;
     this.smoothedTargetMidi = null;
+    this.snappedMidi = null;
     this.humanizeWalk = 0;
 
     this.pitchRatio = 1;
@@ -243,27 +257,29 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     this.hopsSinceReport = 0;
   }
 
-  runAnalysisHop(key, scale, retuneSpeedMs, humanizeAmount) {
+  runAnalysisHop(key, scale, customMask, retuneSpeedMs, humanizeAmount, referenceHz, detectMinHz, detectMaxHz) {
     // Extract the ANALYSIS_SIZE most recent samples from the ring, oldest first.
     let start = (this.ringWritePos - ANALYSIS_SIZE + RING_SIZE) % RING_SIZE;
     for (let i = 0; i < ANALYSIS_SIZE; i++) {
       this.analysisScratch[i] = this.ring[(start + i) % RING_SIZE];
     }
 
-    const yin = yinDetect(this.analysisScratch, sampleRate, MIN_HZ, MAX_HZ, YIN_THRESHOLD);
+    const yin = yinDetect(this.analysisScratch, sampleRate, detectMinHz, detectMaxHz, YIN_THRESHOLD);
     this.detectedHz = yin.frequencyHz;
     this.confidence = yin.confidence;
 
     const dtSec = HOP_SIZE / sampleRate;
     if (this.detectedHz === null || this.confidence < VOICED_CONFIDENCE_MIN) {
       this.smoothedTargetMidi = null;
+      this.snappedMidi = null;
       this.targetHz = null;
       this.pitchRatio = 1;
       return;
     }
 
-    const detectedMidi = frequencyToMidi(this.detectedHz);
-    const snappedMidi = nearestScaleMidi(detectedMidi, key, scale);
+    const detectedMidi = frequencyToMidi(this.detectedHz, referenceHz);
+    const snappedMidi = nearestScaleMidi(detectedMidi, key, scale, customMask);
+    this.snappedMidi = snappedMidi;
 
     const step = (Math.random() * 2 - 1) * HUMANIZE_WALK_STEP;
     this.humanizeWalk = clamp(this.humanizeWalk * HUMANIZE_WALK_DECAY + step, -1, 1);
@@ -280,7 +296,7 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
       this.smoothedTargetMidi += (desiredMidi - this.smoothedTargetMidi) * alpha;
     }
 
-    this.targetHz = midiToFrequency(this.smoothedTargetMidi);
+    this.targetHz = midiToFrequency(this.smoothedTargetMidi, referenceHz);
     this.pitchRatio = clamp(this.targetHz / this.detectedHz, MIN_PITCH_RATIO, MAX_PITCH_RATIO);
   }
 
@@ -295,9 +311,14 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
 
     const bypassed = parameters.bypassed[0] >= 0.5;
     const key = Math.round(parameters.key[0]);
-    const scale = SCALE_BY_INDEX[Math.round(parameters.scaleIndex[0])] || "naturalMinor";
+    const scale = SCALE_NAMES_BY_INDEX[Math.round(parameters.scaleIndex[0])] || "naturalMinor";
+    const customMask = Math.round(parameters.customMask[0]);
     const retuneSpeedMs = parameters.retuneSpeedMs[0];
     const humanizeAmount = parameters.humanizeAmount[0];
+    const mix = parameters.mix[0];
+    const referenceHz = parameters.referenceHz[0];
+    const detectMinHz = parameters.detectMinHz[0];
+    const detectMaxHz = parameters.detectMaxHz[0];
 
     for (let i = 0; i < input.length; i++) {
       const x = input[i];
@@ -308,7 +329,7 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
       this.samplesUntilHop--;
       if (this.samplesUntilHop <= 0 && this.samplesWritten >= ANALYSIS_SIZE) {
         this.samplesUntilHop = HOP_SIZE;
-        this.runAnalysisHop(key, scale, retuneSpeedMs, humanizeAmount);
+        this.runAnalysisHop(key, scale, customMask, retuneSpeedMs, humanizeAmount, referenceHz, detectMinHz, detectMaxHz);
         this.hopsSinceReport++;
         if (this.hopsSinceReport >= 4) {
           this.hopsSinceReport = 0;
@@ -316,8 +337,17 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
             type: "pitch",
             detectedHz: this.detectedHz,
             targetHz: this.targetHz,
+            snappedMidi: this.snappedMidi,
             confidence: this.confidence,
             pitchRatio: this.pitchRatio,
+            // Cents from the raw detected pitch to the *unsmoothed* nearest
+            // scale note - a tuner-style "how far off" reading, distinct
+            // from targetHz (which is smoothed by retuneSpeedMs/humanize
+            // and is what you'll actually hear, not what you sang).
+            centsOff:
+              this.snappedMidi === null || this.detectedHz === null
+                ? null
+                : (frequencyToMidi(this.detectedHz, referenceHz) - this.snappedMidi) * 100,
           });
         }
       }
@@ -361,7 +391,7 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
         }
       }
 
-      output[i] = outSample;
+      output[i] = x * (1 - mix) + outSample * mix;
       this.writePos++;
     }
 

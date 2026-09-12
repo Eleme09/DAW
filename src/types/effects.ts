@@ -135,6 +135,69 @@ export interface StereoWidthParams {
   width: number; // 0 = mono, 1 = unity/original, >1 = wider
 }
 
+export type PitchCorrectionScale = "major" | "naturalMinor" | "harmonicMinor" | "chromatic" | "custom";
+
+/**
+ * Real-time pitch correction as a normal insert effect - replaces the old
+ * global "Live Tune" transport button (adenda punto 2): this can sit
+ * anywhere in a track's chain, reorder/bypass/save/automate like any other
+ * effect, and apply to a recorded clip's playback, not just a live mic.
+ * Backed by public/worklets/realtime-pitch-processor.js.
+ *
+ * Deliberately NOT implemented: formant/timbre preservation ("avoid the
+ * chipmunk effect" on large corrections) - that needs spectral-envelope
+ * separation (cepstral or LPC) reapplied after the shift, a materially
+ * bigger DSP undertaking than the delay-line shifter this uses. Named here
+ * rather than a silent no-op toggle - see PitchCorrectionEffect.ts.
+ */
+export interface PitchCorrectionParams {
+  /** Pitch class 0=C .. 11=B. Ignored when scale is "chromatic" or "custom". */
+  key: number;
+  scale: PitchCorrectionScale;
+  /** Bitmask of allowed pitch classes (bit N = pitch class N allowed),
+   * used only when scale === "custom" - lets the user tap individual notes
+   * on the keyboard in/out instead of picking a fixed named scale. */
+  customMask: number;
+  /** ms to glide to the target pitch; 0 = instant hard-tune snap. */
+  retuneSpeedMs: number;
+  /** 0..1 dry/wet - how much of the corrected signal replaces the dry input. */
+  mix: number;
+  /** 0..1 - adds subtle pitch wobble so a hard snap doesn't sound perfectly robotic. */
+  humanize: number;
+  /** A4 reference frequency in Hz - 440 is standard; adjustable to match an
+   * already-recorded backing track tuned slightly off standard pitch. */
+  referenceHz: number;
+  /** YIN pitch-detection search range - narrowing it away from the
+   * transposed voice's natural range reduces octave-detection errors. */
+  detectMinHz: number;
+  detectMaxHz: number;
+}
+
+/** Major-scale bitmask (pitch classes 0,2,4,5,7,9,11 - bit N set = pitch
+ * class N allowed) - the starting point when switching into "custom" scale
+ * mode, and the worklet's own default for the `customMask` AudioParam.
+ * 2^0+2^2+2^4+2^5+2^7+2^9+2^11 = 1+4+16+32+128+512+2048 = 2741. */
+export const MAJOR_SCALE_MASK = 2741;
+
+export const PITCH_CORRECTION_PRESET_NAMES = ["natural", "popSuave", "trapDuro", "transparente", "robot"] as const;
+export type PitchCorrectionPresetName = (typeof PITCH_CORRECTION_PRESET_NAMES)[number];
+
+export const PITCH_CORRECTION_PRESET_LABELS: Record<PitchCorrectionPresetName, string> = {
+  natural: "Natural",
+  popSuave: "Pop suave",
+  trapDuro: "Trap duro",
+  transparente: "Corrección transparente",
+  robot: "Robot",
+};
+
+export const PITCH_CORRECTION_PRESETS: Record<PitchCorrectionPresetName, Pick<PitchCorrectionParams, "retuneSpeedMs" | "mix" | "humanize">> = {
+  natural: { retuneSpeedMs: 200, mix: 0.7, humanize: 0.6 },
+  popSuave: { retuneSpeedMs: 90, mix: 0.85, humanize: 0.25 },
+  trapDuro: { retuneSpeedMs: 15, mix: 1, humanize: 0 },
+  transparente: { retuneSpeedMs: 280, mix: 0.35, humanize: 0.7 },
+  robot: { retuneSpeedMs: 0, mix: 1, humanize: 0 },
+};
+
 export type EffectInstance =
   | { id: EffectId; type: "eq"; bypassed: boolean; params: EqParams }
   | { id: EffectId; type: "compressor"; bypassed: boolean; params: CompressorParams }
@@ -150,7 +213,8 @@ export type EffectInstance =
   | { id: EffectId; type: "flanger"; bypassed: boolean; params: FlangerParams }
   | { id: EffectId; type: "exciter"; bypassed: boolean; params: ExciterParams }
   | { id: EffectId; type: "autoPan"; bypassed: boolean; params: AutoPanParams }
-  | { id: EffectId; type: "stereoWidth"; bypassed: boolean; params: StereoWidthParams };
+  | { id: EffectId; type: "stereoWidth"; bypassed: boolean; params: StereoWidthParams }
+  | { id: EffectId; type: "pitchCorrection"; bypassed: boolean; params: PitchCorrectionParams };
 
 export type EffectType = EffectInstance["type"];
 
@@ -170,6 +234,7 @@ export const EFFECT_LABELS: Record<EffectType, string> = {
   exciter: "Exciter",
   autoPan: "Auto-Pan",
   stereoWidth: "Stereo Width",
+  pitchCorrection: "Auto-Tune / Afinación",
 };
 
 function defaultEqParams(): EqParams {
@@ -239,5 +304,20 @@ export function createEffectInstance(type: EffectType): EffectInstance {
       return { id, type, bypassed: false, params: { rateHz: 0.5, depth: 0.7 } };
     case "stereoWidth":
       return { id, type, bypassed: false, params: { width: 1.3 } };
+    case "pitchCorrection":
+      return {
+        id,
+        type,
+        bypassed: false,
+        params: {
+          key: 0,
+          scale: "major",
+          customMask: MAJOR_SCALE_MASK,
+          referenceHz: 440,
+          detectMinHz: 70,
+          detectMaxHz: 1000,
+          ...PITCH_CORRECTION_PRESETS.natural,
+        },
+      };
   }
 }
