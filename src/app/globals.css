@@ -60,6 +60,28 @@
   --font-sans: var(--font-ui);
   --font-mono: var(--font-value);
   --font-display: var(--font-bricolage);
+
+  /* Utilidades reales (bg-ink, text-bone, border-line, ring-bone, bg-s1...)
+     para los tokens "Cabina" de arriba - así la migración pantalla por
+     pantalla (10C-10H) es un find-and-replace de clases, no colores sueltos
+     repetidos en cada archivo. */
+  --color-ink: var(--cabina-ink);
+  --color-surf: var(--cabina-surf);
+  --color-surf-2: var(--cabina-surf-2);
+  --color-surf-3: var(--cabina-surf-3);
+  --color-line: var(--cabina-line);
+  --color-line-2: var(--cabina-line-2);
+  --color-bone: var(--cabina-bone);
+  --color-bone-2: var(--cabina-bone-2);
+  --color-bone-3: var(--cabina-bone-3);
+  --color-rec: var(--cabina-rec);
+  --color-live: var(--cabina-live);
+  --color-s1: var(--cabina-s1);
+  --color-s2: var(--cabina-s2);
+  --color-s3: var(--cabina-s3);
+  --color-s4: var(--cabina-s4);
+  --color-s5: var(--cabina-s5);
+  --color-s6: var(--cabina-s6);
 }
 
 html,
