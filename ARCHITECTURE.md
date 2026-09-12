@@ -12,9 +12,13 @@
 - **Supabase** (`@supabase/supabase-js`) for future metadata persistence.
   Scaffolded, not wired up — see the Supabase section below.
 - **`@anthropic-ai/sdk`**, server-side only (`app/api/assistant/route.ts`),
-  for the AI Music Assistant (Phase 13). Never imported by client
+  for the AI Music Assistant (Phase 13) and the Mix Assistant's "AI READ"
+  (same route - a DSP-analysis summary is folded into the system prompt
+  when present, see route.ts's buildMixSection). Never imported by client
   components — see AUDIO_ENGINE.md "AI Music Assistant (Phase 13, part
-  2)".
+  2)". Degrades to `{configured: false}` when `ANTHROPIC_API_KEY` isn't
+  set - every other feature in the app works without it (AI_FEATURES.md
+  principle 1).
 - **Vitest** for unit tests of pure logic (dB math, waveform peaks, project
   model defaults). No component/DOM testing yet — not worth the setup cost
   until there's non-trivial component logic to protect.
@@ -126,19 +130,31 @@ src/
                      functions directly. See AUDIO_ENGINE.md "Beat
                      Reconstruction (Phase 12)".
     bounce.ts        Offline project rendering (OfflineAudioContext) —
-                     sums every track + master insert chain to one stereo
-                     AudioBuffer, reusing effects/EffectChain.ts (typed
-                     against BaseAudioContext specifically so it works
-                     here as well as on the live AudioContext). Backs both
-                     project export and, later, the Mix Assistant's
-                     session-wide analysis. See AUDIO_ENGINE.md "Offline
-                     bounce / project export".
+                     sums every track (audio clips *and* instrument-track
+                     MIDI patterns, skipping muted comp takes) + per-track
+                     automation + master insert chain + master volume trim
+                     to one stereo AudioBuffer. Reuses effects/EffectChain.ts,
+                     synthVoice.ts, and lib/automation's
+                     scheduleParamAutomation (all typed against
+                     BaseAudioContext/AudioParam so they work here as well
+                     as on the live AudioContext) — deliberately the same
+                     code paths as live playback, not a parallel
+                     reimplementation that could drift out of sync. Backs
+                     project export (full mix and per-track stems) and the
+                     Mix Assistant's session-wide analysis. See
+                     AUDIO_ENGINE.md "Offline bounce / project export".
+    synthVoice.ts    scheduleVoice(ctx, instrument, note, destination, when,
+                     getBuffer): one synth/sampler voice (ADSR envelope over
+                     an oscillator or a pitch-shifted sample), engine-
+                     agnostic (BaseAudioContext) so AudioEngine's live
+                     playVoice and bounce.ts's MIDI-clip rendering share one
+                     implementation instead of two that could disagree.
 public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      (ctx.audioWorklet.addModule), so they must stay plain
                      JS served as static files, not bundled TS.
                      realtime-pitch-processor.js: causal YIN detection +
                      streaming correction curve + delay-line pitch
-                     shifter for the live "🎤 Live Tune" monitor — a
+                     shifter for the live "Live Tune" monitor — a
                      from-scratch reimplementation of pitch/*.ts's
                      offline algorithms, not a reuse (see AUDIO_ENGINE.md
                      "Real-time pitch monitor" for why, and for a real
@@ -148,6 +164,26 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
     project.ts       Shared data model: Project / Track / AudioClip / etc.
                       Every other layer (state, storage, UI, future AI) reads
                       and writes this shape. Extend it here first.
+                      Track.type is "audio" | "instrument": an instrument
+                      track has `instrument: SynthInstrument | SamplerInstrument
+                      | null` and plays `midiClips: MidiClip[]` (notes)
+                      instead of `clips: AudioClip[]` - deliberately a
+                      separate array/field rather than merging MIDI into
+                      `clips`, so every audio-only consumer (export, bounce,
+                      mix analysis, the AI panels) keeps working against
+                      `clips` unchanged. AudioClip.takeGroupId/muted back
+                      comping: overlapping re-recordings on the same track
+                      get grouped and all but the most recent are muted
+                      (hidden from the timeline, skipped by playback/bounce)
+                      rather than stacking simultaneous audio - see
+                      projectStore.ts's addClip. Track.automation
+                      (TrackAutomation: a volume and a pan AutomationLane,
+                      each `{enabled, points: AutomationPoint[]}`) is
+                      purely additive - disabled or empty, playback is
+                      identical to before automation existed.
+                      Project.masterVolumeDb is the master fader, applied
+                      post master-insert-chain in both AudioEngine and
+                      bounce.ts.
     match.ts          VocalBeatMatchResult — Phase 8's comparison result.
     mixAnalysis.ts     MixAnalysisResult and friends (TrackBandProfile,
                       MaskingFinding, GainStagingFinding, MixSuggestion) —
@@ -175,18 +211,36 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
   state/             Zustand store. Bridges UI <-> audio-engine. Owns the
                      in-memory Project and mirrors transport state
                      (currentTime, isPlaying) from the engine's clock.
-  lib/storage/       Local-first persistence.
-                       - projectStore.ts: project JSON in localStorage.
-                       - sampleStore.ts: raw audio Blobs in IndexedDB.
-                       - sampleIndex.ts: lightweight metadata list mirroring
-                         sampleStore, in localStorage (so the browser panel
-                         doesn't have to open IndexedDB to list samples).
-  lib/audio/         Glue between storage and the engine
-                     (sampleLoader.ts: decode-on-demand + rehydrate after
-                     reload, since the engine's buffer cache is in-memory
-                     only; exportProject.ts: hydrates samples, calls
-                     audio-engine/bounce.ts, encodes WAV, triggers a
-                     browser download — the Export button's handler).
+  lib/storage/       Local-first persistence — all IndexedDB, one shared
+                     connection (db.ts: DB "personal-daw", stores
+                     `projects`/`samples`/`sampleAssets`). Originally
+                     localStorage for project JSON; migrated to IndexedDB
+                     (FASE 0 of PROMPT_MAESTRO.md) with a one-time,
+                     idempotent migration of any pre-existing localStorage
+                     data so upgrading doesn't strand a user's saved work.
+                       - projectStore.ts: project JSON, async CRUD.
+                       - sampleStore.ts: raw audio Blobs.
+                       - sampleIndex.ts: lightweight sample metadata list
+                         (so the browser panel can list samples without a
+                         full sampleStore read).
+  lib/automation/    automation.ts: interpolateAutomation (pure breakpoint-
+                     curve interpolation) and scheduleParamAutomation
+                     (schedules a curve onto a real AudioParam) - shared by
+                     the live engine and the offline bounce renderer so an
+                     exported mix's automation always matches playback.
+  lib/audio/         Glue between storage and the engine.
+                       - sampleLoader.ts: decode-on-demand + rehydrate after
+                         reload (the engine's buffer cache is in-memory
+                         only); collectProjectSampleIds() is the one place
+                         that walks a project for every sample it actually
+                         references (AudioClip.sampleId *and* a Sampler
+                         instrument's assigned sample) - always hydrate via
+                         this, not a hand-rolled clip-only version.
+                       - exportProject.ts: exportProjectToWav (full mix) and
+                         exportStemsToWav (one WAV per track with audio,
+                         soloed through bounce.ts in turn) - both hydrate
+                         samples, call audio-engine/bounce.ts, encode WAV,
+                         trigger a browser download.
   lib/supabase/      Supabase client factory. Returns null if env vars are
                      unset — the app must keep working local-only.
   lib/ai/            AI Music Assistant (Phase 13) support code:
@@ -194,13 +248,29 @@ public/worklets/    AudioWorkletProcessor scripts. Loaded by URL
                      talks to), assistantTools.ts (server-only tool
                      schema + untrusted-input parser), applyAssistantAction.ts
                      (pure — action -> effect-chain mutation).
-  components/daw/    UI. TransportBar, BrowserPanel, Timeline/*, Mixer/*,
-                     EffectsRack/* (per-track/master insert chain UI +
-                     Analyzer), MixAssistantPanel.tsx (Phase 10, the "Mix"
-                     tab in BrowserPanel), BeatGeneratorPanel.tsx (Phase
-                     11, the "Generate" tab), AiAssistantPanel.tsx (Phase
-                     13, the "Assistant" tab), LivePitchMonitorPanel.tsx
-                     (the "🎤 Live Tune" bar under the transport).
+  components/daw/    UI. TransportBar, BrowserPanel, Timeline/* (Ruler,
+                     TrackHeader, TrackLane, ClipView, MidiClipView - the
+                     MIDI-pattern counterpart to ClipView, LoopRegion),
+                     Mixer/* (MixerPanel channel strips + Fader - a long-
+                     throw touch fader, delta-drag not jump-to-pointer),
+                     PianoRoll/* (tap-to-toggle note grid for a MIDI
+                     pattern, opened as a bottom sheet from a
+                     MidiClipView), Automation/* (breakpoint-curve editor
+                     for a track's volume/pan, also a bottom sheet -
+                     deliberately not an inline Timeline lane, see its own
+                     file comment for why), EffectsRack/* (per-track/master
+                     insert chain UI + Analyzer + InstrumentSettings for
+                     instrument tracks), MixAssistantPanel.tsx (Phase 10,
+                     the "AI Mix" tab in BrowserPanel - DSP analysis, plus
+                     an "AI READ" section that sends that analysis to the
+                     same Claude backend AiAssistantPanel uses for a
+                     grounded natural-language read), BeatGeneratorPanel.tsx
+                     (Phase 11, the "Beat Gen" tab), AiAssistantPanel.tsx
+                     (Phase 13, the "AI Assistant" tab - its message draft
+                     lives in the store, not local state, so a track/effect's
+                     "Ask AI" button can jump here with it pre-filled),
+                     LivePitchMonitorPanel.tsx (the "Live Tune" bar under
+                     the transport).
   hooks/             Small reusable hooks (useRafLoop for meters/clocks).
 app/                 Next.js App Router shell (layout, page, globals.css).
 supabase/migrations/ SQL schema, NOT applied to any live project (see below).
@@ -225,8 +295,10 @@ without funneling every audio callback through React.
 
 ## Local-first persistence, by design
 
-Everything works with zero backend: projects in `localStorage`, audio blobs
-in `IndexedDB`. This was a deliberate Phase 1 choice, not a placeholder:
+Everything works with zero backend: projects and audio blobs both in
+`IndexedDB` (migrated off `localStorage` for projects in FASE 0 of
+PROMPT_MAESTRO.md — see lib/storage/ above). This was a deliberate Phase 1
+choice, not a placeholder:
 
 - It matches the actual usage pattern (one person, one device most of the
   time).
@@ -269,3 +341,12 @@ you get there).
   track's future region. Fine for Phase 1's edit-then-play workflow; a
   proper lookahead scheduler is worth adding once live editing during
   playback matters.
+- `AudioEngine.bufferCache` never evicts — every decoded sample stays in
+  memory for the life of the page. Not a problem at personal-project scale;
+  would need an LRU or explicit "unload" step if sessions started
+  accumulating a large sample library.
+- Comping (PROGRESS.md FASE 5) is take-level, not fragment-level: you pick
+  which whole take of a region plays, not a drag-to-comp mix of parts from
+  different takes. The piano roll (FASE 4) is tap-to-toggle-a-note, not
+  drag-to-move/resize an existing one. Both are named, deliberate scope
+  cuts, not bugs — see PROGRESS.md for the reasoning.
