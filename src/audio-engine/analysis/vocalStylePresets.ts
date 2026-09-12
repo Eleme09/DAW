@@ -10,8 +10,8 @@ import type { GenreStyle, VocalCharacter, VocalStyleParams } from "@/types/vocal
  */
 export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> = {
   clean: {
-    label: "Clean",
-    description: "Minimal shaping — correct problems, don't add character.",
+    label: "Limpio",
+    description: "Forma mínima — corrige problemas, no agrega carácter.",
     eqTiltDb: 0,
     presenceBoostDb: 0,
     saturationDriveDb: 0,
@@ -24,7 +24,7 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
   },
   natural: {
     label: "Natural",
-    description: "A little glue and warmth, nothing obvious.",
+    description: "Un poco de cohesión y calidez, nada evidente.",
     eqTiltDb: 0,
     presenceBoostDb: 1,
     saturationDriveDb: 2,
@@ -36,8 +36,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0,
   },
   bright: {
-    label: "Bright",
-    description: "Lifted top end, present and crisp.",
+    label: "Brillante",
+    description: "Agudos realzados, presente y nítido.",
     eqTiltDb: 3,
     presenceBoostDb: 3,
     saturationDriveDb: 3,
@@ -49,8 +49,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0.05,
   },
   dark: {
-    label: "Dark",
-    description: "Bass-forward, rounded top end, moody.",
+    label: "Oscuro",
+    description: "Graves al frente, agudos redondeados, con ambiente sombrío.",
     eqTiltDb: -3,
     presenceBoostDb: 0,
     saturationDriveDb: 4,
@@ -62,8 +62,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0.1,
   },
   aggressive: {
-    label: "Aggressive",
-    description: "Hard, forward, heavily driven.",
+    label: "Agresivo",
+    description: "Duro, al frente, muy saturado.",
     eqTiltDb: 2,
     presenceBoostDb: 4,
     saturationDriveDb: 8,
@@ -75,8 +75,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0,
   },
   melodic: {
-    label: "Melodic",
-    description: "Smooth, warm, sits inside the mix with space.",
+    label: "Melódico",
+    description: "Suave, cálido, se acomoda en la mezcla con espacio.",
     eqTiltDb: 1,
     presenceBoostDb: 2,
     saturationDriveDb: 3,
@@ -89,7 +89,7 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
   },
   trap: {
     label: "Trap",
-    description: "Bright, tight, a bit of grit.",
+    description: "Brillante, ajustado, con un poco de textura.",
     eqTiltDb: 2,
     presenceBoostDb: 3,
     saturationDriveDb: 5,
@@ -102,7 +102,7 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
   },
   rage: {
     label: "Rage",
-    description: "Maximum drive and presence, in-your-face.",
+    description: "Máxima saturación y presencia, directo a la cara.",
     eqTiltDb: 3,
     presenceBoostDb: 5,
     saturationDriveDb: 10,
@@ -114,8 +114,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0.2,
   },
   cinematic: {
-    label: "Cinematic",
-    description: "Wide, spacious, dramatic tail.",
+    label: "Cinemático",
+    description: "Amplio, espacioso, cola dramática.",
     eqTiltDb: -1,
     presenceBoostDb: 1,
     saturationDriveDb: 2,
@@ -128,7 +128,7 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
   },
   radio: {
     label: "Radio",
-    description: "Forward, consistent, loud-ready.",
+    description: "Al frente, consistente, listo para sonar fuerte.",
     eqTiltDb: 2,
     presenceBoostDb: 4,
     saturationDriveDb: 4,
@@ -140,8 +140,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0,
   },
   lead: {
-    label: "Lead",
-    description: "Clear and forward — built to sit on top.",
+    label: "Principal",
+    description: "Claro y al frente — construido para ir arriba de todo.",
     eqTiltDb: 1,
     presenceBoostDb: 4,
     saturationDriveDb: 3,
@@ -153,8 +153,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0.05,
   },
   adlib: {
-    label: "Adlib",
-    description: "Airy and wide with a longer tail, sits behind the lead.",
+    label: "Ad-lib",
+    description: "Aéreo y amplio con una cola más larga, se ubica detrás de la voz principal.",
     eqTiltDb: 2,
     presenceBoostDb: 3,
     saturationDriveDb: 4,
@@ -166,8 +166,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
     delayMix: 0.3,
   },
   double: {
-    label: "Double",
-    description: "Subtle and tucked — meant to reinforce a lead, not compete.",
+    label: "Doblaje",
+    description: "Sutil y discreto — pensado para reforzar la voz principal, no competir con ella.",
     eqTiltDb: 0,
     presenceBoostDb: 2,
     saturationDriveDb: 2,
@@ -182,8 +182,8 @@ export const VOCAL_CHARACTER_PRESETS: Record<VocalCharacter, VocalStyleParams> =
 
 export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
   rageStyle: {
-    label: "Rage-inspired",
-    description: "Very aggressive, heavily saturated, bright and hard-limited.",
+    label: "Inspirado en rage",
+    description: "Muy agresivo, muy saturado, brillante y con limitación dura.",
     eqTiltDb: 3,
     presenceBoostDb: 5,
     saturationDriveDb: 12,
@@ -195,8 +195,8 @@ export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
     delayMix: 0.15,
   },
   atmosphericTrap: {
-    label: "Atmospheric trap-inspired",
-    description: "Dark, spacious, heavy reverb and delay, warm saturation.",
+    label: "Inspirado en trap atmosférico",
+    description: "Oscuro, espacioso, mucha reverb y delay, saturación cálida.",
     eqTiltDb: -2,
     presenceBoostDb: 1,
     saturationDriveDb: 3,
@@ -208,8 +208,8 @@ export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
     delayMix: 0.35,
   },
   experimentalUrban: {
-    label: "Experimental urban-inspired",
-    description: "Textured and bright, distinctive saturation character.",
+    label: "Inspirado en urbano experimental",
+    description: "Texturizado y brillante, carácter de saturación distintivo.",
     eqTiltDb: 1,
     presenceBoostDb: 2,
     saturationDriveDb: 6,
@@ -221,8 +221,8 @@ export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
     delayMix: 0.15,
   },
   darkCinematicUrban: {
-    label: "Dark cinematic urban-inspired",
-    description: "Dark, wide, heavy atmospheric reverb.",
+    label: "Inspirado en urbano cinemático oscuro",
+    description: "Oscuro, amplio, mucha reverb atmosférica.",
     eqTiltDb: -3,
     presenceBoostDb: 0,
     saturationDriveDb: 4,
@@ -234,8 +234,8 @@ export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
     delayMix: 0.2,
   },
   aggressiveUrban: {
-    label: "Aggressive urban-inspired",
-    description: "Hard-hitting, forward, heavily driven.",
+    label: "Inspirado en urbano agresivo",
+    description: "Contundente, al frente, muy saturado.",
     eqTiltDb: 2,
     presenceBoostDb: 4,
     saturationDriveDb: 9,
@@ -247,8 +247,8 @@ export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
     delayMix: 0.1,
   },
   hardUrban: {
-    label: "Hard urban-inspired",
-    description: "Punchy and tight, present without much ambiance.",
+    label: "Inspirado en urbano duro",
+    description: "Contundente y ajustado, presente sin mucho ambiente.",
     eqTiltDb: 2,
     presenceBoostDb: 3,
     saturationDriveDb: 7,
@@ -260,8 +260,8 @@ export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
     delayMix: 0.05,
   },
   modernLatinUrban: {
-    label: "Modern Latin urban-inspired",
-    description: "Clean and present with melodic warmth.",
+    label: "Inspirado en urbano latino moderno",
+    description: "Limpio y presente con calidez melódica.",
     eqTiltDb: 1,
     presenceBoostDb: 3,
     saturationDriveDb: 2,
@@ -273,8 +273,8 @@ export const GENRE_STYLE_PRESETS: Record<GenreStyle, VocalStyleParams> = {
     delayMix: 0.2,
   },
   darkMelodicUrban: {
-    label: "Dark melodic urban-inspired",
-    description: "Dark and moody with a melodic, spacious tail.",
+    label: "Inspirado en urbano melódico oscuro",
+    description: "Oscuro y sombrío con una cola melódica y espaciosa.",
     eqTiltDb: -2,
     presenceBoostDb: 1,
     saturationDriveDb: 3,
