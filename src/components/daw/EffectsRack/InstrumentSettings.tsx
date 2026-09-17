@@ -8,6 +8,7 @@ import { oscillatorSample } from "@/audio-engine/waveformShapes";
 import { createDefaultInstrument, createDefaultSamplerInstrument, type SampleAsset, type Track } from "@/types/project";
 import { ParamSlider } from "./ParamSlider";
 import { EnvelopeEditor } from "./EnvelopeEditor";
+import { FilterCurveEditor } from "./FilterCurveEditor";
 import { SegmentedControl } from "../ui/SegmentedControl";
 import { Picker } from "../ui/Picker";
 
@@ -111,6 +112,11 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
             ref={waveCanvasRef}
             className="block rounded bg-ink"
             style={{ width: WAVE_WIDTH, height: WAVE_HEIGHT }}
+          />
+          <FilterCurveEditor
+            cutoff={instrument.filterCutoff}
+            resonance={instrument.filterResonance}
+            onChange={(patch) => setInstrument(track.id, { ...instrument, ...patch })}
           />
         </div>
       ) : (

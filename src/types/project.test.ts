@@ -43,6 +43,8 @@ describe("createTrack", () => {
       decay: 0.15,
       sustain: 0.6,
       release: 0.2,
+      filterCutoff: 20000,
+      filterResonance: 1,
     });
   });
 });

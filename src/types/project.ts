@@ -63,6 +63,13 @@ export interface SynthInstrument {
   decay: number;
   sustain: number;
   release: number;
+  /** Lowpass cutoff in Hz - a single filter (per the brief's "filtro con
+   * curva"), fixed for the voice's whole lifetime at whatever value was
+   * current when the note started, same convention as the oscillator
+   * waveform itself (not live-automatable mid-note). */
+  filterCutoff: number;
+  /** Filter Q/resonance. */
+  filterResonance: number;
 }
 
 export interface SamplerInstrument {
@@ -230,7 +237,16 @@ export function createDefaultAutomation(): TrackAutomation {
 }
 
 export function createDefaultInstrument(): SynthInstrument {
-  return { type: "synth", waveform: "sawtooth", attack: 0.005, decay: 0.15, sustain: 0.6, release: 0.2 };
+  return {
+    type: "synth",
+    waveform: "sawtooth",
+    attack: 0.005,
+    decay: 0.15,
+    sustain: 0.6,
+    release: 0.2,
+    filterCutoff: 20000, // fully open - doesn't change the unfiltered sound by default
+    filterResonance: 1,
+  };
 }
 
 export function createDefaultSamplerInstrument(): SamplerInstrument {

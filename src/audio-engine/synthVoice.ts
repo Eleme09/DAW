@@ -43,7 +43,17 @@ export function scheduleVoice(
     const osc = ctx.createOscillator();
     osc.type = instrument.waveform;
     osc.frequency.value = midiToFrequency(note.pitch);
-    osc.connect(envelope);
+
+    // Fixed for the voice's whole lifetime, same convention as the
+    // waveform itself - not live-automated mid-note (see
+    // SynthInstrument.filterCutoff's doc comment).
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = instrument.filterCutoff;
+    filter.Q.value = instrument.filterResonance;
+    osc.connect(filter);
+    filter.connect(envelope);
+
     osc.start(when);
     osc.stop(releaseEnd + 0.05);
     return osc;

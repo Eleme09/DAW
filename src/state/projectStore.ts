@@ -863,10 +863,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       // Opening a different project starts a fresh undo history - carrying
       // over the previous project's history would let undo cross documents.
       getAudioEngine().stop();
-      // Projects saved before masterVolumeDb/instrument tracks existed won't
-      // have those fields - default them so old projects don't load silently
-      // attenuated, or with tracks missing fields the rest of the app assumes
-      // are always present.
+      // Projects saved before masterVolumeDb/instrument tracks/the synth
+      // filter existed won't have those fields - default them so old
+      // projects don't load silently attenuated, or with tracks/instruments
+      // missing fields the rest of the app assumes are always present.
       const normalized: Project = {
         ...project,
         masterVolumeDb: project.masterVolumeDb ?? 0,
@@ -874,7 +874,11 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
           ...t,
           type: t.type ?? "audio",
           midiClips: t.midiClips ?? [],
-          instrument: t.instrument ?? null,
+          instrument: t.instrument
+            ? t.instrument.type === "synth"
+              ? { ...t.instrument, filterCutoff: t.instrument.filterCutoff ?? 20000, filterResonance: t.instrument.filterResonance ?? 1 }
+              : t.instrument
+            : null,
           automation: t.automation ?? createDefaultAutomation(),
           monitorMode: t.monitorMode ?? "auto",
         })),
