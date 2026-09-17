@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
 import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/AudioEngine";
 import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
+import { Picker } from "./ui/Picker";
+
+const SYSTEM_DEFAULT_DEVICE = "__system_default__";
 
 const CONSTRAINT_LABELS: Record<keyof MonitorInputConstraints, string> = {
   echoCancellation: "Cancelación de eco",
@@ -51,12 +54,26 @@ export function TransportBar() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const [micConstraints, setMicConstraints] = useState<MonitorInputConstraints>(() => getAudioEngine().getMonitorConstraints());
+  const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(() => getAudioEngine().getSelectedInputDeviceId() ?? SYSTEM_DEFAULT_DEVICE);
   const hasAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    void getAudioEngine()
+      .listInputDevices()
+      .then(setInputDevices);
+  }, [moreOpen]);
 
   function toggleMicConstraint(key: keyof MonitorInputConstraints) {
     const next = { ...micConstraints, [key]: !micConstraints[key] };
     setMicConstraints(next);
     void getAudioEngine().setMonitorConstraints({ [key]: next[key] });
+  }
+
+  function selectInputDevice(deviceId: string) {
+    setSelectedDeviceId(deviceId);
+    void getAudioEngine().setSelectedInputDeviceId(deviceId === SYSTEM_DEFAULT_DEVICE ? null : deviceId);
   }
 
   const latencySec = getAudioEngine().getLatencySec();
@@ -307,6 +324,18 @@ export function TransportBar() {
           <span className="text-[11px] font-medium uppercase tracking-wide text-bone-3">
             Entrada de micrófono {latencySec !== null && <span className="normal-case text-bone-3">— {Math.round(latencySec * 1000)}ms de latencia medida</span>}
           </span>
+          <Picker
+            value={selectedDeviceId}
+            onChange={selectInputDevice}
+            title="Dispositivo de entrada"
+            options={[
+              { value: SYSTEM_DEFAULT_DEVICE, label: "Predeterminado del sistema" },
+              ...inputDevices.map((d, i) => ({
+                value: d.deviceId,
+                label: d.label || `Micrófono ${i + 1}`,
+              })),
+            ]}
+          />
           <p className="text-xs text-bone-3">
             Apagados por defecto los dos — degradan una señal musical pensada para grabar con
             teléfono/auriculares, no para una llamada. Actívalos solo si el ambiente es realmente

@@ -116,6 +116,8 @@ export class AudioEngine {
     noiseSuppression: false,
     autoGainControl: false,
   };
+  /** null = let the browser pick the system default input. */
+  private selectedInputDeviceId: string | null = null;
 
   /** Must be called from a user-gesture handler (click) before any playback. */
   ensureContext(): AudioContext {
@@ -316,6 +318,30 @@ export class AudioEngine {
     return { ...this.monitorConstraints };
   }
 
+  getSelectedInputDeviceId(): string | null {
+    return this.selectedInputDeviceId;
+  }
+
+  /** Labels are only populated once mic permission has been granted at
+   * least once in this origin - before that every label comes back "" and
+   * the caller should fall back to a generic "Micrófono N". */
+  async listInputDevices(): Promise<MediaDeviceInfo[]> {
+    if (!navigator.mediaDevices?.enumerateDevices) return [];
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter((d) => d.kind === "audioinput");
+  }
+
+  /** Re-acquires the mic with the new device if a monitor stream is
+   * already open, same reconnect dance as setMonitorConstraints(). */
+  async setSelectedInputDeviceId(deviceId: string | null): Promise<void> {
+    this.selectedInputDeviceId = deviceId;
+    if (!this.monitor) return;
+    const reconnectIds = [...this.monitorConnected];
+    this.stopMonitorStream();
+    const result = await this.ensureMonitorStream();
+    if (result.ok) for (const id of reconnectIds) this.connectMonitorToTrack(id);
+  }
+
   getMonitorAnalyser(): AnalyserNode | null {
     return this.monitor?.analyser ?? null;
   }
@@ -347,7 +373,11 @@ export class AudioEngine {
     this.monitorPending = (async (): Promise<StartRecordingResult> => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { ...this.monitorConstraints, channelCount: 1 },
+          audio: {
+            ...this.monitorConstraints,
+            channelCount: 1,
+            ...(this.selectedInputDeviceId ? { deviceId: { exact: this.selectedInputDeviceId } } : {}),
+          },
         });
         const source = ctx.createMediaStreamSource(stream);
         const analyser = ctx.createAnalyser();
@@ -810,6 +840,7 @@ export class AudioEngine {
           noiseSuppression: false,
           autoGainControl: false,
           channelCount: 1,
+          ...(this.selectedInputDeviceId ? { deviceId: { exact: this.selectedInputDeviceId } } : {}),
         },
       });
     } catch (err) {
