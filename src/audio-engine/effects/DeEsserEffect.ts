@@ -14,11 +14,21 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
   private lowBand: BiquadFilterNode;
   private highBand: BiquadFilterNode;
   private sibilanceCompressor: DynamicsCompressorNode;
+  /** Sits inline right after `input` (input -> analyser -> low/high split),
+   * same reasoning as NoiseGateEffect.inputAnalyser: a track/master
+   * analyser is post-chain, so it would already reflect the de-esser's own
+   * gain reduction, hiding exactly the sibilance the detection band needs
+   * to show. Being in series (an AnalyserNode passes audio through
+   * unchanged) also means it's genuinely pulled by the graph, unlike a
+   * side-tap with no path to destination. */
+  private inputAnalyser: AnalyserNode;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
     this.input = ctx.createGain();
     this.output = ctx.createGain();
+    this.inputAnalyser = ctx.createAnalyser();
+    this.inputAnalyser.fftSize = 2048;
 
     this.lowBand = ctx.createBiquadFilter();
     this.lowBand.type = "lowpass";
@@ -31,8 +41,9 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
     this.sibilanceCompressor.attack.value = 0.001;
     this.sibilanceCompressor.release.value = 0.06;
 
-    this.input.connect(this.lowBand);
-    this.input.connect(this.highBand);
+    this.input.connect(this.inputAnalyser);
+    this.inputAnalyser.connect(this.lowBand);
+    this.inputAnalyser.connect(this.highBand);
     this.lowBand.connect(this.output);
     this.highBand.connect(this.sibilanceCompressor);
     this.sibilanceCompressor.connect(this.output);
@@ -43,6 +54,17 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
   }
   get outputNode(): AudioNode {
     return this.output;
+  }
+
+  getInputAnalyser(): AnalyserNode {
+    return this.inputAnalyser;
+  }
+
+  /** Real gain reduction in dB from the sibilance band's own
+   * DynamicsCompressorNode - same native `.reduction` telemetry as
+   * CompressorEffect/LimiterEffect. */
+  getReductionDb(): number {
+    return this.sibilanceCompressor.reduction;
   }
 
   setParams(params: DeEsserParams): void {

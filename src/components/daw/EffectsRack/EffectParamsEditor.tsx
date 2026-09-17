@@ -8,6 +8,7 @@ import { PitchCorrectionPanel } from "./PitchCorrectionPanel";
 import { CompressorPanel } from "./CompressorPanel";
 import { LimiterPanel } from "./LimiterPanel";
 import { NoiseGatePanel } from "./NoiseGatePanel";
+import { DeEsserPanel } from "./DeEsserPanel";
 
 const TONE_LABEL: Record<"warm" | "neutral" | "bright", string> = { warm: "cálido", neutral: "neutro", bright: "brillante" };
 const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
@@ -29,16 +30,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "compressor":
       return <CompressorPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "deesser": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Frec" value={p.freq} min={2000} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, freq: v })} />
-          <ParamSlider label="Umbral" value={p.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
-          <ParamSlider label="Ratio" value={p.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...p, ratio: v })} />
-        </>
-      );
-    }
+    case "deesser":
+      return <DeEsserPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "saturation": {
       const p = effect.params;
