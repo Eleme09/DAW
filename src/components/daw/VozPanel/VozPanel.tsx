@@ -20,6 +20,11 @@ import { Waveform } from "../Waveform";
 import { PitchCurveView } from "./PitchCurveView";
 import { SparkleIcon, MicIcon, PlayIcon, PauseIcon } from "../icons";
 
+/** How long the chain must sit still before re-rendering the A/B preview -
+ * long enough that a knob/slider drag (which fires onChange continuously,
+ * not just on release) settles before the expensive offline render runs. */
+const RENDER_DEBOUNCE_MS = 500;
+
 /** A callback ref, not useRef+useEffect([]) - the latter only ever sees
  * ref.current at the moment THIS component first mounted, which here is
  * always null (VozPanel's early-return empty states render before any
@@ -161,14 +166,27 @@ export function VozPanel() {
   // Renders the take through the track's actual current chain - the same
   // EffectChain code as live playback, not an approximation. Re-runs
   // whenever the chain itself changes (including from "Mezclar con IA").
+  // Debounced: `insertsNow` gets a new array reference on every single tick
+  // of a knob/slider drag (e.g. dragging Afinación's intensity while this
+  // screen is open), and each render here is a real OfflineAudioContext
+  // pass - for an effect backed by an AudioWorklet (pitchCorrection,
+  // noiseGate) that also means reloading the worklet module every single
+  // tick. Undebounced, a normal drag fired dozens of these concurrently
+  // per second with nothing to cancel the in-flight work (only the stale
+  // *result* was ignored) - a real resource-exhaustion crash, not a
+  // hypothetical one. Only the chain state the user actually settles on
+  // gets rendered.
   useEffect(() => {
     if (!dryBuffer || insertsNow.length === 0) return;
     let cancelled = false;
-    renderBufferThroughChain(dryBuffer, insertsNow).then((wet) => {
-      if (!cancelled) setWetState({ forBuffer: dryBuffer, forInserts: insertsNow, buffer: wet });
-    });
+    const timer = setTimeout(() => {
+      renderBufferThroughChain(dryBuffer, insertsNow).then((wet) => {
+        if (!cancelled) setWetState({ forBuffer: dryBuffer, forInserts: insertsNow, buffer: wet });
+      });
+    }, RENDER_DEBOUNCE_MS);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [dryBuffer, insertsNow]);
 

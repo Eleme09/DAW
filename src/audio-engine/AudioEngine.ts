@@ -118,6 +118,7 @@ export class AudioEngine {
 
   private recording: RecordingSession | null = null;
   private recorderWorkletLoaded = false;
+  private countInCancelled = false;
 
   private pitchCorrectionWorkletPromise: Promise<void> | null = null;
   private pitchCorrectionWorkletLoaded = false;
@@ -886,9 +887,14 @@ export class AudioEngine {
    * resolves one beat after the last click - i.e. exactly when the
    * recording should start. `onBeat` fires as each beat begins, with the
    * number of beats remaining including the current one (4,3,2,1), so the
-   * caller can show it.
+   * caller can show it. Returns `false` if cancelCountIn() was called
+   * before it finished - the caller must not start recording in that case.
+   * The already-scheduled clicks themselves aren't recalled (each is only
+   * ~60ms, not worth the extra bookkeeping to yank mid-flight), just the
+   * caller-visible wait/outcome.
    */
-  async playCountIn(bpm: number, beats: number, onBeat?: (remaining: number) => void): Promise<void> {
+  async playCountIn(bpm: number, beats: number, onBeat?: (remaining: number) => void): Promise<boolean> {
+    this.countInCancelled = false;
     const ctx = this.ensureContext();
     const secPerBeat = 60 / bpm;
     const leadInSec = 0.05;
@@ -896,9 +902,17 @@ export class AudioEngine {
       this.playClick(ctx.currentTime + leadInSec + i * secPerBeat, i === 0);
     }
     for (let i = 0; i < beats; i++) {
+      if (this.countInCancelled) return false;
       onBeat?.(beats - i);
       await new Promise<void>((resolve) => setTimeout(resolve, secPerBeat * 1000));
     }
+    return !this.countInCancelled;
+  }
+
+  /** Aborts an in-progress playCountIn() - it returns false on its next
+   * check instead of completing normally. */
+  cancelCountIn(): void {
+    this.countInCancelled = true;
   }
 
   // ---------------------------------------------------------------------

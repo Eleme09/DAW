@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
 import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/AudioEngine";
-import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon } from "./icons";
+import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon, CloseIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 import { Picker } from "./ui/Picker";
 import { Knob } from "./ui/Knob";
@@ -39,6 +39,7 @@ export function TransportBar() {
   const stop = useProjectStore((s) => s.stop);
   const startRecording = useProjectStore((s) => s.startRecording);
   const stopRecording = useProjectStore((s) => s.stopRecording);
+  const cancelRecording = useProjectStore((s) => s.cancelRecording);
   const setBpm = useProjectStore((s) => s.setBpm);
   const setTimeSignature = useProjectStore((s) => s.setTimeSignature);
   const setLoop = useProjectStore((s) => s.setLoop);
@@ -235,6 +236,16 @@ export function TransportBar() {
         >
           {isCountingIn ? countInBeats : <RecordIcon className="h-4 w-4" />}
         </button>
+        {(isRecording || isCountingIn) && (
+          <button
+            onClick={cancelRecording}
+            title={isCountingIn ? "Cancelar cuenta atrás" : "Cancelar grabación - descarta la toma, no crea ningún clip"}
+            className="flex h-11 w-11 items-center justify-center rounded bg-surf-2 text-bone-2 hover:bg-surf-3 active:bg-surf-3"
+            aria-label="Cancelar grabación"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="hidden shrink-0 items-center gap-1 sm:flex">

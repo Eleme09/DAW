@@ -153,6 +153,10 @@ interface ProjectState {
 
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
+  /** Aborts a count-in in progress, or discards an active recording without
+   * creating a clip - the "cancelar" path stopRecording() doesn't cover
+   * (that one always keeps whatever was captured). */
+  cancelRecording: () => void;
 
   renameProject: (name: string) => void;
   loadProject: (project: Project) => void;
@@ -856,10 +860,14 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       }
 
       set({ recordingError: null, isCountingIn: true, countInBeats: COUNT_IN_BEATS });
-      await getAudioEngine().playCountIn(project.bpm, COUNT_IN_BEATS, (remaining) =>
+      const completedCountIn = await getAudioEngine().playCountIn(project.bpm, COUNT_IN_BEATS, (remaining) =>
         set({ countInBeats: remaining })
       );
       set({ isCountingIn: false, countInBeats: null });
+      // Cancelled mid count-in (cancelRecording()) - don't start capturing.
+      // The track that just got auto-armed above stays armed, same as if
+      // the user had armed it manually and not hit record yet.
+      if (!completedCountIn) return;
 
       const result = await getAudioEngine().startRecording(
         project.tracks,
@@ -882,7 +890,15 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
       const project = get().project;
       const armedTrack = project.tracks.find((t) => t.armed);
-      if (!armedTrack) return;
+      if (!armedTrack) {
+        // Reachable only if something disarms the recording track without
+        // going through cancelRecording() first (every normal UI path -
+        // the arm toggle, track deletion, switching projects - is guarded
+        // against that). Surfacing it beats silently throwing away audio
+        // that was actually captured.
+        set({ recordingError: "Se grabó una toma pero ninguna pista está armada - no se pudo guardar." });
+        return;
+      }
 
       const sampleId = crypto.randomUUID();
       await getAudioEngine().decodeAndCache(sampleId, await result.blob.arrayBuffer());
@@ -920,8 +936,29 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       get().addClip(clip);
     },
 
+    cancelRecording: () => {
+      const state = get();
+      if (state.isCountingIn) {
+        getAudioEngine().cancelCountIn();
+        set({ isCountingIn: false, countInBeats: null });
+        return;
+      }
+      if (!state.isRecording) return;
+      getAudioEngine().discardRecording();
+      set({ isRecording: false, isPlaying: false, currentTime: getAudioEngine().getCurrentTime() });
+    },
+
     renameProject: (name) => setProject(touch({ ...get().project, name }), { coalesce: true }),
     loadProject: (project) => {
+      // Switching documents mid-take would otherwise leave a genuinely
+      // broken state: the old project's tracks (armed track included) are
+      // about to be replaced, but AudioEngine.stop() below doesn't touch
+      // an in-progress recording session - it would keep capturing from
+      // the (now orphaned) mic tap forever, isRecording would stay stuck
+      // true in the UI, and the eventually-stopped take would have no
+      // armed track left to land on. Cancel first so a document switch
+      // always leaves a clean slate, same as tapping cancel explicitly.
+      get().cancelRecording();
       // Opening a different project starts a fresh undo history - carrying
       // over the previous project's history would let undo cross documents.
       getAudioEngine().stop();
@@ -949,6 +986,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       lastPushWasCoalescible = false;
     },
     newProject: () => {
+      get().cancelRecording(); // same reasoning as loadProject() above
       getAudioEngine().stop();
       set({
         project: createEmptyProject(),
