@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { listSampleAssets } from "@/lib/storage/sampleIndex";
+import { oscillatorSample } from "@/audio-engine/waveformShapes";
 import { createDefaultInstrument, createDefaultSamplerInstrument, type SampleAsset, type Track } from "@/types/project";
 import { ParamSlider } from "./ParamSlider";
+import { EnvelopeEditor } from "./EnvelopeEditor";
 import { SegmentedControl } from "../ui/SegmentedControl";
 import { Picker } from "../ui/Picker";
 
@@ -19,6 +21,10 @@ const WAVEFORM_OPTIONS: { value: OscillatorType; label: string }[] = [
   { value: "sawtooth", label: "Sierra" },
   { value: "triangle", label: "Tri" },
 ];
+
+const WAVE_WIDTH = 300;
+const WAVE_HEIGHT = 70;
+const WAVE_CYCLES = 2;
 
 /** Per-track instrument editor (synth waveform or sampler assignment, plus
  * the shared ADSR envelope) - shown above the insert chain in EffectsRackPanel
@@ -36,6 +42,40 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
       .then(setSamples)
       .catch(() => {});
   }, []);
+
+  const waveCanvasRef = useRef<HTMLCanvasElement>(null);
+  const waveform = instrument?.type === "synth" ? instrument.waveform : null;
+
+  useEffect(() => {
+    const canvas = waveCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !waveform) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = WAVE_WIDTH * dpr;
+    canvas.height = WAVE_HEIGHT * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, WAVE_WIDTH, WAVE_HEIGHT);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.beginPath();
+    ctx.moveTo(0, WAVE_HEIGHT / 2);
+    ctx.lineTo(WAVE_WIDTH, WAVE_HEIGHT / 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#f2ede4";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const steps = 200;
+    for (let i = 0; i <= steps; i++) {
+      const phase = (i / steps) * WAVE_CYCLES;
+      const v = oscillatorSample(waveform, phase);
+      const x = (i / steps) * WAVE_WIDTH;
+      const y = WAVE_HEIGHT / 2 - v * (WAVE_HEIGHT / 2 - 4);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }, [waveform]);
 
   if (!instrument) return null;
 
@@ -61,11 +101,18 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
       </div>
 
       {instrument.type === "synth" ? (
-        <SegmentedControl
-          value={instrument.waveform}
-          options={WAVEFORM_OPTIONS}
-          onChange={(waveform) => setInstrument(track.id, { ...instrument, waveform })}
-        />
+        <div className="space-y-2">
+          <SegmentedControl
+            value={instrument.waveform}
+            options={WAVEFORM_OPTIONS}
+            onChange={(waveform) => setInstrument(track.id, { ...instrument, waveform })}
+          />
+          <canvas
+            ref={waveCanvasRef}
+            className="block rounded bg-ink"
+            style={{ width: WAVE_WIDTH, height: WAVE_HEIGHT }}
+          />
+        </div>
       ) : (
         <div className="space-y-2">
           <Picker
@@ -89,46 +136,13 @@ export function InstrumentSettings({ track }: InstrumentSettingsProps) {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-x-3 gap-y-2">
-        <ParamSlider
-          label="Ataque"
-          value={instrument.attack}
-          min={0.001}
-          max={2}
-          step={0.001}
-          unit=" s"
-          decimals={3}
-          onChange={(v) => updateInstrumentEnvelope(track.id, { attack: v })}
-        />
-        <ParamSlider
-          label="Caída"
-          value={instrument.decay}
-          min={0}
-          max={2}
-          step={0.01}
-          unit=" s"
-          decimals={2}
-          onChange={(v) => updateInstrumentEnvelope(track.id, { decay: v })}
-        />
-        <ParamSlider
-          label="Sostenido"
-          value={instrument.sustain}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(v) => updateInstrumentEnvelope(track.id, { sustain: v })}
-        />
-        <ParamSlider
-          label="Liberación"
-          value={instrument.release}
-          min={0.001}
-          max={3}
-          step={0.01}
-          unit=" s"
-          decimals={2}
-          onChange={(v) => updateInstrumentEnvelope(track.id, { release: v })}
-        />
-      </div>
+      <EnvelopeEditor
+        attack={instrument.attack}
+        decay={instrument.decay}
+        sustain={instrument.sustain}
+        release={instrument.release}
+        onChange={(patch) => updateInstrumentEnvelope(track.id, patch)}
+      />
     </div>
   );
 }
