@@ -54,9 +54,18 @@ interface MonitorSession {
 }
 
 interface RecordingSession {
-  stream: MediaStream;
-  source: MediaStreamAudioSourceNode;
-  inputGain: GainNode;
+  /** No stream/source/inputGain of its own - taps directly onto the shared
+   * MonitorSession's inputGain (see startRecording()). A previous version
+   * opened a second, fully independent getUserMedia() stream here, which
+   * meant every recording ran with two concurrent live mic captures open
+   * at once (this session's own, plus the armed track's monitor session -
+   * "auto" monitor mode turns itself on precisely because isRecording()
+   * becomes true, see shouldMonitorTrack()). Two concurrent input streams
+   * from the same physical mic is a real, well-known trigger for mobile
+   * browsers/OSes to switch the audio session into a voice/telephony
+   * routing category, which commonly defaults output to a single earpiece
+   * channel instead of full stereo - the root cause of "solo se oye por un
+   * audífono al grabar". Sharing one stream fixes that at the source. */
   worklet: AudioWorkletNode;
   analyser: AnalyserNode;
   silentSink: GainNode;
@@ -397,7 +406,10 @@ export class AudioEngine {
     const reconnectIds = [...this.monitorConnected];
     this.stopMonitorStream();
     const result = await this.ensureMonitorStream();
-    if (result.ok) for (const id of reconnectIds) this.connectMonitorToTrack(id);
+    if (result.ok) {
+      for (const id of reconnectIds) this.connectMonitorToTrack(id);
+      this.retapRecordingSession();
+    }
   }
 
   getMonitorAnalyser(): AnalyserNode | null {
@@ -418,7 +430,23 @@ export class AudioEngine {
     const reconnectIds = [...this.monitorConnected];
     this.stopMonitorStream();
     const result = await this.ensureMonitorStream();
-    if (result.ok) for (const id of reconnectIds) this.connectMonitorToTrack(id);
+    if (result.ok) {
+      for (const id of reconnectIds) this.connectMonitorToTrack(id);
+      this.retapRecordingSession();
+    }
+  }
+
+  /** Re-attaches an in-progress recording's worklet/analyser to the current
+   * monitor inputGain - needed after stopMonitorStream()/ensureMonitorStream()
+   * swap in a new inputGain instance (device or constraint change), since a
+   * recording session holds no stream of its own to fall back on (see
+   * RecordingSession's doc comment). Without this, changing the input
+   * device or mic constraints mid-recording would silently stop capturing
+   * audio for the rest of the take. */
+  private retapRecordingSession(): void {
+    if (!this.recording || !this.monitor) return;
+    this.monitor.inputGain.connect(this.recording.worklet);
+    this.monitor.inputGain.connect(this.recording.analyser);
   }
 
   private async ensureMonitorStream(): Promise<StartRecordingResult> {
@@ -490,8 +518,9 @@ export class AudioEngine {
   setInputGainDb(db: number): void {
     this.inputGainDb = db;
     const gain = dbToGain(db);
+    // Recording no longer has its own inputGain - it taps the monitor's, so
+    // this one assignment already covers both live monitoring and capture.
     if (this.monitor) this.monitor.inputGain.gain.value = gain;
-    if (this.recording) this.recording.inputGain.gain.value = gain;
   }
 
   getInputGainDb(): number {
@@ -902,45 +931,30 @@ export class AudioEngine {
     fromTime: number
   ): Promise<StartRecordingResult> {
     if (this.recording) return { ok: false, error: "Already recording" };
-    if (!navigator.mediaDevices?.getUserMedia) {
-      return { ok: false, error: "Microphone access is not available in this browser/context" };
-    }
 
     const ctx = this.ensureContext();
 
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          channelCount: 1,
-          ...(this.selectedInputDeviceId ? { deviceId: { exact: this.selectedInputDeviceId } } : {}),
-        },
-      });
-    } catch (err) {
-      return {
-        ok: false,
-        error: err instanceof Error ? err.message : "Microphone permission denied",
-      };
-    }
+    // Reuses the one shared mic stream (see MonitorSession) instead of
+    // opening a second, independent getUserMedia() - see RecordingSession's
+    // doc comment for why a second concurrent stream is a real bug, not
+    // just wasteful. This also means recording now honors whatever
+    // monitorConstraints are actually set, instead of silently hardcoding
+    // its own copy that could drift from what you're hearing.
+    const monitorResult = await this.ensureMonitorStream();
+    if (!monitorResult.ok) return monitorResult;
+    const inputGain = this.monitor!.inputGain;
 
     if (!this.recorderWorkletLoaded) {
       await ctx.audioWorklet.addModule(RECORDER_WORKLET_URL);
       this.recorderWorkletLoaded = true;
     }
 
-    const source = ctx.createMediaStreamSource(stream);
-    const inputGain = ctx.createGain();
-    inputGain.gain.value = dbToGain(this.inputGainDb);
     const worklet = new AudioWorkletNode(ctx, "recorder-processor");
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
     const silentSink = ctx.createGain();
     silentSink.gain.value = 0;
 
-    source.connect(inputGain);
     inputGain.connect(worklet);
     inputGain.connect(analyser);
     worklet.connect(silentSink);
@@ -954,7 +968,7 @@ export class AudioEngine {
       }
     };
 
-    this.recording = { stream, source, inputGain, worklet, analyser, silentSink, chunks, startTime: fromTime };
+    this.recording = { worklet, analyser, silentSink, chunks, startTime: fromTime };
 
     // Play existing material under the take, same machinery as play().
     this.stopSources();
@@ -973,15 +987,18 @@ export class AudioEngine {
   /** Stops capture + playback and returns the encoded take, or null if nothing was recording. */
   stopRecording(): RecordingResult | null {
     if (!this.recording || !this.ctx) return null;
-    const { stream, source, inputGain, worklet, analyser, silentSink, chunks, startTime } = this.recording;
+    const { worklet, analyser, silentSink, chunks, startTime } = this.recording;
 
     worklet.port.onmessage = null;
-    source.disconnect();
-    inputGain.disconnect();
+    // Only detach this session's own taps - the shared monitor stream and
+    // its inputGain stay alive/connected for as long as an armed track
+    // still wants to hear it, governed entirely by ensureMonitorStream()/
+    // stopMonitorStream(), not by recording start/stop.
+    this.monitor?.inputGain.disconnect(worklet);
+    this.monitor?.inputGain.disconnect(analyser);
     worklet.disconnect();
     analyser.disconnect();
     silentSink.disconnect();
-    stream.getTracks().forEach((track) => track.stop());
     this.recording = null;
 
     this.playheadAtPlay = this.getCurrentTime();
@@ -1013,14 +1030,13 @@ export class AudioEngine {
   /** Aborts recording without producing a clip (permission errors, user cancel, etc). */
   discardRecording(): void {
     if (!this.recording) return;
-    const { stream, source, inputGain, worklet, analyser, silentSink } = this.recording;
+    const { worklet, analyser, silentSink } = this.recording;
     worklet.port.onmessage = null;
-    source.disconnect();
-    inputGain.disconnect();
+    this.monitor?.inputGain.disconnect(worklet);
+    this.monitor?.inputGain.disconnect(analyser);
     worklet.disconnect();
     analyser.disconnect();
     silentSink.disconnect();
-    stream.getTracks().forEach((track) => track.stop());
     this.recording = null;
     this.stop();
   }

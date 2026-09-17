@@ -63,6 +63,13 @@ const HUMANIZE_MAX_SEMITONES = 0.15;
 const HUMANIZE_WALK_STEP = 0.05;
 const HUMANIZE_WALK_DECAY = 0.9;
 
+// Time constant for smoothing the *detected* pitch before it's used as the
+// shift-ratio denominator - fast enough to follow a real note change
+// (~40ms, well under retuneSpeedMs's own default of 120ms), slow enough to
+// reject hop-to-hop YIN jitter and momentary octave errors instead of
+// turning them straight into an audible speed wobble.
+const DETECT_SMOOTH_TAU_SEC = 0.04;
+
 const ANALYSIS_SIZE = 2048;
 const HOP_SIZE = 512;
 const RING_SIZE = 4096; // power of 2, > ANALYSIS_SIZE
@@ -238,6 +245,16 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     this.confidence = 0;
     this.targetHz = null;
     this.smoothedTargetMidi = null;
+    // Smoothed version of the YIN-detected pitch, used as the *denominator*
+    // of the shift ratio (see runAnalysisHop). Raw per-hop YIN output is
+    // noisy on a real voice - vibrato, breathiness, sibilants, and the
+    // occasional octave error - and unlike offline PSOLA (which resyncs
+    // grains to the true period each frame, masking that noise), this
+    // worklet's delay-line shifter turns any ratio jitter directly into an
+    // audible speed wobble on every hop, every ~12ms. Filtering the
+    // detected pitch itself, the same way the target is already smoothed,
+    // was missing before and is the main source of "never sounds good".
+    this.smoothedDetectedMidi = null;
     this.snappedMidi = null;
     this.humanizeWalk = 0;
 
@@ -295,6 +312,7 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     const dtSec = HOP_SIZE / sampleRate;
     if (this.detectedHz === null || this.confidence < VOICED_CONFIDENCE_MIN) {
       this.smoothedTargetMidi = null;
+      this.smoothedDetectedMidi = null;
       this.snappedMidi = null;
       this.targetHz = null;
       this.pitchRatio = 1;
@@ -302,7 +320,19 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     }
 
     const detectedMidi = frequencyToMidi(this.detectedHz, referenceHz);
-    const snappedMidi = nearestScaleMidi(detectedMidi, key, scale, customMask);
+
+    // Smooth the detected pitch itself before it drives anything - both the
+    // scale-snap decision and the shift ratio denominator. Without this, a
+    // single noisy/octave-wrong hop out of YIN (common on real vocals)
+    // flips the snapped note and/or spikes the ratio for that hop alone.
+    if (this.smoothedDetectedMidi === null) {
+      this.smoothedDetectedMidi = detectedMidi;
+    } else {
+      const detectAlpha = 1 - Math.exp(-dtSec / DETECT_SMOOTH_TAU_SEC);
+      this.smoothedDetectedMidi += (detectedMidi - this.smoothedDetectedMidi) * detectAlpha;
+    }
+
+    const snappedMidi = nearestScaleMidi(this.smoothedDetectedMidi, key, scale, customMask);
     this.snappedMidi = snappedMidi;
 
     const step = (Math.random() * 2 - 1) * HUMANIZE_WALK_STEP;
@@ -310,7 +340,7 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     const desiredMidi = snappedMidi + this.humanizeWalk * HUMANIZE_MAX_SEMITONES * humanizeAmount;
 
     if (this.smoothedTargetMidi === null) {
-      this.smoothedTargetMidi = detectedMidi;
+      this.smoothedTargetMidi = this.smoothedDetectedMidi;
     }
     if (retuneSpeedMs <= 0) {
       this.smoothedTargetMidi = desiredMidi;
@@ -321,7 +351,10 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     }
 
     this.targetHz = midiToFrequency(this.smoothedTargetMidi, referenceHz);
-    this.pitchRatio = clamp(this.targetHz / this.detectedHz, MIN_PITCH_RATIO, MAX_PITCH_RATIO);
+    // Ratio derived from the two smoothed MIDI values (semitone domain),
+    // not raw targetHz/detectedHz - keeps a single noisy detection hop from
+    // producing a single noisy ratio hop, same reasoning as smoothedTargetMidi.
+    this.pitchRatio = clamp(Math.pow(2, (this.smoothedTargetMidi - this.smoothedDetectedMidi) / 12), MIN_PITCH_RATIO, MAX_PITCH_RATIO);
   }
 
   process(inputs, outputs, parameters) {
