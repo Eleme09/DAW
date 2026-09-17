@@ -42,6 +42,10 @@ interface ProjectState {
   isPlaying: boolean;
   selectedTrackId: TrackId | null;
   isRecording: boolean;
+  /** True while the pre-recording count-in is playing (recording hasn't started yet). */
+  isCountingIn: boolean;
+  /** Beats left in the count-in, including the current one (4,3,2,1), or null when not counting in. */
+  countInBeats: number | null;
   recordingError: string | null;
   /** Timeline UI state, not project data - deliberately not part of
    * undo/redo or persistence. */
@@ -172,6 +176,9 @@ const HISTORY_LIMIT = 200;
  * than on every keystroke/tick. */
 const AUTOSAVE_DEBOUNCE_MS = 1200;
 
+/** Beats of audible count-in (click track) played before recording starts. */
+const COUNT_IN_BEATS = 4;
+
 export const useProjectStore = create<ProjectState>((set, get, api) => {
   let unsubscribeTime: (() => void) | null = null;
   let lastPushAt = 0;
@@ -251,6 +258,8 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     isPlaying: false,
     selectedTrackId: null,
     isRecording: false,
+    isCountingIn: false,
+    countInBeats: null,
     recordingError: null,
     snapResolution: "1/16",
     setSnapResolution: (resolution) => set({ snapResolution: resolution }),
@@ -766,7 +775,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     startRecording: async () => {
       const state = get();
-      if (state.isRecording) return;
+      if (state.isRecording || state.isCountingIn) return;
 
       let project = state.project;
       let armedTrack = project.tracks.find((t) => t.armed);
@@ -784,7 +793,12 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         setProject(project, { extra: { selectedTrackId: armedTrack.id } });
       }
 
-      set({ recordingError: null });
+      set({ recordingError: null, isCountingIn: true, countInBeats: COUNT_IN_BEATS });
+      await getAudioEngine().playCountIn(project.bpm, COUNT_IN_BEATS, (remaining) =>
+        set({ countInBeats: remaining })
+      );
+      set({ isCountingIn: false, countInBeats: null });
+
       const result = await getAudioEngine().startRecording(
         project.tracks,
         project.loop,

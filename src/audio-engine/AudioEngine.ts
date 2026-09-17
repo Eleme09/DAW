@@ -746,6 +746,26 @@ export class AudioEngine {
     }
   }
 
+  /**
+   * Plays an audible count-in (click per beat, accented on the first) and
+   * resolves one beat after the last click - i.e. exactly when the
+   * recording should start. `onBeat` fires as each beat begins, with the
+   * number of beats remaining including the current one (4,3,2,1), so the
+   * caller can show it.
+   */
+  async playCountIn(bpm: number, beats: number, onBeat?: (remaining: number) => void): Promise<void> {
+    const ctx = this.ensureContext();
+    const secPerBeat = 60 / bpm;
+    const leadInSec = 0.05;
+    for (let i = 0; i < beats; i++) {
+      this.playClick(ctx.currentTime + leadInSec + i * secPerBeat, i === 0);
+    }
+    for (let i = 0; i < beats; i++) {
+      onBeat?.(beats - i);
+      await new Promise<void>((resolve) => setTimeout(resolve, secPerBeat * 1000));
+    }
+  }
+
   // ---------------------------------------------------------------------
   // Recording
   //

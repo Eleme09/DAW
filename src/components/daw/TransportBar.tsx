@@ -27,6 +27,8 @@ export function TransportBar() {
   const currentTime = useProjectStore((s) => s.currentTime);
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const isRecording = useProjectStore((s) => s.isRecording);
+  const isCountingIn = useProjectStore((s) => s.isCountingIn);
+  const countInBeats = useProjectStore((s) => s.countInBeats);
   const recordingError = useProjectStore((s) => s.recordingError);
   const play = useProjectStore((s) => s.play);
   const pause = useProjectStore((s) => s.pause);
@@ -158,7 +160,7 @@ export function TransportBar() {
       <div className="flex shrink-0 items-center gap-1">
         <button
           onClick={() => (isPlaying ? pause() : play())}
-          disabled={isRecording}
+          disabled={isRecording || isCountingIn}
           title={isPlaying ? "Pausar" : "Reproducir"}
           className="flex h-11 w-11 items-center justify-center rounded bg-bone font-bold text-ink hover:opacity-90 active:opacity-90 disabled:opacity-40"
           aria-label={isPlaying ? "Pausar" : "Reproducir"}
@@ -167,7 +169,7 @@ export function TransportBar() {
         </button>
         <button
           onClick={stop}
-          disabled={isRecording}
+          disabled={isRecording || isCountingIn}
           title="Detener"
           className="flex h-11 w-11 items-center justify-center rounded bg-surf-2 hover:bg-surf-3 active:bg-surf-3 disabled:opacity-40"
           aria-label="Detener"
@@ -176,15 +178,18 @@ export function TransportBar() {
         </button>
         <button
           onClick={() => (isRecording ? stopRecording() : startRecording())}
-          className={`flex h-11 w-11 items-center justify-center rounded text-lg ${
+          disabled={isCountingIn}
+          className={`flex h-11 w-11 items-center justify-center rounded font-mono text-lg tabular-nums ${
             isRecording
               ? "animate-pulse bg-red-600 text-white"
-              : "bg-surf-2 text-red-500 hover:bg-surf-3 active:bg-surf-3"
+              : isCountingIn
+                ? "bg-red-600/70 text-white"
+                : "bg-surf-2 text-red-500 hover:bg-surf-3 active:bg-surf-3"
           }`}
-          aria-label={isRecording ? "Detener grabación" : "Grabar"}
-          title={isRecording ? "Detener grabación" : "Graba sobre la pista armada"}
+          aria-label={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás" : "Grabar"}
+          title={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás…" : "Graba sobre la pista armada"}
         >
-          <RecordIcon className="h-4 w-4" />
+          {isCountingIn ? countInBeats : <RecordIcon className="h-4 w-4" />}
         </button>
       </div>
 
