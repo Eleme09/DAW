@@ -68,7 +68,7 @@ defecto"). Los seis componentes base (mando=Knob, fader=Fader,
 medidor=MeterBar, hoja=BottomSheet, píldora=Picker, control
 segmentado=SegmentedControl) existen y se usan en toda la app.
 
-## 10C — Sesión: PARCIAL — falta la barra contextual y el criterio final
+## 10C — Sesión: PARCIAL — falta el criterio final (barra contextual ya está)
 
 Hecho:
 - Color de pista como barra de 3px en el canto de `TrackHeader.tsx` (antes
@@ -87,19 +87,52 @@ Hecho:
     (amarillo), grabar/armar (`--rec` rojo), monitor activo (`--live`
     verde), severidad de análisis (verde/amarillo/rojo).
 
-Pendiente real de 10C (no empezado):
-- **Barra contextual persistente** de la pantalla "Sesión" de la
-  referencia: Entrada / Efectos / Afinar / herramienta de corte /
-  auriculares, actuando sobre la pista seleccionada, visible entre el
-  área de pistas y el transporte. Hoy esas funciones están repartidas
-  entre los botones de cada fila de `TrackHeader` y las pestañas de
-  Mezcla/FX - es un componente nuevo, no un ajuste de clases.
-- El criterio final explícito de 10C ("comparación lado a lado con la
-  referencia sin diferencias estructurales") **no está cumplido** todavía
-  - falta esa barra contextual y probablemente ajustes de densidad/layout
-    para acercarse más a la estructura exacta de la pantalla "Sesión" del
-    archivo (cabecera con back+título+nube, regla con code de tiempo,
-    etc.), que no se tocó en esta pasada (solo colores/iconos/tipografía).
+- **Barra contextual persistente** (`Timeline/ContextBar.tsx`, nuevo):
+  Entrada / Efectos / Afinar / herramienta de corte / auriculares,
+  actuando sobre la pista seleccionada (`selectedTrackId`), entre el área
+  de pistas y la fila de edición existente (+Nueva pista/Dividir/etc. -
+  ver nota de layout abajo). Botones reales de 44px de alto en vez de los
+  28px del mock: el propio `estudio-ui.html` es un mock de escritorio no
+  optimizado a táctil, y esta app ya tiene una auditoría de FASE 9 que
+  exige >=44px en todo control táctil real - se siguió el patrón de
+  "hit-area ampliada" ya usado en el resto del proyecto en vez de copiar
+  el tamaño de píxel literal del mock donde entra en conflicto con esa
+  regla. "Entrada" arma la pista para grabar, "Efectos" abre FX en modo
+  pista, "Afinar" agrega Pitch Correction si la pista todavía no lo tiene
+  y abre FX, el ícono de tijeras divide el clip en el playhead (mismo
+  `splitClipAtPlayhead` que el botón "Dividir" ya existente - la
+  referencia también duplica esta acción entre su fila de pista y la
+  barra, así que no es una regresión de la regla "un control, un sitio"
+  de 10A), el ícono de auriculares alterna `monitorMode` de la pista
+  seleccionada (mismo ciclo que el botón de micrófono de `TrackHeader`).
+  Dos íconos SVG nuevos añadidos a `icons.tsx` en el mismo estilo que el
+  resto (`HeadphonesIcon`, `TuneIcon`), extraídos del glifo `head` del
+  archivo de referencia donde aplica.
+  **Bug real encontrado y corregido de paso**: al añadir Pitch Correction
+  y navegar a FX de inmediato (justo lo que hace el botón "Afinar"),
+  `PitchCorrectionPanel` lanzaba `TypeError: node?.getLastInfo is not a
+  function` en su loop de animación - mientras el AudioWorklet de
+  afinación carga, `EffectChain` conecta un `PassthroughEffect` de
+  relleno que no implementa `getLastInfo()`, y el `as PitchCorrectionEffect`
+  del panel le mentía a TypeScript sobre el tipo real en ese instante.
+  Arreglado con una comprobación de tipo en tiempo de ejecución
+  (`typeof node?.getLastInfo === "function"`) en vez de solo el
+  optional-chaining que ya había. Este bug existía antes de esta subfase
+  (cualquier ruta que agregue Pitch Correction y abra el panel rápido lo
+  dispara) - esta subfase solo lo hizo fácil de reproducir y se corrigió
+  al encontrarlo, no se dejó pasar.
+  **Verificado en navegador** (Chromium headless): los tres botones
+  quedan visibles y habilitados solo con una pista seleccionada, "Afinar"
+  efectivamente agrega el efecto y muestra el panel de Pitch Correction,
+  la barra mide 44px de alto entre el área de pistas y la fila de
+  edición, sin errores de consola tras el fix.
+- Pendiente real de 10C: el criterio final explícito ("comparación lado a
+  lado con la referencia sin diferencias estructurales") **todavía no
+  está cumplido** - queda estructura de layout sin tocar (cabecera con
+  back+título+nube, regla con code de tiempo, densidad general) que esta
+  pasada no abordó (se limitó a la barra contextual, que era el único
+  punto explícitamente señalado como "no empezado" en la revisión
+  anterior de este archivo).
 
 ## 10D — Grabación: COMPLETA
 

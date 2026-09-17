@@ -8,6 +8,7 @@ import { Ruler } from "./Ruler";
 import { TrackHeader } from "./TrackHeader";
 import { TrackLane } from "./TrackLane";
 import { LoopRegion } from "./LoopRegion";
+import { ContextBar } from "./ContextBar";
 import { ScissorsIcon, DuplicateIcon } from "../icons";
 
 export function Timeline() {
@@ -104,6 +105,8 @@ export function Timeline() {
           </div>
         </div>
       </div>
+
+      {project.tracks.length > 0 && <ContextBar />}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-line p-2">
         {project.tracks.length > 0 && (

@@ -284,3 +284,29 @@ export function WarningIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function HeadphonesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+      <rect x="2" y="13" width="5" height="7" rx="2" />
+      <rect x="17" y="13" width="5" height="7" rx="2" />
+    </svg>
+  );
+}
+
+export function TuneIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <line x1="5" y1="20" x2="5" y2="14" />
+      <line x1="5" y1="10" x2="5" y2="4" />
+      <circle cx="5" cy="12" r="2" />
+      <line x1="12" y1="20" x2="12" y2="16" />
+      <line x1="12" y1="12" x2="12" y2="4" />
+      <circle cx="12" cy="14" r="2" />
+      <line x1="19" y1="20" x2="19" y2="10" />
+      <line x1="19" y1="6" x2="19" y2="4" />
+      <circle cx="19" cy="8" r="2" />
+    </svg>
+  );
+}

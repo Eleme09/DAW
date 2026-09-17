@@ -84,8 +84,11 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
   });
 
   useRafLoop(() => {
+    // While its AudioWorklet module loads, EffectChain briefly wires this
+    // insert to a bypass placeholder that doesn't implement getLastInfo() -
+    // guard against that, not just against `node` being absent entirely.
     const node = getAudioEngine().getEffectNode(target, effectId) as PitchCorrectionEffect | undefined;
-    const info = node?.getLastInfo() ?? null;
+    const info = typeof node?.getLastInfo === "function" ? node.getLastInfo() : null;
 
     if (info !== lastInfoRef.current) {
       lastInfoRef.current = info;
