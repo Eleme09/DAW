@@ -8,6 +8,10 @@ export class ClipperEffect implements Effect<ClipperParams> {
   private preGain: GainNode;
   private shaper: WaveShaperNode;
   private makeupGain: GainNode;
+  /** In series after makeupGain - the real final output of this instance,
+   * post-ceiling, regardless of what else is inserted around it. Same
+   * in-series-analyser pattern as the rest of this phase's effects. */
+  private outputAnalyser: AnalyserNode;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -16,16 +20,23 @@ export class ClipperEffect implements Effect<ClipperParams> {
     this.shaper.curve = makeHardClipCurve();
     this.shaper.oversample = "4x";
     this.makeupGain = ctx.createGain();
+    this.outputAnalyser = ctx.createAnalyser();
+    this.outputAnalyser.fftSize = 1024;
 
     this.preGain.connect(this.shaper);
     this.shaper.connect(this.makeupGain);
+    this.makeupGain.connect(this.outputAnalyser);
   }
 
   get inputNode(): AudioNode {
     return this.preGain;
   }
   get outputNode(): AudioNode {
-    return this.makeupGain;
+    return this.outputAnalyser;
+  }
+
+  getOutputAnalyser(): AnalyserNode {
+    return this.outputAnalyser;
   }
 
   setParams(params: ClipperParams): void {
@@ -40,5 +51,6 @@ export class ClipperEffect implements Effect<ClipperParams> {
     this.preGain.disconnect();
     this.shaper.disconnect();
     this.makeupGain.disconnect();
+    this.outputAnalyser.disconnect();
   }
 }

@@ -13,6 +13,7 @@ import { SaturationPanel } from "./SaturationPanel";
 import { StereoWidthPanel } from "./StereoWidthPanel";
 import { ReverbPanel } from "./ReverbPanel";
 import { DelayPanel } from "./DelayPanel";
+import { ClipperPanel } from "./ClipperPanel";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -40,12 +41,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "limiter":
       return <LimiterPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "clipper": {
-      const p = effect.params;
-      return (
-        <ParamSlider label="Techo" value={p.ceilingDb} min={-6} max={0} step={0.1} unit=" dB" onChange={(v) => onChange({ ...p, ceilingDb: v })} />
-      );
-    }
+    case "clipper":
+      return <ClipperPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "noiseGate":
       return <NoiseGatePanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
