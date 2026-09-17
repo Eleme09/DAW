@@ -11,6 +11,8 @@ const MAX_DELAY_SEC = 0.05;
  * the node's lifetime — same pattern used for every other continuously-
  * running LFO in this file family (Flanger, AutoPan).
  */
+export const CHORUS_BASE_DELAY_MS = BASE_DELAY_SEC * 1000;
+
 export class ChorusEffect implements Effect<ChorusParams> {
   private ctx: BaseAudioContext;
   private input: GainNode;
@@ -20,6 +22,8 @@ export class ChorusEffect implements Effect<ChorusParams> {
   private lfoDepth: GainNode;
   private dryGain: GainNode;
   private wetGain: GainNode;
+  private lfoStartTime: number;
+  private lastRateHz = 1;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -42,6 +46,7 @@ export class ChorusEffect implements Effect<ChorusParams> {
 
     this.lfo.connect(this.lfoDepth);
     this.lfoDepth.connect(this.delay.delayTime);
+    this.lfoStartTime = ctx.currentTime;
     this.lfo.start();
   }
 
@@ -52,8 +57,21 @@ export class ChorusEffect implements Effect<ChorusParams> {
     return this.output;
   }
 
+  /** Exact real-time phase (0..1) of the running sine LFO, computed from
+   * its known start time and current rate - not guessed. Web Audio gives
+   * no way to read an OscillatorNode's live phase directly, but since
+   * this LFO runs phase-continuously from a known `start()` time at a
+   * known frequency, `(now - start) * rateHz mod 1` IS that phase exactly
+   * (aside from a few ms of smoothing right after a rate change, from
+   * setTargetAtTime's time constant). */
+  getLfoPhase(): number {
+    const cycles = (this.ctx.currentTime - this.lfoStartTime) * this.lastRateHz;
+    return cycles - Math.floor(cycles);
+  }
+
   setParams(params: ChorusParams): void {
     const t = this.ctx.currentTime;
+    this.lastRateHz = params.rateHz;
     this.lfo.frequency.setTargetAtTime(params.rateHz, t, 0.01);
     this.lfoDepth.gain.setTargetAtTime(params.depthMs / 1000, t, 0.01);
     this.dryGain.gain.setTargetAtTime(1 - params.mix, t, 0.01);

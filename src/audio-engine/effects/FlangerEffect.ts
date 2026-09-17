@@ -9,6 +9,8 @@ const MAX_DELAY_SEC = 0.02;
  * the feedback is what produces flanging's characteristic resonant comb-
  * filter sweep instead of chorus's simple doubling/thickening.
  */
+export const FLANGER_BASE_DELAY_MS = BASE_DELAY_SEC * 1000;
+
 export class FlangerEffect implements Effect<FlangerParams> {
   private ctx: BaseAudioContext;
   private input: GainNode;
@@ -19,6 +21,8 @@ export class FlangerEffect implements Effect<FlangerParams> {
   private lfoDepth: GainNode;
   private dryGain: GainNode;
   private wetGain: GainNode;
+  private lfoStartTime: number;
+  private lastRateHz = 1;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -44,6 +48,7 @@ export class FlangerEffect implements Effect<FlangerParams> {
 
     this.lfo.connect(this.lfoDepth);
     this.lfoDepth.connect(this.delay.delayTime);
+    this.lfoStartTime = ctx.currentTime;
     this.lfo.start();
   }
 
@@ -54,8 +59,16 @@ export class FlangerEffect implements Effect<FlangerParams> {
     return this.output;
   }
 
+  /** Same exact-phase computation as ChorusEffect.getLfoPhase() - see its
+   * doc comment. */
+  getLfoPhase(): number {
+    const cycles = (this.ctx.currentTime - this.lfoStartTime) * this.lastRateHz;
+    return cycles - Math.floor(cycles);
+  }
+
   setParams(params: FlangerParams): void {
     const t = this.ctx.currentTime;
+    this.lastRateHz = params.rateHz;
     this.lfo.frequency.setTargetAtTime(params.rateHz, t, 0.01);
     this.lfoDepth.gain.setTargetAtTime(params.depthMs / 1000, t, 0.01);
     this.feedback.gain.setTargetAtTime(Math.min(0.9, params.feedback), t, 0.01);

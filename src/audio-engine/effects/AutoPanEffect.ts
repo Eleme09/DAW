@@ -11,6 +11,8 @@ export class AutoPanEffect implements Effect<AutoPanParams> {
   private panner: StereoPannerNode;
   private lfo: OscillatorNode;
   private lfoDepth: GainNode;
+  private lfoStartTime: number;
+  private lastRateHz = 1;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -21,6 +23,7 @@ export class AutoPanEffect implements Effect<AutoPanParams> {
 
     this.lfo.connect(this.lfoDepth);
     this.lfoDepth.connect(this.panner.pan);
+    this.lfoStartTime = ctx.currentTime;
     this.lfo.start();
   }
 
@@ -31,8 +34,16 @@ export class AutoPanEffect implements Effect<AutoPanParams> {
     return this.panner;
   }
 
+  /** Same exact-phase computation as ChorusEffect.getLfoPhase() - see its
+   * doc comment. */
+  getLfoPhase(): number {
+    const cycles = (this.ctx.currentTime - this.lfoStartTime) * this.lastRateHz;
+    return cycles - Math.floor(cycles);
+  }
+
   setParams(params: AutoPanParams): void {
     const t = this.ctx.currentTime;
+    this.lastRateHz = params.rateHz;
     this.lfo.frequency.setTargetAtTime(params.rateHz, t, 0.01);
     this.lfoDepth.gain.setTargetAtTime(params.depth, t, 0.01);
   }

@@ -14,6 +14,9 @@ import { StereoWidthPanel } from "./StereoWidthPanel";
 import { ReverbPanel } from "./ReverbPanel";
 import { DelayPanel } from "./DelayPanel";
 import { ClipperPanel } from "./ClipperPanel";
+import { ChorusPanel } from "./ChorusPanel";
+import { FlangerPanel } from "./FlangerPanel";
+import { AutoPanPanel } from "./AutoPanPanel";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -76,28 +79,11 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       );
     }
 
-    case "chorus": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Velocidad" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
-          <ParamSlider label="Profundidad" value={p.depthMs} min={0.5} max={15} step={0.5} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
-          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
-        </>
-      );
-    }
+    case "chorus":
+      return <ChorusPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "flanger": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Velocidad" value={p.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
-          <ParamSlider label="Profundidad" value={p.depthMs} min={0.2} max={10} step={0.2} unit=" ms" onChange={(v) => onChange({ ...p, depthMs: v })} />
-          <ParamSlider label="Feedback" value={p.feedback * 100} min={0} max={90} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, feedback: v / 100 })} />
-          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
-        </>
-      );
-    }
+    case "flanger":
+      return <FlangerPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "exciter": {
       const p = effect.params;
@@ -110,15 +96,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       );
     }
 
-    case "autoPan": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Velocidad" value={p.rateHz} min={0.05} max={8} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...p, rateHz: v })} />
-          <ParamSlider label="Profundidad" value={p.depth * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, depth: v / 100 })} />
-        </>
-      );
-    }
+    case "autoPan":
+      return <AutoPanPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "stereoWidth":
       return <StereoWidthPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
