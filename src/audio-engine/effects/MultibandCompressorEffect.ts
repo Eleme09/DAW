@@ -73,6 +73,13 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     return this.output;
   }
 
+  /** Real gain reduction in dB per band, from each band's own native
+   * DynamicsCompressorNode.reduction - same telemetry pattern as
+   * CompressorEffect/LimiterEffect/DeEsserEffect. */
+  getReductionDb(): { low: number; mid: number; high: number } {
+    return { low: this.lowComp.reduction, mid: this.midComp.reduction, high: this.highComp.reduction };
+  }
+
   setParams(params: MultibandCompressorParams): void {
     const t = this.ctx.currentTime;
 

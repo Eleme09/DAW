@@ -1,8 +1,7 @@
 "use client";
 
 import type { EffectTarget } from "@/state/projectStore";
-import type { EffectInstance, MultibandBandParams } from "@/types/effects";
-import { ParamSlider } from "./ParamSlider";
+import type { EffectInstance } from "@/types/effects";
 import { EqPanel } from "./EqPanel";
 import { PitchCorrectionPanel } from "./PitchCorrectionPanel";
 import { CompressorPanel } from "./CompressorPanel";
@@ -18,6 +17,7 @@ import { ChorusPanel } from "./ChorusPanel";
 import { FlangerPanel } from "./FlangerPanel";
 import { AutoPanPanel } from "./AutoPanPanel";
 import { ExciterPanel } from "./ExciterPanel";
+import { MultibandPanel } from "./MultibandPanel";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -57,28 +57,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "delay":
       return <DelayPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "multibandCompressor": {
-      const p = effect.params;
-      const bandEditor = (label: string, band: MultibandBandParams, key: "low" | "mid" | "high") => (
-        <div key={key} className="rounded border border-line p-1.5">
-          <div className="mb-1 text-[10px] font-semibold uppercase text-bone-2">{label}</div>
-          <ParamSlider label="Threshold" value={band.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, [key]: { ...band, thresholdDb: v } })} />
-          <ParamSlider label="Ratio" value={band.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...p, [key]: { ...band, ratio: v } })} />
-          <ParamSlider label="Makeup" value={band.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, [key]: { ...band, makeupDb: v } })} />
-        </div>
-      );
-      return (
-        <>
-          <ParamSlider label="Grave/Medio" value={p.lowMidFreq} min={40} max={1000} step={10} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, lowMidFreq: v })} />
-          <ParamSlider label="Medio/Agudo" value={p.midHighFreq} min={500} max={10000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, midHighFreq: v })} />
-          <ParamSlider label="Ataque" value={p.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
-          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
-          {bandEditor("Graves", p.low, "low")}
-          {bandEditor("Medios", p.mid, "mid")}
-          {bandEditor("Agudos", p.high, "high")}
-        </>
-      );
-    }
+    case "multibandCompressor":
+      return <MultibandPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "chorus":
       return <ChorusPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
