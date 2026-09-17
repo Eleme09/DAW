@@ -2,7 +2,6 @@
 
 import { useRef } from "react";
 import { useProjectStore } from "@/state/projectStore";
-import { PIXELS_PER_SECOND } from "./constants";
 
 const MIN_LOOP_SEC = 0.25;
 const EDGE_WIDTH = 8;
@@ -21,6 +20,7 @@ interface DragState {
 export function LoopRegion({ height }: { height: number }) {
   const loop = useProjectStore((s) => s.project.loop);
   const setLoop = useProjectStore((s) => s.setLoop);
+  const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   const drag = useRef<DragState | null>(null);
 
   function beginDrag(e: React.PointerEvent, mode: DragMode) {
@@ -32,7 +32,7 @@ export function LoopRegion({ height }: { height: number }) {
   function onPointerMove(e: React.PointerEvent) {
     const d = drag.current;
     if (!d) return;
-    const deltaSec = (e.clientX - d.startX) / PIXELS_PER_SECOND;
+    const deltaSec = (e.clientX - d.startX) / pixelsPerSecond;
 
     if (d.mode === "move") {
       const duration = d.endTime - d.startTime;
@@ -55,8 +55,8 @@ export function LoopRegion({ height }: { height: number }) {
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   }
 
-  const left = loop.startTime * PIXELS_PER_SECOND;
-  const width = Math.max(4, (loop.endTime - loop.startTime) * PIXELS_PER_SECOND);
+  const left = loop.startTime * pixelsPerSecond;
+  const width = Math.max(4, (loop.endTime - loop.startTime) * pixelsPerSecond);
 
   return (
     // pointer-events-none on the wrapper: this div is a full-height visual

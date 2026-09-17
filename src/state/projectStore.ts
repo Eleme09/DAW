@@ -23,6 +23,7 @@ import {
 } from "@/types/project";
 import { createEffectInstance, type EffectInstance, type EffectType } from "@/types/effects";
 import { barSeconds, type GridResolution } from "@/lib/timing/grid";
+import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND } from "@/components/daw/Timeline/constants";
 
 export type EffectTarget = TrackId | "master";
 /** Which single pane is full-width on mobile - see DawShell. Unused at `md`+,
@@ -51,6 +52,13 @@ interface ProjectState {
    * undo/redo or persistence. */
   snapResolution: GridResolution;
   setSnapResolution: (resolution: GridResolution) => void;
+  /** Timeline zoom (pixels per second of timeline width) - the single
+   * shared value every Timeline-family component (Ruler, TrackLane,
+   * ClipView, MidiClipView, LoopRegion, AutomationEditor) reads instead of
+   * a fixed constant, so the whole timeline always scales together. View
+   * state, same category as snapResolution - not undoable, not persisted. */
+  pixelsPerSecond: number;
+  setPixelsPerSecond: (value: number) => void;
   mobileView: MobileView;
   setMobileView: (view: MobileView) => void;
   /** Which chain the EffectsRackPanel is showing - lifted out of that
@@ -264,6 +272,9 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     recordingError: null,
     snapResolution: "1/16",
     setSnapResolution: (resolution) => set({ snapResolution: resolution }),
+    pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
+    setPixelsPerSecond: (value) =>
+      set({ pixelsPerSecond: Math.min(MAX_PIXELS_PER_SECOND, Math.max(MIN_PIXELS_PER_SECOND, value)) }),
     mobileView: "timeline",
     setMobileView: (view) => set({ mobileView: view }),
     effectsRackMode: "track",

@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import type { MidiClip } from "@/types/project";
 import { snapToGrid } from "@/lib/timing/grid";
-import { PIXELS_PER_SECOND, TRACK_HEIGHT } from "./constants";
+import { TRACK_HEIGHT } from "./constants";
 import { NoteIcon } from "../icons";
 
 interface MidiClipViewProps {
@@ -30,9 +30,10 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
   const bpm = useProjectStore((s) => s.project.bpm);
   const timeSignature = useProjectStore((s) => s.project.timeSignature);
   const snapResolution = useProjectStore((s) => s.snapResolution);
+  const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   const dragState = useRef<DragState | null>(null);
 
-  const width = Math.max(4, clip.duration * PIXELS_PER_SECOND);
+  const width = Math.max(4, clip.duration * pixelsPerSecond);
   const snap = (seconds: number) => snapToGrid(seconds, bpm, timeSignature, snapResolution);
 
   function beginDrag(e: React.PointerEvent, state: DragState) {
@@ -45,7 +46,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
   function onPointerMove(e: React.PointerEvent) {
     const drag = dragState.current;
     if (!drag) return;
-    const deltaSec = (e.clientX - drag.startX) / PIXELS_PER_SECOND;
+    const deltaSec = (e.clientX - drag.startX) / pixelsPerSecond;
     if (drag.mode === "move") {
       updateMidiClip(clip.trackId, clip.id, { startTime: snap(Math.max(0, drag.startTime + deltaSec)) });
       return;
@@ -72,7 +73,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
       title={`${clip.name} — ${clip.notes.length} notas — arrastra para mover, arrastra el borde derecho para redimensionar, doble clic para eliminar`}
       style={{
         position: "absolute",
-        left: clip.startTime * PIXELS_PER_SECOND,
+        left: clip.startTime * pixelsPerSecond,
         width,
         height: TRACK_HEIGHT - 8,
         top: 4,
@@ -102,8 +103,8 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
             key={n.id}
             className="absolute rounded-[1px]"
             style={{
-              left: n.startTime * PIXELS_PER_SECOND,
-              width: Math.max(2, n.duration * PIXELS_PER_SECOND - 1),
+              left: n.startTime * pixelsPerSecond,
+              width: Math.max(2, n.duration * pixelsPerSecond - 1),
               top: `${((maxPitch - n.pitch) / pitchRange) * 80}%`,
               height: 2,
               background: clip.color,

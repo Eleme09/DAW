@@ -1,7 +1,8 @@
 "use client";
 
+import { useProjectStore } from "@/state/projectStore";
 import type { Track } from "@/types/project";
-import { PIXELS_PER_SECOND, TRACK_HEIGHT } from "./constants";
+import { TRACK_HEIGHT } from "./constants";
 import { ClipView } from "./ClipView";
 import { MidiClipView } from "./MidiClipView";
 
@@ -12,6 +13,7 @@ interface TrackLaneProps {
 }
 
 export function TrackLane({ track, width, selected }: TrackLaneProps) {
+  const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   return (
     <div
       style={{ width, height: TRACK_HEIGHT }}
@@ -19,11 +21,11 @@ export function TrackLane({ track, width, selected }: TrackLaneProps) {
         selected ? "bg-surf/60" : "bg-ink"
       }`}
     >
-      {Array.from({ length: Math.ceil(width / PIXELS_PER_SECOND) }, (_, i) => (
+      {Array.from({ length: Math.ceil(width / pixelsPerSecond) }, (_, i) => (
         <div
           key={i}
           className="absolute top-0 h-full border-l border-surf"
-          style={{ left: i * PIXELS_PER_SECOND }}
+          style={{ left: i * pixelsPerSecond }}
         />
       ))}
       {track.type === "instrument"

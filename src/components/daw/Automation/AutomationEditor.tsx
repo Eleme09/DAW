@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import type { AutomationParam } from "@/types/project";
-import { PIXELS_PER_SECOND, MIN_TIMELINE_SECONDS } from "../Timeline/constants";
+import { MIN_TIMELINE_SECONDS } from "../Timeline/constants";
 import { BottomSheet } from "../BottomSheet";
 
 const HEIGHT = 160;
@@ -30,6 +30,7 @@ export function AutomationEditor() {
   const addPoint = useProjectStore((s) => s.addAutomationPoint);
   const updatePoint = useProjectStore((s) => s.updateAutomationPoint);
   const removePoint = useProjectStore((s) => s.removeAutomationPoint);
+  const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   const dragRef = useRef<string | null>(null);
 
   const track = tracks.find((t) => t.id === trackId);
@@ -45,7 +46,7 @@ export function AutomationEditor() {
     0
   );
   const duration = Math.max(MIN_TIMELINE_SECONDS, clipEnd + 15);
-  const width = duration * PIXELS_PER_SECOND;
+  const width = duration * pixelsPerSecond;
 
   function valueToY(value: number): number {
     const pct = (value - range.min) / (range.max - range.min);
@@ -56,7 +57,7 @@ export function AutomationEditor() {
     return Math.min(range.max, Math.max(range.min, range.min + pct * (range.max - range.min)));
   }
   function xToTime(x: number): number {
-    return Math.max(0, x / PIXELS_PER_SECOND);
+    return Math.max(0, x / pixelsPerSecond);
   }
 
   function beginDragPoint(e: React.PointerEvent, pointId: string) {
@@ -90,7 +91,7 @@ export function AutomationEditor() {
 
   const lane = track?.automation[param];
   const points = lane ? [...lane.points].sort((a, b) => a.time - b.time) : [];
-  const polylinePoints = points.map((p) => `${p.time * PIXELS_PER_SECOND},${valueToY(p.value)}`).join(" ");
+  const polylinePoints = points.map((p) => `${p.time * pixelsPerSecond},${valueToY(p.value)}`).join(" ");
 
   return (
     <BottomSheet
@@ -154,7 +155,7 @@ export function AutomationEditor() {
                   }}
                   title={`${p.value.toFixed(range.decimals)}${range.unit} @ ${p.time.toFixed(2)}s`}
                   className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-ink active:cursor-grabbing"
-                  style={{ left: p.time * PIXELS_PER_SECOND, top: valueToY(p.value), background: track.color }}
+                  style={{ left: p.time * pixelsPerSecond, top: valueToY(p.value), background: track.color }}
                 />
               ))}
             </div>

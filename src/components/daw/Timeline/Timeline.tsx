@@ -1,19 +1,23 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { GRID_RESOLUTIONS, type GridResolution } from "@/lib/timing/grid";
 import { Picker } from "../ui/Picker";
-import { HEADER_WIDTH, MIN_TIMELINE_SECONDS, PIXELS_PER_SECOND, RULER_HEIGHT, TRACK_HEIGHT } from "./constants";
+import { HEADER_WIDTH, MIN_TIMELINE_SECONDS, RULER_HEIGHT, TRACK_HEIGHT } from "./constants";
 import { Ruler } from "./Ruler";
 import { TrackHeader } from "./TrackHeader";
 import { TrackLane } from "./TrackLane";
 import { LoopRegion } from "./LoopRegion";
 import { ContextBar } from "./ContextBar";
+import { ZoomControl } from "./ZoomControl";
+import { usePinchZoom } from "./usePinchZoom";
 import { ScissorsIcon, DuplicateIcon } from "../icons";
 
 export function Timeline() {
   const project = useProjectStore((s) => s.project);
   const currentTime = useProjectStore((s) => s.currentTime);
+  const isPlaying = useProjectStore((s) => s.isPlaying);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
   const seek = useProjectStore((s) => s.seek);
   const addTrack = useProjectStore((s) => s.addTrack);
@@ -22,8 +26,34 @@ export function Timeline() {
   const addPatternAtPlayhead = useProjectStore((s) => s.addPatternAtPlayhead);
   const snapResolution = useProjectStore((s) => s.snapResolution);
   const setSnapResolution = useProjectStore((s) => s.setSnapResolution);
+  const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
+  const setPixelsPerSecond = useProjectStore((s) => s.setPixelsPerSecond);
   const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
   const setMobileView = useProjectStore((s) => s.setMobileView);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  usePinchZoom(scrollRef, pixelsPerSecond, setPixelsPerSecond);
+
+  // Keeps the playhead on-screen during playback instead of letting it run
+  // off the right edge of the scrolled viewport - re-checks on every
+  // transport tick (currentTime changes every animation frame while
+  // playing). Only nudges scrollLeft when the playhead is actually about
+  // to leave the visible area, and re-centers it toward the left third of
+  // the viewport rather than pinning it to one exact pixel every frame -
+  // same "follow" convention as Pro Tools/Ableton, not a hard lock that'd
+  // fight a manual scroll the instant playback starts.
+  useEffect(() => {
+    if (!isPlaying) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const playheadX = HEADER_WIDTH + currentTime * pixelsPerSecond;
+    const viewLeft = el.scrollLeft;
+    const viewRight = viewLeft + el.clientWidth;
+    const margin = el.clientWidth * 0.1;
+    if (playheadX < viewLeft + HEADER_WIDTH || playheadX > viewRight - margin) {
+      el.scrollLeft = Math.max(0, playheadX - HEADER_WIDTH - el.clientWidth * 0.25);
+    }
+  }, [currentTime, isPlaying, pixelsPerSecond]);
 
   function goToBeatGen() {
     setBrowserTab("generate");
@@ -38,12 +68,20 @@ export function Timeline() {
     0
   );
   const durationSec = Math.max(MIN_TIMELINE_SECONDS, clipEnd + 15);
-  const contentWidth = durationSec * PIXELS_PER_SECOND;
+  const contentWidth = durationSec * pixelsPerSecond;
   const tracksHeight = RULER_HEIGHT + project.tracks.length * TRACK_HEIGHT;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
-      <div className="relative flex-1 overflow-auto">
+      <div
+        ref={scrollRef}
+        className="relative flex-1 overflow-auto"
+        // pan-x pan-y (not "auto"/unset) keeps native one-finger scrolling
+        // in both directions but excludes the browser's own pinch-to-zoom,
+        // which would otherwise fight usePinchZoom's own two-finger
+        // handling (zooming the whole page instead of the timeline).
+        style={{ touchAction: "pan-x pan-y" }}
+      >
         {project.tracks.length === 0 && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
             <div>
@@ -96,7 +134,7 @@ export function Timeline() {
 
           <div
             className="pointer-events-none absolute top-0 z-10 w-px bg-bone"
-            style={{ left: HEADER_WIDTH + currentTime * PIXELS_PER_SECOND, height: tracksHeight }}
+            style={{ left: HEADER_WIDTH + currentTime * pixelsPerSecond, height: tracksHeight }}
           >
             {/* Banderín de 1px con bandera triangular, como en Pro Tools
                (estudio-ui.html .playhead::before) - marca la cabeza de
@@ -152,6 +190,7 @@ export function Timeline() {
         >
           <DuplicateIcon className="h-3.5 w-3.5" /> Duplicar
         </button>
+        <ZoomControl value={pixelsPerSecond} onChange={setPixelsPerSecond} />
         <div className="ml-auto flex items-center gap-1.5 text-xs text-bone-2" title="Ajustar clips a la rejilla musical">
           <span className="font-medium">Ajuste</span>
           <div className="w-24">

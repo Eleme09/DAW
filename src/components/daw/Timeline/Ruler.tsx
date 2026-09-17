@@ -1,6 +1,7 @@
 "use client";
 
-import { PIXELS_PER_SECOND, RULER_HEIGHT } from "./constants";
+import { useProjectStore } from "@/state/projectStore";
+import { RULER_HEIGHT } from "./constants";
 import { barSeconds, beatSeconds } from "@/lib/timing/grid";
 
 interface RulerProps {
@@ -11,7 +12,8 @@ interface RulerProps {
 }
 
 export function Ruler({ width, bpm, timeSignature, onSeek }: RulerProps) {
-  const durationSec = width / PIXELS_PER_SECOND;
+  const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
+  const durationSec = width / pixelsPerSecond;
   const beatSec = beatSeconds(bpm, timeSignature[1]);
   const barSec = barSeconds(bpm, timeSignature);
   const beatsPerBar = timeSignature[0];
@@ -24,7 +26,7 @@ export function Ruler({ width, bpm, timeSignature, onSeek }: RulerProps) {
       style={{ width, height: RULER_HEIGHT }}
       onClick={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        onSeek(Math.max(0, (e.clientX - rect.left) / PIXELS_PER_SECOND));
+        onSeek(Math.max(0, (e.clientX - rect.left) / pixelsPerSecond));
       }}
     >
       {beats.map((i) => {
@@ -36,7 +38,7 @@ export function Ruler({ width, bpm, timeSignature, onSeek }: RulerProps) {
             className={`absolute top-0 h-full pl-1 text-[10px] ${
               isBar ? "border-l border-line-2 text-bone-2" : "border-l border-surf text-transparent"
             }`}
-            style={{ left: (i * beatSec * PIXELS_PER_SECOND) }}
+            style={{ left: (i * beatSec * pixelsPerSecond) }}
           >
             {isBar ? bar : ""}
           </div>

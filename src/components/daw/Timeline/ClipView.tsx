@@ -5,7 +5,7 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import type { AudioClip } from "@/types/project";
 import { snapToGrid } from "@/lib/timing/grid";
-import { PIXELS_PER_SECOND, TRACK_HEIGHT } from "./constants";
+import { TRACK_HEIGHT } from "./constants";
 import { Waveform } from "../Waveform";
 import { Picker } from "../ui/Picker";
 import { ClipContextSheet } from "./ClipContextSheet";
@@ -36,6 +36,7 @@ export function ClipView({ clip }: ClipViewProps) {
   const bpm = useProjectStore((s) => s.project.bpm);
   const timeSignature = useProjectStore((s) => s.project.timeSignature);
   const snapResolution = useProjectStore((s) => s.snapResolution);
+  const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   // Selecting the raw (stable) clips array, not a filtered derivative, so
   // this doesn't force a re-render on every playhead tick - `project` only
   // changes reference on an actual edit, `currentTime` lives outside it.
@@ -77,7 +78,7 @@ export function ClipView({ clip }: ClipViewProps) {
     };
   }, [buffer, clip.sampleId]);
 
-  const width = Math.max(4, clip.duration * PIXELS_PER_SECOND);
+  const width = Math.max(4, clip.duration * pixelsPerSecond);
   const snap = (seconds: number) => snapToGrid(seconds, bpm, timeSignature, snapResolution);
 
   function beginDrag(e: React.PointerEvent, state: DragState) {
@@ -100,20 +101,20 @@ export function ClipView({ clip }: ClipViewProps) {
     }
 
     if (drag.mode === "fade-in") {
-      const deltaSec = (e.clientX - drag.startX) / PIXELS_PER_SECOND;
+      const deltaSec = (e.clientX - drag.startX) / pixelsPerSecond;
       const nextFadeIn = Math.min(clip.duration / 2, Math.max(0, drag.fadeInSec + deltaSec));
       updateClip(clip.trackId, clip.id, { fadeInSec: nextFadeIn });
       return;
     }
 
     if (drag.mode === "fade-out") {
-      const deltaSec = (drag.startX - e.clientX) / PIXELS_PER_SECOND;
+      const deltaSec = (drag.startX - e.clientX) / pixelsPerSecond;
       const nextFadeOut = Math.min(clip.duration / 2, Math.max(0, drag.fadeOutSec + deltaSec));
       updateClip(clip.trackId, clip.id, { fadeOutSec: nextFadeOut });
       return;
     }
 
-    const deltaSec = (e.clientX - drag.startX) / PIXELS_PER_SECOND;
+    const deltaSec = (e.clientX - drag.startX) / pixelsPerSecond;
 
     if (drag.mode === "move") {
       moveDistance.current = Math.abs(e.clientX - drag.startX);
@@ -151,8 +152,8 @@ export function ClipView({ clip }: ClipViewProps) {
   const contentHeight = TRACK_HEIGHT - 8;
   const gainRange = MAX_GAIN_DB - MIN_GAIN_DB;
   const gainY = contentHeight - ((clip.gainDb - MIN_GAIN_DB) / gainRange) * contentHeight;
-  const fadeInPx = clip.fadeInSec * PIXELS_PER_SECOND;
-  const fadeOutPx = clip.fadeOutSec * PIXELS_PER_SECOND;
+  const fadeInPx = clip.fadeInSec * pixelsPerSecond;
+  const fadeOutPx = clip.fadeOutSec * pixelsPerSecond;
 
   return (
     <div
@@ -162,7 +163,7 @@ export function ClipView({ clip }: ClipViewProps) {
       title={`${clip.name} — toca para abrir acciones, arrastra para mover, arrastra los bordes para recortar`}
       style={{
         position: "absolute",
-        left: clip.startTime * PIXELS_PER_SECOND,
+        left: clip.startTime * pixelsPerSecond,
         width,
         height: contentHeight,
         top: 4,
