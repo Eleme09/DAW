@@ -8,6 +8,7 @@ import { snapToGrid } from "@/lib/timing/grid";
 import { PIXELS_PER_SECOND, TRACK_HEIGHT } from "./constants";
 import { Waveform } from "../Waveform";
 import { Picker } from "../ui/Picker";
+import { ClipContextSheet } from "./ClipContextSheet";
 
 interface ClipViewProps {
   clip: AudioClip;
@@ -30,7 +31,6 @@ type DragState =
 
 export function ClipView({ clip }: ClipViewProps) {
   const updateClip = useProjectStore((s) => s.updateClip);
-  const removeClip = useProjectStore((s) => s.removeClip);
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const selectTake = useProjectStore((s) => s.selectTake);
   const bpm = useProjectStore((s) => s.project.bpm);
@@ -55,6 +55,14 @@ export function ClipView({ clip }: ClipViewProps) {
     : [];
   const [buffer, setBuffer] = useState<AudioBuffer | null>(() => getAudioEngine().getBuffer(clip.sampleId) ?? null);
   const dragState = useRef<DragState | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  /** Total pointer travel (px) since the current "move" drag began - a tap
+   * (open the context sheet, see ClipContextSheet.tsx) moves ~0px, an
+   * actual drag-to-reposition moves more. Distinguishing the two lets the
+   * clip body serve both "tap it" (FASE 10E, works with no gesture at
+   * all) and "drag it" (the existing reposition feature) without one
+   * breaking the other. */
+  const moveDistance = useRef(0);
 
   useEffect(() => {
     if (buffer) return;
@@ -77,6 +85,7 @@ export function ClipView({ clip }: ClipViewProps) {
     selectTrack(clip.trackId);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragState.current = state;
+    moveDistance.current = 0;
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -107,6 +116,7 @@ export function ClipView({ clip }: ClipViewProps) {
     const deltaSec = (e.clientX - drag.startX) / PIXELS_PER_SECOND;
 
     if (drag.mode === "move") {
+      moveDistance.current = Math.abs(e.clientX - drag.startX);
       updateClip(clip.trackId, clip.id, { startTime: snap(Math.max(0, drag.startTime + deltaSec)) });
       return;
     }
@@ -129,9 +139,13 @@ export function ClipView({ clip }: ClipViewProps) {
     updateClip(clip.trackId, clip.id, { duration: nextDuration });
   }
 
+  const TAP_THRESHOLD_PX = 4;
+
   function onPointerUp(e: React.PointerEvent) {
+    const wasTap = dragState.current?.mode === "move" && moveDistance.current < TAP_THRESHOLD_PX;
     dragState.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    if (wasTap) setSheetOpen(true);
   }
 
   const contentHeight = TRACK_HEIGHT - 8;
@@ -145,8 +159,7 @@ export function ClipView({ clip }: ClipViewProps) {
       onPointerDown={(e) => beginDrag(e, { mode: "move", startX: e.clientX, startTime: clip.startTime })}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onDoubleClick={() => removeClip(clip.trackId, clip.id)}
-      title={`${clip.name} — arrastra para mover, arrastra los bordes para recortar, arrastra las esquinas para fundidos, arrastra la línea central para ganancia, doble clic para eliminar`}
+      title={`${clip.name} — toca para abrir acciones, arrastra para mover, arrastra los bordes para recortar`}
       style={{
         position: "absolute",
         left: clip.startTime * PIXELS_PER_SECOND,
@@ -247,6 +260,7 @@ export function ClipView({ clip }: ClipViewProps) {
           />
         </>
       )}
+      {sheetOpen && <ClipContextSheet clip={clip} onClose={() => setSheetOpen(false)} />}
     </div>
   );
 }

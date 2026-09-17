@@ -93,6 +93,7 @@ interface ProjectState {
   /** Duplicates the clip under the playhead on the selected track, placing
    * the copy immediately after the original. */
   duplicateClipAtPlayhead: () => void;
+  duplicateClip: (trackId: TrackId, clipId: string) => void;
   selectTrack: (trackId: TrackId | null) => void;
 
   /** Adds an empty one-bar pattern to the selected instrument track at the
@@ -526,6 +527,24 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         touch({
           ...project,
           tracks: project.tracks.map((t) => (t.id !== track.id ? t : { ...t, clips: [...t.clips, duplicate] })),
+        })
+      );
+    },
+
+    /** Duplicates a specific clip by id, regardless of the playhead -
+     * used by the clip's own context sheet (see ClipContextSheet), where
+     * "duplicate THIS clip" shouldn't depend on where the playhead
+     * happens to be sitting (that's what duplicateClipAtPlayhead is for). */
+    duplicateClip: (trackId, clipId) => {
+      const project = get().project;
+      const track = project.tracks.find((t) => t.id === trackId);
+      const clip = track?.clips.find((c) => c.id === clipId);
+      if (!clip) return;
+      const duplicate: AudioClip = { ...clip, id: crypto.randomUUID(), startTime: clip.startTime + clip.duration };
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) => (t.id !== trackId ? t : { ...t, clips: [...t.clips, duplicate] })),
         })
       );
     },

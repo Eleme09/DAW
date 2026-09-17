@@ -7,6 +7,7 @@ import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/Aud
 import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 import { Picker } from "./ui/Picker";
+import { Knob } from "./ui/Knob";
 
 const SYSTEM_DEFAULT_DEVICE = "__system_default__";
 
@@ -363,20 +364,17 @@ export function TransportBar() {
             ]}
           />
           <div className="flex items-center gap-2">
-            <span className="text-xs text-bone-3">Ganancia de entrada</span>
-            <input
-              type="range"
+            <Knob
+              value={inputGainDb}
               min={-24}
               max={24}
-              step={0.5}
-              value={inputGainDb}
-              onChange={(e) => handleInputGainChange(Number(e.target.value))}
-              className="h-11 flex-1"
+              defaultValue={0}
+              decimals={1}
+              unit=" dB"
+              label="Ganancia de entrada"
+              size={36}
+              onChange={handleInputGainChange}
             />
-            <span className="w-14 text-right text-xs tabular-nums text-bone-2">
-              {inputGainDb > 0 ? "+" : ""}
-              {inputGainDb.toFixed(1)} dB
-            </span>
           </div>
           <p className="text-xs text-bone-3">
             Apagados por defecto los dos — degradan una señal musical pensada para grabar con
