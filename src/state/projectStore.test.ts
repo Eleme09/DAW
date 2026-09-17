@@ -271,6 +271,42 @@ describe("comping (overlapping re-recorded takes)", () => {
     expect(clips[0].muted).toBe(false); // promoted, not left silent
   });
 
+  it("splitClipAtPlayhead cuts every take in a comp stack at once, and selectTake then picks per-fragment", () => {
+    const { addTrack, addClip, seek, selectTrack, splitClipAtPlayhead, selectTake } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    addClip(makeClip({ id: "take-1", trackId: track.id, startTime: 0, duration: 10 }));
+    addClip(makeClip({ id: "take-2", trackId: track.id, startTime: 0, duration: 10 })); // take-2 active
+    const groupId = useProjectStore.getState().project.tracks[0].clips[0].takeGroupId!;
+
+    // Cutting the comp at t=5 splits BOTH stacked takes at once, same as
+    // cutting a comp lane in a real DAW - not just whichever is audible.
+    selectTrack(track.id);
+    seek(5);
+    splitClipAtPlayhead();
+
+    let clips = useProjectStore.getState().project.tracks[0].clips;
+    expect(clips).toHaveLength(4); // take-1 left/right, take-2 left/right
+    expect(clips.every((c) => c.takeGroupId === groupId)).toBe(true);
+    const take1Left = clips.find((c) => c.id === "take-1")!; // split keeps left clip's id
+    const take2Left = clips.find((c) => c.id === "take-2")!;
+    const rightHalves = clips.filter((c) => c.startTime === 5);
+    expect(rightHalves).toHaveLength(2);
+    const take1Right = rightHalves.find((c) => c.muted)!; // take-1 was the muted take
+    const take2Right = rightHalves.find((c) => !c.muted)!; // take-2 was the active take
+
+    // Comp: keep take-2 for the LEFT half, switch to take-1 for the RIGHT half.
+    selectTake(track.id, groupId, take2Left.id);
+    selectTake(track.id, groupId, take1Right.id);
+
+    clips = useProjectStore.getState().project.tracks[0].clips;
+    const byId = Object.fromEntries(clips.map((c) => [c.id, c]));
+    expect(byId[take2Left.id].muted).toBe(false); // left half: take-2 audible
+    expect(byId[take1Right.id].muted).toBe(false); // right half: take-1 audible
+    expect(byId[take2Right.id].muted).toBe(true); // right half: take-2's own fragment now silent
+    // The right-half decision must not have touched the left-half fragments.
+    expect(byId[take1Left.id].muted).toBe(true); // untouched, was already the inactive take on the left
+  });
+
   it("a third overlapping recording joins the same existing take group", () => {
     const { addTrack, addClip } = useProjectStore.getState();
     const track = addTrack("Vocal");

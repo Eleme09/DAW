@@ -417,11 +417,19 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
           tracks: project.tracks.map((t) => {
             if (t.id !== trackId) return t;
             let clips = t.clips.filter((c) => c.id !== clipId);
-            // Deleting the active take of a group would otherwise silently
-            // drop that region from the arrangement - promote the most
-            // recent remaining take instead of leaving it with nothing audible.
+            // Deleting the active take of a fragment would otherwise
+            // silently drop that time range from the arrangement - promote
+            // the most recent remaining take that overlaps the SAME range
+            // (not just any clip sharing the group id - a comped fragment
+            // elsewhere in the group is a different decision entirely).
             if (removed?.takeGroupId && !removed.muted) {
-              const siblings = clips.filter((c) => c.takeGroupId === removed.takeGroupId);
+              const removedEnd = removed.startTime + removed.duration;
+              const siblings = clips.filter(
+                (c) =>
+                  c.takeGroupId === removed.takeGroupId &&
+                  c.startTime < removedEnd &&
+                  removed.startTime < c.startTime + c.duration
+              );
               const stillHasActive = siblings.some((c) => !c.muted);
               if (!stillHasActive && siblings.length > 0) {
                 const promoteId = siblings[siblings.length - 1].id;
@@ -434,8 +442,17 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       );
     },
 
+    // Fragment-level comping: only mutes takes that still overlap the newly
+    // chosen clip's time range, not every clip in the group. Combined with
+    // splitClipAtPlayhead (which preserves takeGroupId across the cut),
+    // this lets each fragment of a comped region carry its own active take
+    // instead of one choice applying to the whole original recording span.
     selectTake: (trackId, takeGroupId, activeClipId) => {
       const project = get().project;
+      const track = project.tracks.find((t) => t.id === trackId);
+      const activeClip = track?.clips.find((c) => c.id === activeClipId);
+      if (!activeClip) return;
+      const activeEnd = activeClip.startTime + activeClip.duration;
       setProject(
         touch({
           ...project,
@@ -444,33 +461,45 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
               ? t
               : {
                   ...t,
-                  clips: t.clips.map((c) =>
-                    c.takeGroupId !== takeGroupId ? c : { ...c, muted: c.id !== activeClipId }
-                  ),
+                  clips: t.clips.map((c) => {
+                    if (c.takeGroupId !== takeGroupId) return c;
+                    if (c.id === activeClipId) return { ...c, muted: false };
+                    const overlaps = c.startTime < activeEnd && activeClip.startTime < c.startTime + c.duration;
+                    return overlaps ? { ...c, muted: true } : c;
+                  }),
                 }
           ),
         })
       );
     },
 
+    // Splits every clip under the playhead, not just the audible one - a
+    // stack of takes recorded over the same region (a comp) needs to be
+    // cut at the same point on every take before picking per-fragment
+    // (selectTake), same as cutting a comp lane in Logic/Pro Tools slices
+    // every take at once rather than only the one currently on top.
     splitClipAtPlayhead: () => {
       const { project, selectedTrackId, currentTime } = get();
       const track = project.tracks.find((t) => t.id === selectedTrackId);
       if (!track) return;
-      const clip = track.clips.find(
+      const toSplit = track.clips.filter(
         (c) => currentTime > c.startTime + MIN_CLIP_SEC && currentTime < c.startTime + c.duration - MIN_CLIP_SEC
       );
-      if (!clip) return;
+      if (toSplit.length === 0) return;
 
-      const splitAt = currentTime - clip.startTime;
-      const left: AudioClip = { ...clip, duration: splitAt, fadeOutSec: 0 };
-      const right: AudioClip = {
-        ...clip,
-        id: crypto.randomUUID(),
-        startTime: currentTime,
-        duration: clip.duration - splitAt,
-        sourceOffset: clip.sourceOffset + splitAt,
-        fadeInSec: 0,
+      const splitIds = new Set(toSplit.map((c) => c.id));
+      const splitOf = (clip: AudioClip): AudioClip[] => {
+        const splitAt = currentTime - clip.startTime;
+        const left: AudioClip = { ...clip, duration: splitAt, fadeOutSec: 0 };
+        const right: AudioClip = {
+          ...clip,
+          id: crypto.randomUUID(),
+          startTime: currentTime,
+          duration: clip.duration - splitAt,
+          sourceOffset: clip.sourceOffset + splitAt,
+          fadeInSec: 0,
+        };
+        return [left, right];
       };
 
       setProject(
@@ -479,7 +508,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
           tracks: project.tracks.map((t) =>
             t.id !== track.id
               ? t
-              : { ...t, clips: t.clips.flatMap((c) => (c.id === clip.id ? [left, right] : [c])) }
+              : { ...t, clips: t.clips.flatMap((c) => (splitIds.has(c.id) ? splitOf(c) : [c])) }
           ),
         })
       );

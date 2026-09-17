@@ -46,12 +46,17 @@ export interface MonitorInputConstraints {
 interface MonitorSession {
   stream: MediaStream;
   source: MediaStreamAudioSourceNode;
+  /** Input trim, live-adjustable via setInputGainDb() - sits between the
+   * raw mic source and everything downstream (analyser + armed tracks) so
+   * one control affects both what you hear and what gets recorded. */
+  inputGain: GainNode;
   analyser: AnalyserNode;
 }
 
 interface RecordingSession {
   stream: MediaStream;
   source: MediaStreamAudioSourceNode;
+  inputGain: GainNode;
   worklet: AudioWorkletNode;
   analyser: AnalyserNode;
   silentSink: GainNode;
@@ -118,6 +123,13 @@ export class AudioEngine {
   };
   /** null = let the browser pick the system default input. */
   private selectedInputDeviceId: string | null = null;
+  /** Input trim in dB, applied to both the monitor path and the recording
+   * path via each session's inputGain node. Persists across re-acquiring
+   * the mic (device change, constraint change). */
+  private inputGainDb = 0;
+  /** null = system default output. Only meaningful where
+   * isOutputDeviceSelectionSupported() is true. */
+  private selectedOutputDeviceId: string | null = null;
 
   /** Must be called from a user-gesture handler (click) before any playback. */
   ensureContext(): AudioContext {
@@ -164,6 +176,10 @@ export class AudioEngine {
       this.masterAnalyser = analyser;
       this.loudnessAnalyser = loudnessAnalyser;
       this.masterChain = masterChain;
+
+      if (this.selectedOutputDeviceId && this.isOutputDeviceSelectionSupported()) {
+        void (ctx as unknown as { setSinkId(id: string): Promise<void> }).setSinkId(this.selectedOutputDeviceId);
+      }
     }
     if (this.ctx.state === "suspended") {
       void this.ctx.resume();
@@ -339,6 +355,40 @@ export class AudioEngine {
     return devices.filter((d) => d.kind === "audiooutput");
   }
 
+  /** AudioContext.setSinkId() is real (spec-standardized, output-device
+   * routing that actually moves audio to a chosen device) but not
+   * universally implemented - Chrome/Edge support it, Safari/Firefox
+   * don't as of this writing. Never fake a working picker where it isn't
+   * there; callers must check this before offering the control. */
+  isOutputDeviceSelectionSupported(): boolean {
+    return typeof AudioContext !== "undefined" && "setSinkId" in AudioContext.prototype;
+  }
+
+  getSelectedOutputDeviceId(): string | null {
+    return this.selectedOutputDeviceId;
+  }
+
+  /** Routes the whole engine's output (master bus, i.e. everything reaching
+   * ctx.destination) to the given device. Requires ensureContext() to have
+   * run at least once (a user gesture); no-ops with an explicit error on
+   * browsers that don't implement setSinkId. */
+  async setSelectedOutputDeviceId(deviceId: string | null): Promise<{ ok: boolean; error?: string }> {
+    this.selectedOutputDeviceId = deviceId;
+    if (!this.isOutputDeviceSelectionSupported()) {
+      return { ok: false, error: "Este navegador no permite elegir el dispositivo de salida" };
+    }
+    const ctx = this.ctx;
+    if (!ctx) return { ok: true }; // applied lazily once ensureContext() runs
+    try {
+      // setSinkId is standardized but still missing from the lib.dom.d.ts
+      // AudioContext type in the TS version this project targets.
+      await (ctx as unknown as { setSinkId(id: string): Promise<void> }).setSinkId(deviceId ?? "");
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "No se pudo cambiar el dispositivo de salida" };
+    }
+  }
+
   /** Re-acquires the mic with the new device if a monitor stream is
    * already open, same reconnect dance as setMonitorConstraints(). */
   async setSelectedInputDeviceId(deviceId: string | null): Promise<void> {
@@ -388,10 +438,13 @@ export class AudioEngine {
           },
         });
         const source = ctx.createMediaStreamSource(stream);
+        const inputGain = ctx.createGain();
+        inputGain.gain.value = dbToGain(this.inputGainDb);
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 1024;
-        source.connect(analyser);
-        this.monitor = { stream, source, analyser };
+        source.connect(inputGain);
+        inputGain.connect(analyser);
+        this.monitor = { stream, source, inputGain, analyser };
         return { ok: true };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : "Microphone permission denied" };
@@ -404,13 +457,14 @@ export class AudioEngine {
 
   private stopMonitorStream(): void {
     if (!this.monitor) return;
-    const { stream, source, analyser } = this.monitor;
+    const { stream, source, inputGain, analyser } = this.monitor;
     for (const id of this.monitorConnected) {
       const graph = this.tracks.get(id);
-      if (graph) source.disconnect(graph.input);
+      if (graph) inputGain.disconnect(graph.input);
     }
     this.monitorConnected.clear();
     source.disconnect();
+    inputGain.disconnect();
     analyser.disconnect();
     stream.getTracks().forEach((t) => t.stop());
     this.monitor = null;
@@ -419,15 +473,29 @@ export class AudioEngine {
   private connectMonitorToTrack(trackId: TrackId): void {
     const graph = this.tracks.get(trackId);
     if (!graph || !this.monitor || this.monitorConnected.has(trackId)) return;
-    this.monitor.source.connect(graph.input);
+    this.monitor.inputGain.connect(graph.input);
     this.monitorConnected.add(trackId);
   }
 
   private disconnectMonitorFromTrack(trackId: TrackId): void {
     if (!this.monitorConnected.has(trackId)) return;
     const graph = this.tracks.get(trackId);
-    if (graph && this.monitor) this.monitor.source.disconnect(graph.input);
+    if (graph && this.monitor) this.monitor.inputGain.disconnect(graph.input);
     this.monitorConnected.delete(trackId);
+  }
+
+  /** Input trim (dB), applied live to whichever mic session(s) are
+   * currently open - monitor and/or recording - so one control governs
+   * both hearing yourself and what actually gets captured. */
+  setInputGainDb(db: number): void {
+    this.inputGainDb = db;
+    const gain = dbToGain(db);
+    if (this.monitor) this.monitor.inputGain.gain.value = gain;
+    if (this.recording) this.recording.inputGain.gain.value = gain;
+  }
+
+  getInputGainDb(): number {
+    return this.inputGainDb;
   }
 
   private shouldMonitorTrack(track: Track): boolean {
@@ -864,14 +932,17 @@ export class AudioEngine {
     }
 
     const source = ctx.createMediaStreamSource(stream);
+    const inputGain = ctx.createGain();
+    inputGain.gain.value = dbToGain(this.inputGainDb);
     const worklet = new AudioWorkletNode(ctx, "recorder-processor");
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
     const silentSink = ctx.createGain();
     silentSink.gain.value = 0;
 
-    source.connect(worklet);
-    source.connect(analyser);
+    source.connect(inputGain);
+    inputGain.connect(worklet);
+    inputGain.connect(analyser);
     worklet.connect(silentSink);
     analyser.connect(silentSink);
     silentSink.connect(ctx.destination);
@@ -883,7 +954,7 @@ export class AudioEngine {
       }
     };
 
-    this.recording = { stream, source, worklet, analyser, silentSink, chunks, startTime: fromTime };
+    this.recording = { stream, source, inputGain, worklet, analyser, silentSink, chunks, startTime: fromTime };
 
     // Play existing material under the take, same machinery as play().
     this.stopSources();
@@ -902,10 +973,11 @@ export class AudioEngine {
   /** Stops capture + playback and returns the encoded take, or null if nothing was recording. */
   stopRecording(): RecordingResult | null {
     if (!this.recording || !this.ctx) return null;
-    const { stream, source, worklet, analyser, silentSink, chunks, startTime } = this.recording;
+    const { stream, source, inputGain, worklet, analyser, silentSink, chunks, startTime } = this.recording;
 
     worklet.port.onmessage = null;
     source.disconnect();
+    inputGain.disconnect();
     worklet.disconnect();
     analyser.disconnect();
     silentSink.disconnect();
@@ -941,9 +1013,10 @@ export class AudioEngine {
   /** Aborts recording without producing a clip (permission errors, user cancel, etc). */
   discardRecording(): void {
     if (!this.recording) return;
-    const { stream, source, worklet, analyser, silentSink } = this.recording;
+    const { stream, source, inputGain, worklet, analyser, silentSink } = this.recording;
     worklet.port.onmessage = null;
     source.disconnect();
+    inputGain.disconnect();
     worklet.disconnect();
     analyser.disconnect();
     silentSink.disconnect();

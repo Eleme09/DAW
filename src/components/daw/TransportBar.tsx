@@ -56,6 +56,13 @@ export function TransportBar() {
   const [micConstraints, setMicConstraints] = useState<MonitorInputConstraints>(() => getAudioEngine().getMonitorConstraints());
   const [inputDevices, setInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(() => getAudioEngine().getSelectedInputDeviceId() ?? SYSTEM_DEFAULT_DEVICE);
+  const [inputGainDb, setInputGainDbState] = useState(() => getAudioEngine().getInputGainDb());
+  const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedOutputDeviceId, setSelectedOutputDeviceIdState] = useState(
+    () => getAudioEngine().getSelectedOutputDeviceId() ?? SYSTEM_DEFAULT_DEVICE
+  );
+  const [outputDeviceError, setOutputDeviceError] = useState<string | null>(null);
+  const outputSelectionSupported = getAudioEngine().isOutputDeviceSelectionSupported();
   const hasAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
 
   useEffect(() => {
@@ -63,7 +70,12 @@ export function TransportBar() {
     void getAudioEngine()
       .listInputDevices()
       .then(setInputDevices);
-  }, [moreOpen]);
+    if (outputSelectionSupported) {
+      void getAudioEngine()
+        .listOutputDevices()
+        .then(setOutputDevices);
+    }
+  }, [moreOpen, outputSelectionSupported]);
 
   function toggleMicConstraint(key: keyof MonitorInputConstraints) {
     const next = { ...micConstraints, [key]: !micConstraints[key] };
@@ -74,6 +86,20 @@ export function TransportBar() {
   function selectInputDevice(deviceId: string) {
     setSelectedDeviceId(deviceId);
     void getAudioEngine().setSelectedInputDeviceId(deviceId === SYSTEM_DEFAULT_DEVICE ? null : deviceId);
+  }
+
+  function handleInputGainChange(db: number) {
+    setInputGainDbState(db);
+    getAudioEngine().setInputGainDb(db);
+  }
+
+  async function selectOutputDevice(deviceId: string) {
+    setSelectedOutputDeviceIdState(deviceId);
+    setOutputDeviceError(null);
+    const result = await getAudioEngine().setSelectedOutputDeviceId(
+      deviceId === SYSTEM_DEFAULT_DEVICE ? null : deviceId
+    );
+    if (!result.ok) setOutputDeviceError(result.error ?? "No se pudo cambiar el dispositivo de salida");
   }
 
   const latencySec = getAudioEngine().getLatencySec();
@@ -336,6 +362,22 @@ export function TransportBar() {
               })),
             ]}
           />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-bone-3">Ganancia de entrada</span>
+            <input
+              type="range"
+              min={-24}
+              max={24}
+              step={0.5}
+              value={inputGainDb}
+              onChange={(e) => handleInputGainChange(Number(e.target.value))}
+              className="h-11 flex-1"
+            />
+            <span className="w-14 text-right text-xs tabular-nums text-bone-2">
+              {inputGainDb > 0 ? "+" : ""}
+              {inputGainDb.toFixed(1)} dB
+            </span>
+          </div>
           <p className="text-xs text-bone-3">
             Apagados por defecto los dos — degradan una señal musical pensada para grabar con
             teléfono/auriculares, no para una llamada. Actívalos solo si el ambiente es realmente
@@ -355,6 +397,34 @@ export function TransportBar() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="space-y-1.5 border-t border-line pt-3">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-bone-3">
+            Salida de audio
+          </span>
+          {outputSelectionSupported ? (
+            <>
+              <Picker
+                value={selectedOutputDeviceId}
+                onChange={(v) => void selectOutputDevice(v)}
+                title="Dispositivo de salida"
+                options={[
+                  { value: SYSTEM_DEFAULT_DEVICE, label: "Predeterminado del sistema" },
+                  ...outputDevices.map((d, i) => ({
+                    value: d.deviceId,
+                    label: d.label || `Salida ${i + 1}`,
+                  })),
+                ]}
+              />
+              {outputDeviceError && <p className="text-xs text-red-400">{outputDeviceError}</p>}
+            </>
+          ) : (
+            <p className="text-xs text-bone-3">
+              Este navegador no implementa selección de dispositivo de salida
+              (AudioContext.setSinkId) — se reproduce por la salida predeterminada del sistema.
+            </p>
+          )}
         </div>
 
         {(recordingError || exportError) && (

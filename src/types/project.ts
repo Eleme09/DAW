@@ -23,7 +23,12 @@ export interface AudioClip {
   color: string;
   /** Set when this clip overlaps another take of the same region (see
    * `addClip` in the store) - all clips sharing a takeGroupId are
-   * alternate takes, exactly one of which has `muted` false/undefined. */
+   * alternate takes. `selectTake` only mutes/unmutes takes that still
+   * time-overlap the one being chosen, so splitting takes at different
+   * points (existing "split at playhead") and picking a different active
+   * take per fragment produces real fragment-level comping - exactly one
+   * take is audible at any given point in time within the group, not
+   * necessarily the same take across its whole original span. */
   takeGroupId?: string;
   /** Per-clip mute, distinct from the track's own mute - used to hide
    * non-active takes within a group without deleting them. */

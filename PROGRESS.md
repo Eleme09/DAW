@@ -357,3 +357,27 @@ Status: **EN CURSO.** Es la pieza más grande de lo que queda de FASE 10 (brief 
 ## PIVOTE DE PRIORIDADES (indicado por el usuario, no una decisión propia)
 
 A partir de este punto el desarrollo de generación musical automática (Beat Generator, generación de pistas/instrumentales completas por IA) queda **en pausa** - no se borra nada funcional, simplemente deja de ser foco. El centro de gravedad pasa a la voz: grabación, edición y procesamiento vocal como prioridad 1-4, seguido de mezcla/routing, plugins/instrumentos, IA aplicada a voz, y MIDI/producción - en ese orden. Sampler 1/2 y 2/2 (marcadores de inicio/fin/bucle, pads, troceado por gesto) quedan pendientes pero no se continúan ahora mismo por este pivote, no porque el trabajo esté descartado.
+
+## Grabación (primeros huecos cerrados tras el pivote)
+
+- [x] **Ganancia de entrada (input gain/trim)**:
+  - `AudioEngine`: `inputGainDb` (estado del engine, no del proyecto - vive igual que `monitorConstraints`/`selectedInputDeviceId`, no se persiste con el proyecto). Un `GainNode` real (`inputGain`) insertado entre el `MediaStreamAudioSourceNode` y todo lo que va después - el analizador de monitoreo y la conexión a pistas armadas en `MonitorSession`; el worklet de grabación, su analizador y el `silentSink` en `RecordingSession` - así que una sola ganancia afecta a la vez lo que se oye en vivo y lo que efectivamente se graba, no dos caminos separados que podrían desincronizarse.
+  - `setInputGainDb(db)` aplica el valor en vivo (`gain.value = dbToGain(db)`) a cualquier sesión de monitor y/o grabación que esté abierta en ese momento, sin necesidad de reabrir el micrófono.
+  - `TransportBar.tsx`: slider (-24 a +24 dB) junto al selector de dispositivo de entrada existente.
+  - Verificado en navegador (Chromium headless, mic falso): arrastrar el slider con teclado (12 pasos de 0.5dB) deja la lectura en "+6.0 dB" exacto, sin errores de consola. `tsc` limpio.
+
+- [x] **Selección de dispositivo de salida**:
+  - `AudioEngine.isOutputDeviceSelectionSupported()`: comprueba si `AudioContext.prototype.setSinkId` existe de verdad antes de ofrecer el control - `setSinkId` en `AudioContext` está estandarizado pero no universal (Chrome/Edge lo implementan, Safari/Firefox no al momento de escribir esto), y el principio del proyecto es no fingir una capacidad que el navegador no tiene.
+  - `setSelectedOutputDeviceId(deviceId)`: llama al `setSinkId` real del `AudioContext` (contexto único del engine, así que mueve TODO lo que suena - master bus completo), aplicado también de forma diferida si se elige un dispositivo antes de que exista el contexto (primer gesto de usuario).
+  - `TransportBar.tsx`: nueva sección "Salida de audio" - picker real si el navegador soporta `setSinkId`, si no, un aviso honesto explicando por qué no está disponible en vez de un control que no haría nada.
+  - Verificado en navegador (Chromium headless con dispositivos de salida fake de Chromium): `setSinkId` detectado como soportado, picker abre y lista los 3 dispositivos de salida fake reales del navegador ("Fake Default Audio Output", "Fake Audio Output 1/2"). `tsc` limpio.
+
+- [x] **Comping real por fragmentos** (el hueco más grande identificado en la auditoría - antes solo existía cambio de toma completa por región entera):
+  - `selectTake` reescrito: antes silenciaba/activaba TODOS los clips de un `takeGroupId` a la vez (cambio de toma "todo o nada" por región completa). Ahora solo actúa sobre los clips del grupo que **se solapan en tiempo** con el clip recién elegido - los fragmentos de otras zonas del mismo grupo de tomas quedan intactos.
+  - `splitClipAtPlayhead` reescrito: antes encontraba y dividía solo el PRIMER clip de la pista que cubriera el playhead (por orden de array, sin mirar si estaba silenciado o no - podía partir una toma inaudible en vez de la que se oye). Ahora divide TODAS las tomas apiladas bajo el playhead a la vez, igual que cortar una línea de comping en un DAW real corta todas las tomas superpuestas de una vez, no solo la de encima.
+  - `removeClip`: la promoción de toma tras borrar la activa ahora también respeta el solapamiento temporal (antes promovía cualquier clip del grupo, pudiendo "resucitar" un fragmento de una zona distinta a la borrada).
+  - `ClipView.tsx`: el selector de "Toma N/M" de un clip ahora solo lista tomas que se solapan con ESE clip específico, no todo el grupo entero - evita ofrecer como alternativa un fragmento de otra parte de la línea de tiempo que ya fue comped de forma independiente.
+  - Flujo real resultante: grabar varias tomas superpuestas (ya existía) → dividir en el punto de comp deseado con "Split" (ahora corte-todas-las-tomas-a-la-vez) → elegir la toma activa por fragmento con el picker de "Toma N/M" de cada trozo. Es real comping fragmento a fragmento reutilizando la arquitectura de tomas existente, no un sistema nuevo en paralelo.
+  - `src/types/project.ts`: comentario de `takeGroupId` actualizado para documentar el nuevo comportamiento.
+  - Nuevo test en `projectStore.test.ts`: graba 2 tomas completas superpuestas (10s), corta ambas a la vez en t=5, comprueba que quedan 4 fragmentos con el mismo `takeGroupId`, y que elegir una toma distinta para la mitad derecha no afecta el estado de mute de la mitad izquierda (y viceversa) - la prueba concreta de que el comping es real por fragmento, no una ilusión de UI sobre el mismo mecanismo todo-o-nada.
+  - `tsc`/`eslint`/`vitest` (330 tests, 1 nuevo) limpios.
