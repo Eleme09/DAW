@@ -10,6 +10,7 @@ import {
   PITCH_CORRECTION_PRESETS,
   PITCH_CORRECTION_PRESET_LABELS,
   PITCH_CORRECTION_PRESET_NAMES,
+  type PitchCorrectionMode,
   type PitchCorrectionParams,
   type PitchCorrectionScale,
 } from "@/types/effects";
@@ -19,6 +20,11 @@ import { Knob } from "../ui/Knob";
 
 const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] as const;
 const BLACK_KEYS = new Set([1, 3, 6, 8, 10]);
+
+const MODE_OPTIONS: { value: PitchCorrectionMode; label: string }[] = [
+  { value: "scale", label: "Corrección por escala" },
+  { value: "fixed", label: "Tono fijo" },
+];
 
 const SCALE_OPTIONS: { value: PitchCorrectionScale; label: string }[] = [
   { value: "major", label: "Mayor" },
@@ -216,129 +222,167 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
         de escala más cercana.
       </p>
 
-      <div className="flex gap-1">
-        {PITCH_CORRECTION_PRESET_NAMES.map((name) => (
-          <button
-            key={name}
-            onClick={() => applyPreset(name)}
-            className="min-h-11 flex-1 rounded bg-surf-2 px-1 text-[10px] font-medium text-bone-2 hover:bg-surf-3"
-          >
-            {PITCH_CORRECTION_PRESET_LABELS[name]}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl value={params.mode} options={MODE_OPTIONS} onChange={(mode) => onChange({ ...params, mode })} />
 
-      <div className="flex gap-2">
-        <div className="w-20">
-          <Picker
-            value={String(params.key)}
-            options={KEY_OPTIONS}
-            title="Tonalidad"
-            onChange={(v) => onChange({ ...params, key: Number(v) })}
-          />
-        </div>
-        <div className="flex-1">
-          <SegmentedControl
-            value={params.scale}
-            options={SCALE_OPTIONS}
-            onChange={(scale) => onChange({ ...params, scale, customMask: params.customMask || MAJOR_SCALE_MASK })}
-          />
-        </div>
-      </div>
+      {params.mode === "fixed" ? (
+        <>
+          <div className="flex flex-wrap gap-x-3 gap-y-2">
+            <Knob
+              value={params.fixedSemitones}
+              min={-6}
+              max={6}
+              defaultValue={0}
+              decimals={0}
+              unit=" st"
+              label="Transposición"
+              onChange={(v) => onChange({ ...params, fixedSemitones: Math.round(v) })}
+            />
+            <Knob
+              value={params.mix * 100}
+              min={0}
+              max={100}
+              defaultValue={100}
+              decimals={0}
+              unit="%"
+              label="Mezcla"
+              onChange={(v) => onChange({ ...params, mix: v / 100 })}
+            />
+          </div>
+          <p className="text-[9px] text-bone-3">
+            Desplazamiento constante en semitonos - no sigue ninguna escala ni corrige afinación, siempre suma los
+            mismos semitonos suenes lo que suenes. Limitado a ±6 semitonos: el desplazador de esta cadena
+            (línea de retardo con deriva continua) satura a partir de ahí, así que pedir más no cambiaría nada
+            adicional. Sin preservación de formantes: transposiciones grandes suenan más finas/graves de forma
+            audible (&quot;chipmunk&quot;), no solo más agudas/graves de tono. Ver AUDIO_ENGINE.md.
+          </p>
+        </>
+      ) : (
+        <>
+          <div className="flex gap-1">
+            {PITCH_CORRECTION_PRESET_NAMES.map((name) => (
+              <button
+                key={name}
+                onClick={() => applyPreset(name)}
+                className="min-h-11 flex-1 rounded bg-surf-2 px-1 text-[10px] font-medium text-bone-2 hover:bg-surf-3"
+              >
+                {PITCH_CORRECTION_PRESET_LABELS[name]}
+              </button>
+            ))}
+          </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded border border-line p-1">
-        {Array.from({ length: 12 }, (_, i) => 11 - i).map((pc) => {
-          const isRoot = pc === params.key;
-          const isActive = activeClasses.has(pc);
-          const isBlack = BLACK_KEYS.has(pc);
-          return (
-            <button
-              key={pc}
-              onClick={() => togglePitchClass(pc)}
-              title={`${NOTE_NAMES[pc]}${isActive ? " (en la escala)" : " (excluida)"}`}
-              className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded text-[9px] font-medium ${
-                isActive ? (isBlack ? "bg-surf-3 text-bone" : "bg-bone text-ink") : "bg-ink text-bone-3"
-              } ${isRoot ? "ring-2 ring-inset ring-bone" : ""}`}
-              style={{ writingMode: "vertical-rl" }}
-            >
-              {NOTE_NAMES[pc]}
-            </button>
-          );
-        })}
-      </div>
-      <p className="text-[9px] text-bone-3">
-        Desliza para ver las 12 notas. Toca una nota para excluirla/incluirla (cambia a escala Custom).
-      </p>
+          <div className="flex gap-2">
+            <div className="w-20">
+              <Picker
+                value={String(params.key)}
+                options={KEY_OPTIONS}
+                title="Tonalidad"
+                onChange={(v) => onChange({ ...params, key: Number(v) })}
+              />
+            </div>
+            <div className="flex-1">
+              <SegmentedControl
+                value={params.scale}
+                options={SCALE_OPTIONS}
+                onChange={(scale) => onChange({ ...params, scale, customMask: params.customMask || MAJOR_SCALE_MASK })}
+              />
+            </div>
+          </div>
 
-      <div className="flex flex-wrap gap-x-3 gap-y-2">
-        <Knob
-          value={params.retuneSpeedMs}
-          min={0}
-          max={400}
-          defaultValue={120}
-          decimals={0}
-          unit=" ms"
-          label="Retune"
-          onChange={(v) => onChange({ ...params, retuneSpeedMs: v })}
-        />
-        <Knob
-          value={params.mix * 100}
-          min={0}
-          max={100}
-          defaultValue={100}
-          decimals={0}
-          unit="%"
-          label="Mezcla"
-          onChange={(v) => onChange({ ...params, mix: v / 100 })}
-        />
-        <Knob
-          value={params.humanize * 100}
-          min={0}
-          max={100}
-          defaultValue={30}
-          decimals={0}
-          unit="%"
-          label="Humanizar"
-          onChange={(v) => onChange({ ...params, humanize: v / 100 })}
-        />
-        <Knob
-          value={params.referenceHz}
-          min={400}
-          max={480}
-          defaultValue={440}
-          decimals={0}
-          unit="Hz"
-          label="Ref (A4)"
-          size={36}
-          onChange={(v) => onChange({ ...params, referenceHz: v })}
-        />
-        <Knob
-          value={params.detectMinHz}
-          min={40}
-          max={300}
-          defaultValue={70}
-          decimals={0}
-          unit="Hz"
-          label="Detección mín"
-          size={36}
-          onChange={(v) => onChange({ ...params, detectMinHz: Math.min(v, params.detectMaxHz - 10) })}
-        />
-        <Knob
-          value={params.detectMaxHz}
-          min={300}
-          max={2000}
-          defaultValue={1000}
-          decimals={0}
-          unit="Hz"
-          label="Detección máx"
-          size={36}
-          onChange={(v) => onChange({ ...params, detectMaxHz: Math.max(v, params.detectMinHz + 10) })}
-        />
-      </div>
-      <p className="text-[9px] text-bone-3">
-        Sin preservación de formantes todavía - correcciones grandes pueden sonar más finas (&quot;chipmunk&quot;).
-        Ver AUDIO_ENGINE.md.
-      </p>
+          <div className="flex gap-1 overflow-x-auto rounded border border-line p-1">
+            {Array.from({ length: 12 }, (_, i) => 11 - i).map((pc) => {
+              const isRoot = pc === params.key;
+              const isActive = activeClasses.has(pc);
+              const isBlack = BLACK_KEYS.has(pc);
+              return (
+                <button
+                  key={pc}
+                  onClick={() => togglePitchClass(pc)}
+                  title={`${NOTE_NAMES[pc]}${isActive ? " (en la escala)" : " (excluida)"}`}
+                  className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded text-[9px] font-medium ${
+                    isActive ? (isBlack ? "bg-surf-3 text-bone" : "bg-bone text-ink") : "bg-ink text-bone-3"
+                  } ${isRoot ? "ring-2 ring-inset ring-bone" : ""}`}
+                  style={{ writingMode: "vertical-rl" }}
+                >
+                  {NOTE_NAMES[pc]}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[9px] text-bone-3">
+            Desliza para ver las 12 notas. Toca una nota para excluirla/incluirla (cambia a escala Custom).
+          </p>
+
+          <div className="flex flex-wrap gap-x-3 gap-y-2">
+            <Knob
+              value={params.retuneSpeedMs}
+              min={0}
+              max={400}
+              defaultValue={120}
+              decimals={0}
+              unit=" ms"
+              label="Retune"
+              onChange={(v) => onChange({ ...params, retuneSpeedMs: v })}
+            />
+            <Knob
+              value={params.mix * 100}
+              min={0}
+              max={100}
+              defaultValue={100}
+              decimals={0}
+              unit="%"
+              label="Mezcla"
+              onChange={(v) => onChange({ ...params, mix: v / 100 })}
+            />
+            <Knob
+              value={params.humanize * 100}
+              min={0}
+              max={100}
+              defaultValue={30}
+              decimals={0}
+              unit="%"
+              label="Humanizar"
+              onChange={(v) => onChange({ ...params, humanize: v / 100 })}
+            />
+            <Knob
+              value={params.referenceHz}
+              min={400}
+              max={480}
+              defaultValue={440}
+              decimals={0}
+              unit="Hz"
+              label="Ref (A4)"
+              size={36}
+              onChange={(v) => onChange({ ...params, referenceHz: v })}
+            />
+            <Knob
+              value={params.detectMinHz}
+              min={40}
+              max={300}
+              defaultValue={70}
+              decimals={0}
+              unit="Hz"
+              label="Detección mín"
+              size={36}
+              onChange={(v) => onChange({ ...params, detectMinHz: Math.min(v, params.detectMaxHz - 10) })}
+            />
+            <Knob
+              value={params.detectMaxHz}
+              min={300}
+              max={2000}
+              defaultValue={1000}
+              decimals={0}
+              unit="Hz"
+              label="Detección máx"
+              size={36}
+              onChange={(v) => onChange({ ...params, detectMaxHz: Math.max(v, params.detectMinHz + 10) })}
+            />
+          </div>
+          <p className="text-[9px] text-bone-3">
+            Sin preservación de formantes todavía - correcciones grandes pueden sonar más finas (&quot;chipmunk&quot;).
+            Ver AUDIO_ENGINE.md.
+          </p>
+        </>
+      )}
     </div>
   );
 }

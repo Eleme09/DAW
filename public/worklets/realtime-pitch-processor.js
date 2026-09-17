@@ -210,6 +210,15 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
       { name: "detectMinHz", defaultValue: MIN_HZ, minValue: 40, maxValue: 300 },
       { name: "detectMaxHz", defaultValue: MAX_HZ, minValue: 300, maxValue: 2000 },
       { name: "bypassed", defaultValue: 0, minValue: 0, maxValue: 1 },
+      // 0 = "scale" (existing scale-correction behavior below), 1 = "fixed"
+      // (constant transpose, no pitch detection/target involved - see
+      // fixedSemitones and the mode check in runAnalysisHop).
+      { name: "mode", defaultValue: 0, minValue: 0, maxValue: 1 },
+      // Range matches what the delay-line shifter can actually do before
+      // MIN/MAX_PITCH_RATIO clamps it (±0.7x..1.4x = roughly ±6 semitones,
+      // see clamp() in runAnalysisHop) - the param bound is honest about
+      // the ceiling, not wider than what the shifter can deliver.
+      { name: "fixedSemitones", defaultValue: 0, minValue: -6, maxValue: 6 },
     ];
   }
 
@@ -257,16 +266,31 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     this.hopsSinceReport = 0;
   }
 
-  runAnalysisHop(key, scale, customMask, retuneSpeedMs, humanizeAmount, referenceHz, detectMinHz, detectMaxHz) {
+  runAnalysisHop(key, scale, customMask, retuneSpeedMs, humanizeAmount, referenceHz, detectMinHz, detectMaxHz, mode, fixedSemitones) {
     // Extract the ANALYSIS_SIZE most recent samples from the ring, oldest first.
     let start = (this.ringWritePos - ANALYSIS_SIZE + RING_SIZE) % RING_SIZE;
     for (let i = 0; i < ANALYSIS_SIZE; i++) {
       this.analysisScratch[i] = this.ring[(start + i) % RING_SIZE];
     }
 
+    // Detection still runs in "fixed" mode too - purely for the live
+    // detected-note readout (so you can see what you're singing before the
+    // constant transpose is applied), never to derive the shift itself.
     const yin = yinDetect(this.analysisScratch, sampleRate, detectMinHz, detectMaxHz, YIN_THRESHOLD);
     this.detectedHz = yin.frequencyHz;
     this.confidence = yin.confidence;
+
+    if (mode === 1) {
+      // Fixed transpose: a constant ratio, deliberately independent of
+      // whatever's detected - no scale snapping, no glide, no humanize
+      // (none of those mean anything for "always shift by N semitones").
+      this.pitchRatio = clamp(Math.pow(2, fixedSemitones / 12), MIN_PITCH_RATIO, MAX_PITCH_RATIO);
+      this.smoothedTargetMidi = null;
+      this.snappedMidi = null;
+      this.targetHz =
+        this.detectedHz !== null && this.confidence >= VOICED_CONFIDENCE_MIN ? this.detectedHz * this.pitchRatio : null;
+      return;
+    }
 
     const dtSec = HOP_SIZE / sampleRate;
     if (this.detectedHz === null || this.confidence < VOICED_CONFIDENCE_MIN) {
@@ -319,6 +343,8 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     const referenceHz = parameters.referenceHz[0];
     const detectMinHz = parameters.detectMinHz[0];
     const detectMaxHz = parameters.detectMaxHz[0];
+    const mode = Math.round(parameters.mode[0]);
+    const fixedSemitones = parameters.fixedSemitones[0];
 
     for (let i = 0; i < input.length; i++) {
       const x = input[i];
@@ -329,7 +355,18 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
       this.samplesUntilHop--;
       if (this.samplesUntilHop <= 0 && this.samplesWritten >= ANALYSIS_SIZE) {
         this.samplesUntilHop = HOP_SIZE;
-        this.runAnalysisHop(key, scale, customMask, retuneSpeedMs, humanizeAmount, referenceHz, detectMinHz, detectMaxHz);
+        this.runAnalysisHop(
+          key,
+          scale,
+          customMask,
+          retuneSpeedMs,
+          humanizeAmount,
+          referenceHz,
+          detectMinHz,
+          detectMaxHz,
+          mode,
+          fixedSemitones
+        );
         this.hopsSinceReport++;
         if (this.hopsSinceReport >= 4) {
           this.hopsSinceReport = 0;

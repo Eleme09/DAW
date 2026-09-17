@@ -83,6 +83,8 @@ export class PitchCorrectionEffect implements Effect<PitchCorrectionParams> {
     set("referenceHz", params.referenceHz);
     set("detectMinHz", params.detectMinHz);
     set("detectMaxHz", params.detectMaxHz);
+    set("mode", params.mode === "fixed" ? 1 : 0);
+    set("fixedSemitones", params.fixedSemitones);
   }
 
   dispose(): void {

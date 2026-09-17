@@ -148,27 +148,38 @@ export type PitchCorrectionScale = "major" | "naturalMinor" | "harmonicMinor" | 
  * chipmunk effect" on large corrections) - that needs spectral-envelope
  * separation (cepstral or LPC) reapplied after the shift, a materially
  * bigger DSP undertaking than the delay-line shifter this uses. Named here
- * rather than a silent no-op toggle - see PitchCorrectionEffect.ts.
+ * rather than a silent no-op toggle - see PitchCorrectionEffect.ts. Applies
+ * equally to both modes below (neither preserves formants).
  */
+export type PitchCorrectionMode = "scale" | "fixed";
+
 export interface PitchCorrectionParams {
-  /** Pitch class 0=C .. 11=B. Ignored when scale is "chromatic" or "custom". */
+  /** "scale" = correct toward the nearest note of key/scale (modes 1-3 of
+   * the brief's afinación family, via the retune/humanize/mix knobs below).
+   * "fixed" = always shift by a constant `fixedSemitones`, no pitch
+   * detection/scale involved - mode 5, "cambio de tono fijo". */
+  mode: PitchCorrectionMode;
+  /** Semitones to shift when mode === "fixed"; ignored in "scale" mode. */
+  fixedSemitones: number;
+  /** Pitch class 0=C .. 11=B. Ignored when scale is "chromatic" or "custom", or when mode is "fixed". */
   key: number;
   scale: PitchCorrectionScale;
   /** Bitmask of allowed pitch classes (bit N = pitch class N allowed),
    * used only when scale === "custom" - lets the user tap individual notes
    * on the keyboard in/out instead of picking a fixed named scale. */
   customMask: number;
-  /** ms to glide to the target pitch; 0 = instant hard-tune snap. */
+  /** ms to glide to the target pitch; 0 = instant hard-tune snap. Ignored when mode is "fixed" (the shift is constant, nothing to glide toward). */
   retuneSpeedMs: number;
   /** 0..1 dry/wet - how much of the corrected signal replaces the dry input. */
   mix: number;
-  /** 0..1 - adds subtle pitch wobble so a hard snap doesn't sound perfectly robotic. */
+  /** 0..1 - adds subtle pitch wobble so a hard snap doesn't sound perfectly robotic. Ignored when mode is "fixed". */
   humanize: number;
   /** A4 reference frequency in Hz - 440 is standard; adjustable to match an
    * already-recorded backing track tuned slightly off standard pitch. */
   referenceHz: number;
   /** YIN pitch-detection search range - narrowing it away from the
-   * transposed voice's natural range reduces octave-detection errors. */
+   * transposed voice's natural range reduces octave-detection errors.
+   * Ignored when mode is "fixed" (no detection needed for a constant shift). */
   detectMinHz: number;
   detectMaxHz: number;
 }
@@ -310,6 +321,8 @@ export function createEffectInstance(type: EffectType): EffectInstance {
         type,
         bypassed: false,
         params: {
+          mode: "scale",
+          fixedSemitones: 0,
           key: 0,
           scale: "major",
           customMask: MAJOR_SCALE_MASK,

@@ -381,3 +381,17 @@ A partir de este punto el desarrollo de generación musical automática (Beat Ge
   - `src/types/project.ts`: comentario de `takeGroupId` actualizado para documentar el nuevo comportamiento.
   - Nuevo test en `projectStore.test.ts`: graba 2 tomas completas superpuestas (10s), corta ambas a la vez en t=5, comprueba que quedan 4 fragmentos con el mismo `takeGroupId`, y que elegir una toma distinta para la mitad derecha no afecta el estado de mute de la mitad izquierda (y viceversa) - la prueba concreta de que el comping es real por fragmento, no una ilusión de UI sobre el mismo mecanismo todo-o-nada.
   - `tsc`/`eslint`/`vitest` (330 tests, 1 nuevo) limpios.
+
+## FASE 10G — Afinación (EN CURSO, por modo)
+
+La familia de 10 modos del brief (punto 4) se implementa modo a modo sobre el `pitchCorrection` insert ya existente (`realtime-pitch-processor.js`), reutilizando su detección YIN + desplazador de línea de retardo, en vez de construir un motor nuevo por modo.
+
+**Ya cubiertos antes de este pivote, por los presets y knobs existentes** (no es trabajo nuevo, solo mapeo a la lista del brief): 1) Corrección por escala (tonalidad/escala/retune/humanize base), 2) Corrección dura (`trapDuro`/`robot`, retune≈0), 3) Corrección natural (`natural`/`transparente`, retune alto).
+
+- [x] **Modo 5 — Cambio de tono fijo**:
+  - `PitchCorrectionParams` ganó `mode: "scale" | "fixed"` y `fixedSemitones`. En `"fixed"`, el efecto ignora tonalidad/escala/retune/humanize por completo - transposición constante, no corrección.
+  - `realtime-pitch-processor.js`: nuevos `AudioParam`s `mode`/`fixedSemitones`. En modo fijo, `runAnalysisHop` sigue corriendo YIN (para el lector de nota detectada en vivo, honesto con lo que realmente está sonando) pero calcula `pitchRatio` directo como `2^(semitonos/12)` en vez de derivarlo de un snap a escala - reutiliza el mismo desplazador de línea de retardo con deriva continua que ya usa la corrección por escala, no un camino de código nuevo.
+  - **Límite real encontrado y corregido antes de dejarlo mal expuesto en la UI**: el desplazador satura en `MIN_PITCH_RATIO=0.7`/`MAX_PITCH_RATIO=1.4` (límites ya existentes del propio archivo, verificados matemáticamente: `12·log2(0.7) ≈ -6.17` semitonos, `12·log2(1.4) ≈ +5.83`). Un primer borrador ofrecía el knob de ±12 semitonos, que habría saturado en silencio pasado ±6 sin decírselo al usuario. Corregido: knob y `AudioParam` acotados a ±6, con nota explícita en el panel de por qué el límite existe.
+  - `PitchCorrectionPanel.tsx`: selector de modo (Corrección por escala / Tono fijo) arriba de todo; en modo fijo solo se muestran el knob de transposición y mezcla (tonalidad, escala, teclado, retune, humanize, rango de detección desaparecen porque no significan nada en este modo), con la misma advertencia honesta de "sin preservación de formantes" que ya tenía el modo por escala (ninguno de los dos la tiene).
+  - Verificado en navegador (Chromium headless, mic falso): pista de audio → Afinación añadida como insert → alternar a "Tono fijo" muestra el knob de "Transposición", sin errores de consola. `tsc`/`eslint`/`vitest` (330 tests) limpios.
+  - **Pendiente explícito, no fingido**: "con y sin corrección de formantes" del punto 5 del brief - solo está construido el "sin". La corrección de formantes no existe en ningún punto del motor todavía (ver tarea pendiente #80, "Formant preservation in PSOLA", que cubre tanto esto como el modo 6 completo).
