@@ -36,6 +36,12 @@ export class LimiterEffect implements Effect<LimiterParams> {
     return this.makeupGain;
   }
 
+  /** Real gain reduction in dB right now, from the native node's own
+   * `.reduction` - see CompressorEffect.getReductionDb()'s doc comment. */
+  getReductionDb(): number {
+    return this.compressor.reduction;
+  }
+
   setParams(params: LimiterParams): void {
     const t = this.ctx.currentTime;
     this.compressor.threshold.setTargetAtTime(params.thresholdDb, t, 0.005);

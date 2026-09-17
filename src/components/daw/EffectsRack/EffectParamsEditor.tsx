@@ -6,6 +6,7 @@ import { ParamSlider } from "./ParamSlider";
 import { EqPanel } from "./EqPanel";
 import { PitchCorrectionPanel } from "./PitchCorrectionPanel";
 import { CompressorPanel } from "./CompressorPanel";
+import { LimiterPanel } from "./LimiterPanel";
 
 const TONE_LABEL: Record<"warm" | "neutral" | "bright", string> = { warm: "cálido", neutral: "neutro", bright: "brillante" };
 const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
@@ -61,16 +62,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       );
     }
 
-    case "limiter": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Umbral" value={p.thresholdDb} min={-30} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
-          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={500} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
-          <ParamSlider label="Techo" value={p.ceilingDb} min={-3} max={0} step={0.1} unit=" dB" onChange={(v) => onChange({ ...p, ceilingDb: v })} />
-        </>
-      );
-    }
+    case "limiter":
+      return <LimiterPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "clipper": {
       const p = effect.params;

@@ -8,12 +8,12 @@ import { useRafLoop } from "@/hooks/useRafLoop";
 import type { EffectTarget } from "@/state/projectStore";
 import type { CompressorParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
+import { GainReductionMeter } from "./GainReductionMeter";
 
 const DB_MIN = -60;
 const DB_MAX = 0;
 const WIDTH = 300;
 const HEIGHT = 170;
-const REDUCTION_MAX_DB = 24;
 
 function dbToFrac(db: number): number {
   return (Math.min(DB_MAX, Math.max(DB_MIN, db)) - DB_MIN) / (DB_MAX - DB_MIN);
@@ -121,33 +121,6 @@ export function CompressorPanel({
       <ParamSlider label="Liberación" value={params.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...params, releaseMs: v })} />
       <ParamSlider label="Knee" value={params.kneeDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...params, kneeDb: v })} />
       <ParamSlider label="Compensación" value={params.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...params, makeupDb: v })} />
-    </div>
-  );
-}
-
-/** Horizontal bar, real telemetry (compressor.reduction), grows from the
- * right as more gain gets cut - matches the reference's "medidor de
- * reducción de ganancia" requirement for this effect family. */
-function GainReductionMeter({ reductionRef }: { reductionRef: React.RefObject<number> }) {
-  const barRef = useRef<HTMLDivElement>(null);
-  const labelRef = useRef<HTMLSpanElement>(null);
-
-  useRafLoop(() => {
-    const db = -reductionRef.current; // reduction is <= 0; show as a positive "dB cut" amount
-    const frac = Math.min(1, Math.max(0, db / REDUCTION_MAX_DB));
-    if (barRef.current) barRef.current.style.width = `${frac * 100}%`;
-    if (labelRef.current) labelRef.current.textContent = `-${db.toFixed(1)} dB`;
-  }, true);
-
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-24 shrink-0 text-[10px] uppercase tracking-wide text-bone-3">Reducción</span>
-      <div className="h-2 flex-1 overflow-hidden rounded-sm bg-surf-2">
-        <div ref={barRef} className="h-full bg-s2" style={{ width: "0%" }} />
-      </div>
-      <span ref={labelRef} className="w-14 shrink-0 text-right font-mono text-[10px] text-bone-2">
-        -0.0 dB
-      </span>
     </div>
   );
 }
