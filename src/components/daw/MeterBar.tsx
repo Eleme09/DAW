@@ -7,6 +7,10 @@ import { gainToDb } from "@/audio-engine/dbUtils";
 interface MeterBarProps {
   analyser: AnalyserNode | null;
   vertical?: boolean;
+  /** Fires only when the latched clip state flips, so a parent can show an
+   * explicit saturation warning (the clip LED itself is a 6px dot - easy to
+   * miss at a glance, e.g. before pressing record). */
+  onClipChange?: (clipped: boolean) => void;
 }
 
 const METER_MIN_DB = -60;
@@ -37,7 +41,7 @@ function levelColor(db: number): string {
  * requires every mixer/master visualization to be canvas-drawn, not CSS
  * bars. Data is fetched every frame via refs (not React state) to avoid
  * re-render churn - only the canvas pixels change per frame. */
-export function MeterBar({ analyser, vertical = true }: MeterBarProps) {
+export function MeterBar({ analyser, vertical = true, onClipChange }: MeterBarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const holdDbRef = useRef(METER_MIN_DB);
@@ -82,9 +86,10 @@ export function MeterBar({ analyser, vertical = true }: MeterBarProps) {
       lastFrameRef.current = now;
       holdDbRef.current = Math.max(peakDb, holdDbRef.current - PEAK_HOLD_DECAY_DB_PER_SEC * dtSec);
 
-      if (peakAmp >= CLIP_THRESHOLD) {
+      if (peakAmp >= CLIP_THRESHOLD && !clippedRef.current) {
         clippedRef.current = true;
         clipped = true;
+        onClipChange?.(true);
       }
     }
 
@@ -158,8 +163,9 @@ export function MeterBar({ analyser, vertical = true }: MeterBarProps) {
     const y = e.clientY - rect.top;
     const ledX = vertical ? rect.width / 2 : CLIP_LED_PX / 2;
     const ledY = vertical ? CLIP_LED_PX / 2 : rect.height / 2;
-    if (Math.hypot(x - ledX, y - ledY) <= CLIP_LED_PX * 1.5) {
+    if (Math.hypot(x - ledX, y - ledY) <= CLIP_LED_PX * 1.5 && clippedRef.current) {
       clippedRef.current = false;
+      onClipChange?.(false);
     }
   }
 

@@ -40,6 +40,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const isLiveInput = track.armed && isRecording;
   const [moreOpen, setMoreOpen] = useState(false);
+  const [inputClipped, setInputClipped] = useState(false);
   const engine = getAudioEngine();
 
   return (
@@ -124,8 +125,22 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
       </div>
 
       {track.armed && (
-        <div className="flex h-2 items-center">
-          <MeterBar analyser={isLiveInput ? engine.getRecordingAnalyser() : engine.getMonitorAnalyser()} vertical={false} />
+        <div className="flex h-4 items-center gap-1">
+          <div className="flex h-2 flex-1 items-center">
+            <MeterBar
+              analyser={isLiveInput ? engine.getRecordingAnalyser() : engine.getMonitorAnalyser()}
+              vertical={false}
+              onClipChange={setInputClipped}
+            />
+          </div>
+          {inputClipped && (
+            <span
+              className="shrink-0 rounded bg-red-600 px-1 text-[9px] font-bold uppercase leading-4 text-white"
+              title="La entrada está saturando - baja la ganancia del micrófono o aléjate antes de grabar"
+            >
+              Satura
+            </span>
+          )}
         </div>
       )}
 
