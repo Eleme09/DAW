@@ -10,7 +10,8 @@ import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { PianoRoll } from "./PianoRoll/PianoRoll";
 import { AutomationEditor } from "./Automation/AutomationEditor";
-import { FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
+import { VozPanel } from "./VozPanel/VozPanel";
+import { MicIcon, FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
 import type { ComponentType } from "react";
 
 // Below the `md` breakpoint the desktop's three-pane row (Browser/Timeline/
@@ -21,6 +22,7 @@ import type { ComponentType } from "react";
 // state) so other panels (e.g. the Mixer's per-channel FX button) can jump
 // to a different tab.
 const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ className?: string }> }[] = [
+  { id: "voz", label: "Voz", Icon: MicIcon },
   { id: "browser", label: "Biblioteca", Icon: FolderIcon },
   { id: "timeline", label: "Sesión", Icon: TimelineIcon },
   { id: "mixer", label: "Mezcla", Icon: MixIcon },
@@ -92,6 +94,12 @@ export function DawShell() {
       <PianoRoll />
       <AutomationEditor />
       <div className="flex flex-1 overflow-hidden">
+        {/* Voz is a mobile-only dedicated screen, same reasoning as the
+           mobile Mixer tab below - on desktop, Sesión + FX + Biblioteca are
+           already all visible together, which covers the same ground. */}
+        <div className={`${mobileView === "voz" ? "flex" : "hidden"} w-full flex-1 flex-col overflow-hidden md:hidden`}>
+          <VozPanel />
+        </div>
         <div className={`${mobileView === "browser" ? "block" : "hidden"} w-full md:contents`}>
           <BrowserPanel />
         </div>

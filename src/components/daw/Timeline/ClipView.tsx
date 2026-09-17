@@ -5,6 +5,7 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import type { AudioClip } from "@/types/project";
 import { snapToGrid } from "@/lib/timing/grid";
+import { getOverlappingTakes } from "@/lib/timeline/takes";
 import { TRACK_HEIGHT } from "./constants";
 import { Waveform } from "../Waveform";
 import { Picker } from "../ui/Picker";
@@ -43,17 +44,7 @@ export function ClipView({ clip }: ClipViewProps) {
   const trackClips = useProjectStore((s) => s.project.tracks.find((t) => t.id === clip.trackId)?.clips);
   // Recording order, not display order - clips are always appended, so
   // array position doubles as "which take came Nth" without a separate field.
-  // Only takes that still overlap THIS clip's time range - once fragments
-  // of the group have been split and comped independently (see
-  // selectTake), a take living in a different, non-overlapping window of
-  // the same group is a different comp decision, not an alternate for
-  // this fragment.
-  const clipEnd = clip.startTime + clip.duration;
-  const takes = clip.takeGroupId
-    ? (trackClips?.filter(
-        (c) => c.takeGroupId === clip.takeGroupId && c.startTime < clipEnd && clip.startTime < c.startTime + c.duration
-      ) ?? [])
-    : [];
+  const takes = trackClips ? getOverlappingTakes(trackClips, clip) : [];
   const [buffer, setBuffer] = useState<AudioBuffer | null>(() => getAudioEngine().getBuffer(clip.sampleId) ?? null);
   const dragState = useRef<DragState | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);

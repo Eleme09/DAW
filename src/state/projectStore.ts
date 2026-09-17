@@ -28,7 +28,7 @@ import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND
 export type EffectTarget = TrackId | "master";
 /** Which single pane is full-width on mobile - see DawShell. Unused at `md`+,
  * where every pane renders simultaneously. */
-export type MobileView = "browser" | "timeline" | "mixer" | "effects";
+export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects";
 /** Which sub-tab BrowserPanel is showing - lifted out of that component so
  * a track/effect's "Ask AI" button can jump straight to the Assistant tab. */
 export type BrowserTab = "projects" | "audio" | "match" | "mix" | "generate" | "assistant";
@@ -275,7 +275,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
     setPixelsPerSecond: (value) =>
       set({ pixelsPerSecond: Math.min(MAX_PIXELS_PER_SECOND, Math.max(MIN_PIXELS_PER_SECOND, value)) }),
-    mobileView: "timeline",
+    // "voz" (not "timeline") is the default landing view - per the master
+    // direction, the dedicated vocal-take screen is meant to be the
+    // product itself, not one more panel a user has to navigate to find.
+    mobileView: "voz",
     setMobileView: (view) => set({ mobileView: view }),
     effectsRackMode: "track",
     setEffectsRackMode: (mode) => set({ effectsRackMode: mode }),
