@@ -9,8 +9,8 @@ import { CompressorPanel } from "./CompressorPanel";
 import { LimiterPanel } from "./LimiterPanel";
 import { NoiseGatePanel } from "./NoiseGatePanel";
 import { DeEsserPanel } from "./DeEsserPanel";
+import { SaturationPanel } from "./SaturationPanel";
 
-const TONE_LABEL: Record<"warm" | "neutral" | "bright", string> = { warm: "cálido", neutral: "neutro", bright: "brillante" };
 const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
 
 interface EffectParamsEditorProps {
@@ -33,28 +33,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "deesser":
       return <DeEsserPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "saturation": {
-      const p = effect.params;
-      return (
-        <>
-          <div className="flex w-full gap-1 text-[11px]">
-            {(["warm", "neutral", "bright"] as const).map((tone) => (
-              <button
-                key={tone}
-                onClick={() => onChange({ ...p, tone })}
-                className={`min-h-11 flex-1 rounded px-1 uppercase ${
-                  p.tone === tone ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
-                }`}
-              >
-                {TONE_LABEL[tone]}
-              </button>
-            ))}
-          </div>
-          <ParamSlider label="Drive" value={p.driveDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, driveDb: v })} />
-          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
-        </>
-      );
-    }
+    case "saturation":
+      return <SaturationPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "limiter":
       return <LimiterPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
