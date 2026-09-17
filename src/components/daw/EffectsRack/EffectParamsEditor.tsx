@@ -12,6 +12,7 @@ import { DeEsserPanel } from "./DeEsserPanel";
 import { SaturationPanel } from "./SaturationPanel";
 import { StereoWidthPanel } from "./StereoWidthPanel";
 import { ReverbPanel } from "./ReverbPanel";
+import { DelayPanel } from "./DelayPanel";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -52,17 +53,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "reverb":
       return <ReverbPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "delay": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Tiempo" value={p.timeMs} min={10} max={2000} step={10} unit=" ms" decimals={0} onChange={(v) => onChange({ ...p, timeMs: v })} />
-          <ParamSlider label="Feedback" value={p.feedback * 100} min={0} max={95} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, feedback: v / 100 })} />
-          <ParamSlider label="Tono" value={p.filterFreq} min={500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, filterFreq: v })} />
-          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
-        </>
-      );
-    }
+    case "delay":
+      return <DelayPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "multibandCompressor": {
       const p = effect.params;

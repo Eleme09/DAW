@@ -13,6 +13,10 @@ export class DelayEffect implements Effect<DelayParams> {
   private dampingFilter: BiquadFilterNode;
   private dryGain: GainNode;
   private wetGain: GainNode;
+  /** In series right after wetGain, before it rejoins the dry signal -
+   * same reasoning as ReverbEffect.wetAnalyser: real level of just this
+   * instance's echoes, not the dry+wet mix a track/master analyser sees. */
+  private wetAnalyser: AnalyserNode;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -24,6 +28,8 @@ export class DelayEffect implements Effect<DelayParams> {
     this.dampingFilter.type = "lowpass";
     this.dryGain = ctx.createGain();
     this.wetGain = ctx.createGain();
+    this.wetAnalyser = ctx.createAnalyser();
+    this.wetAnalyser.fftSize = 1024;
 
     this.input.connect(this.dryGain);
     this.dryGain.connect(this.output);
@@ -33,7 +39,8 @@ export class DelayEffect implements Effect<DelayParams> {
     this.dampingFilter.connect(this.feedback);
     this.feedback.connect(this.delay);
     this.dampingFilter.connect(this.wetGain);
-    this.wetGain.connect(this.output);
+    this.wetGain.connect(this.wetAnalyser);
+    this.wetAnalyser.connect(this.output);
   }
 
   get inputNode(): AudioNode {
@@ -41,6 +48,10 @@ export class DelayEffect implements Effect<DelayParams> {
   }
   get outputNode(): AudioNode {
     return this.output;
+  }
+
+  getWetAnalyser(): AnalyserNode {
+    return this.wetAnalyser;
   }
 
   setParams(params: DelayParams): void {
@@ -59,5 +70,6 @@ export class DelayEffect implements Effect<DelayParams> {
     this.dampingFilter.disconnect();
     this.dryGain.disconnect();
     this.wetGain.disconnect();
+    this.wetAnalyser.disconnect();
   }
 }
