@@ -5,6 +5,7 @@ import type { EffectInstance, MultibandBandParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
 import { EqPanel } from "./EqPanel";
 import { PitchCorrectionPanel } from "./PitchCorrectionPanel";
+import { CompressorPanel } from "./CompressorPanel";
 
 const TONE_LABEL: Record<"warm" | "neutral" | "bright", string> = { warm: "cálido", neutral: "neutro", bright: "brillante" };
 const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
@@ -23,19 +24,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "pitchCorrection":
       return <PitchCorrectionPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "compressor": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Umbral" value={p.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, thresholdDb: v })} />
-          <ParamSlider label="Ratio" value={p.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...p, ratio: v })} />
-          <ParamSlider label="Ataque" value={p.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
-          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
-          <ParamSlider label="Knee" value={p.kneeDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, kneeDb: v })} />
-          <ParamSlider label="Compensación" value={p.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, makeupDb: v })} />
-        </>
-      );
-    }
+    case "compressor":
+      return <CompressorPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "deesser": {
       const p = effect.params;

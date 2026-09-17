@@ -21,6 +21,14 @@ export class CompressorEffect implements Effect<CompressorParams> {
     return this.makeup;
   }
 
+  /** Real gain reduction in dB right now, straight from the native node's
+   * own `.reduction` (Web Audio computes this internally from its actual
+   * attack/release/knee state) - not a value derived from our own transfer
+   * function, which would only be the idealized/instantaneous shape. */
+  getReductionDb(): number {
+    return this.compressor.reduction;
+  }
+
   setParams(params: CompressorParams): void {
     const t = this.ctx.currentTime;
     this.compressor.threshold.setTargetAtTime(params.thresholdDb, t, 0.01);

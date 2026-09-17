@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeHardClipCurve, makeSaturationCurve } from "./curves";
+import { compressorTransferDb, makeHardClipCurve, makeSaturationCurve } from "./curves";
 
 describe("makeHardClipCurve", () => {
   const curve = makeHardClipCurve();
@@ -44,5 +44,46 @@ describe("makeSaturationCurve", () => {
     const centerSlope = curve[Math.floor(n * 0.51)] - curve[Math.floor(n * 0.49)];
     const edgeSlope = curve[n - 1] - curve[n - 3];
     expect(Math.abs(edgeSlope)).toBeLessThan(Math.abs(centerSlope));
+  });
+});
+
+describe("compressorTransferDb", () => {
+  it("passes signal through unchanged well below the knee", () => {
+    expect(compressorTransferDb(-40, -18, 4, 6)).toBeCloseTo(-40, 5);
+  });
+
+  it("applies the full ratio well above the knee", () => {
+    // 10dB above threshold, ratio 4:1 -> output = threshold + 10/4
+    expect(compressorTransferDb(-8, -18, 4, 6)).toBeCloseTo(-18 + 10 / 4, 5);
+  });
+
+  it("is continuous at the knee boundaries (no jump)", () => {
+    const threshold = -18,
+      ratio = 4,
+      knee = 6;
+    const belowKnee = threshold - knee / 2;
+    const aboveKnee = threshold + knee / 2;
+    expect(compressorTransferDb(belowKnee - 1e-6, threshold, ratio, knee)).toBeCloseTo(
+      compressorTransferDb(belowKnee, threshold, ratio, knee),
+      3
+    );
+    expect(compressorTransferDb(aboveKnee, threshold, ratio, knee)).toBeCloseTo(
+      compressorTransferDb(aboveKnee + 1e-6, threshold, ratio, knee),
+      3
+    );
+  });
+
+  it("never boosts the signal (output <= input) for ratio >= 1", () => {
+    for (let db = -60; db <= 0; db += 3) {
+      expect(compressorTransferDb(db, -20, 4, 6)).toBeLessThanOrEqual(db + 1e-9);
+    }
+  });
+
+  it("is a no-op (1:1) when ratio is 1", () => {
+    expect(compressorTransferDb(-5, -20, 1, 6)).toBeCloseTo(-5, 5);
+  });
+
+  it("matches the hard-knee formula when kneeDb is 0", () => {
+    expect(compressorTransferDb(-8, -18, 4, 0)).toBeCloseTo(-18 + (-8 - -18) / 4, 5);
   });
 });

@@ -42,3 +42,24 @@ export function makeHardClipCurve(): Float32Array<ArrayBuffer> {
 function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
 }
+
+/**
+ * Soft-knee compressor transfer curve: output dB for a given input dB,
+ * given threshold/ratio/knee - the standard piecewise formula (see e.g. the
+ * Web Audio spec's own description of DynamicsCompressorNode's curve).
+ * Below the knee it's a straight 1:1 pass-through; inside the knee it's a
+ * quadratic blend into the compressed slope; above it, straight
+ * `threshold + (x - threshold) / ratio`. This is the idealized static
+ * shape from the parameters alone - CompressorEffect.getReductionDb()
+ * gives the real, attack/release-shaped reduction the native node is
+ * actually applying at any instant, which will differ from this curve
+ * during a transient (that's what attack/release time are for).
+ */
+export function compressorTransferDb(inputDb: number, thresholdDb: number, ratio: number, kneeDb: number): number {
+  const halfKnee = kneeDb / 2;
+  if (inputDb < thresholdDb - halfKnee) return inputDb;
+  if (inputDb > thresholdDb + halfKnee) return thresholdDb + (inputDb - thresholdDb) / ratio;
+  if (kneeDb <= 0) return thresholdDb + (inputDb - thresholdDb) / ratio;
+  const t = inputDb - thresholdDb + halfKnee;
+  return inputDb + ((1 / ratio - 1) * t * t) / (2 * kneeDb);
+}
