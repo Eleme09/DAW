@@ -209,6 +209,23 @@ export const PITCH_CORRECTION_PRESETS: Record<PitchCorrectionPresetName, Pick<Pi
   robot: { retuneSpeedMs: 0, mix: 1, humanize: 0 },
 };
 
+/**
+ * Brief mode 9, "Vocoder / robot" - see VocoderEffect.ts for the actual
+ * analysis/synthesis DSP (a real channel vocoder built from native Web
+ * Audio nodes, not a preset on top of pitch correction).
+ */
+export interface VocoderParams {
+  /** Web Audio's built-in oscillator waveforms suffice for a buzzy
+   * vocoder carrier - only the classic vocoder timbres (sawtooth/square)
+   * are offered, no sine/triangle (too pure to excite the whole band
+   * bank usefully). */
+  carrierType: "sawtooth" | "square";
+  /** The carrier's fixed pitch in Hz - this vocoder does not track the
+   * singer's own pitch (see VocoderEffect.ts's doc comment). */
+  carrierFreqHz: number;
+  mix: number;
+}
+
 export type EffectInstance =
   | { id: EffectId; type: "eq"; bypassed: boolean; params: EqParams }
   | { id: EffectId; type: "compressor"; bypassed: boolean; params: CompressorParams }
@@ -225,7 +242,8 @@ export type EffectInstance =
   | { id: EffectId; type: "exciter"; bypassed: boolean; params: ExciterParams }
   | { id: EffectId; type: "autoPan"; bypassed: boolean; params: AutoPanParams }
   | { id: EffectId; type: "stereoWidth"; bypassed: boolean; params: StereoWidthParams }
-  | { id: EffectId; type: "pitchCorrection"; bypassed: boolean; params: PitchCorrectionParams };
+  | { id: EffectId; type: "pitchCorrection"; bypassed: boolean; params: PitchCorrectionParams }
+  | { id: EffectId; type: "vocoder"; bypassed: boolean; params: VocoderParams };
 
 export type EffectType = EffectInstance["type"];
 
@@ -246,6 +264,7 @@ export const EFFECT_LABELS: Record<EffectType, string> = {
   autoPan: "Paneo automático",
   stereoWidth: "Imagen estéreo",
   pitchCorrection: "Afinación",
+  vocoder: "Vocoder",
 };
 
 function defaultEqParams(): EqParams {
@@ -332,5 +351,7 @@ export function createEffectInstance(type: EffectType): EffectInstance {
           ...PITCH_CORRECTION_PRESETS.natural,
         },
       };
+    case "vocoder":
+      return { id, type, bypassed: false, params: { carrierType: "sawtooth", carrierFreqHz: 110, mix: 1 } };
   }
 }

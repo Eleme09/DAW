@@ -6,6 +6,7 @@ import { analyzePitch, correctPitchBuffer } from "@/audio-engine/pitch/applyPitc
 import { frequencyToMidi } from "@/audio-engine/pitch/noteUtils";
 import { harmonizeBuffer } from "@/audio-engine/pitch/harmonize";
 import { doubleBuffer } from "@/audio-engine/pitch/doubler";
+import { noteFollowBuffer } from "@/audio-engine/pitch/noteFollow";
 import { encodeWav } from "@/audio-engine/wavEncoder";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { putSample } from "@/lib/storage/sampleStore";
@@ -62,6 +63,9 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
   const [generatingHarmony, setGeneratingHarmony] = useState(false);
   const [doubleDetuneCents, setDoubleDetuneCents] = useState(25);
   const [generatingDouble, setGeneratingDouble] = useState(false);
+  const midiClips = useProjectStore((s) => s.project.tracks.flatMap((t) => t.midiClips));
+  const [selectedMidiClipId, setSelectedMidiClipId] = useState<string>("");
+  const [applyingNoteFollow, setApplyingNoteFollow] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,6 +185,22 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
       });
     } finally {
       setGeneratingDouble(false);
+    }
+  }
+
+  async function generateNoteFollow() {
+    const clip = midiClips.find((c) => c.id === selectedMidiClipId);
+    if (!clip) return;
+    setApplyingNoteFollow(true);
+    try {
+      const buffer = await ensureSampleLoaded(sample.id);
+      if (!buffer) return;
+      const channels: Float32Array[] = [];
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) channels.push(buffer.getChannelData(ch));
+      const followed = noteFollowBuffer(channels, buffer.sampleRate, clip.notes);
+      await renderChannelsToNewTrack(followed, buffer.sampleRate, `según ${clip.name}`);
+    } finally {
+      setApplyingNoteFollow(false);
     }
   }
 
@@ -323,6 +343,37 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
                 {generatingDouble ? "Generando…" : "Generar doble"}
               </button>
             </div>
+          </div>
+
+          <div className="mt-3 border-t border-line pt-2">
+            <p className="mb-1 font-semibold uppercase tracking-wide text-bone-2">Control por notas</p>
+            {midiClips.length === 0 ? (
+              <p className="text-bone-3">
+                No hay ningún patrón MIDI en el proyecto todavía. Crea uno en una pista de instrumento (piano
+                roll) para usarlo como referencia de afinación en vez de la tonalidad/escala de arriba.
+              </p>
+            ) : (
+              <>
+                <p className="mb-1.5 text-bone-3">
+                  Corrige hacia las notas exactas de un patrón MIDI en vez de la nota de escala más cercana - el
+                  patrón se alinea desde su propio inicio con el comienzo de esta toma. Donde el patrón no tiene
+                  ninguna nota sonando, esa parte de la toma se deja sin corregir.
+                </p>
+                <Picker
+                  value={selectedMidiClipId}
+                  options={midiClips.map((c) => ({ value: c.id, label: `${c.name} (${c.notes.length} notas)` }))}
+                  title="Patrón MIDI de referencia"
+                  onChange={setSelectedMidiClipId}
+                />
+                <button
+                  onClick={generateNoteFollow}
+                  disabled={applyingNoteFollow || !selectedMidiClipId}
+                  className="mt-1.5 min-h-11 w-full rounded bg-surf-2 px-2 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-50"
+                >
+                  {applyingNoteFollow ? "Renderizando…" : "Aplicar corrección por notas"}
+                </button>
+              </>
+            )}
           </div>
         </>
       )}

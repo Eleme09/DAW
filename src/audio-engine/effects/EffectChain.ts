@@ -15,6 +15,7 @@ import { ExciterEffect } from "./ExciterEffect";
 import { AutoPanEffect } from "./AutoPanEffect";
 import { StereoWidthEffect } from "./StereoWidthEffect";
 import { PitchCorrectionEffect } from "./PitchCorrectionEffect";
+import { VocoderEffect } from "./VocoderEffect";
 import type { EffectInstance, EffectType } from "@/types/effects";
 
 export interface EffectChainDeps {
@@ -84,6 +85,8 @@ function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unkno
       return new StereoWidthEffect(ctx) as unknown as Effect<unknown>;
     case "pitchCorrection":
       return new PitchCorrectionEffect(ctx) as unknown as Effect<unknown>;
+    case "vocoder":
+      return new VocoderEffect(ctx) as unknown as Effect<unknown>;
   }
 }
 

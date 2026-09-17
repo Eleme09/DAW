@@ -18,6 +18,7 @@ import { FlangerPanel } from "./FlangerPanel";
 import { AutoPanPanel } from "./AutoPanPanel";
 import { ExciterPanel } from "./ExciterPanel";
 import { MultibandPanel } from "./MultibandPanel";
+import { VocoderPanel } from "./VocoderPanel";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -74,6 +75,9 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
 
     case "stereoWidth":
       return <StereoWidthPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
+
+    case "vocoder":
+      return <VocoderPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
   }
 }
 
