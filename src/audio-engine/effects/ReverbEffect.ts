@@ -10,6 +10,11 @@ export class ReverbEffect implements Effect<ReverbParams> {
   private dryGain: GainNode;
   private wetGain: GainNode;
   private irKey: string | null = null;
+  /** In series right after the wet path's own gain, before it rejoins the
+   * dry signal - a real level reading of just the reverb tail this
+   * instance is producing right now (not the dry+wet mix a track/master
+   * analyser would show). */
+  private wetAnalyser: AnalyserNode;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -19,12 +24,15 @@ export class ReverbEffect implements Effect<ReverbParams> {
     this.convolver.normalize = true;
     this.dryGain = ctx.createGain();
     this.wetGain = ctx.createGain();
+    this.wetAnalyser = ctx.createAnalyser();
+    this.wetAnalyser.fftSize = 1024;
 
     this.input.connect(this.dryGain);
     this.dryGain.connect(this.output);
     this.input.connect(this.convolver);
     this.convolver.connect(this.wetGain);
-    this.wetGain.connect(this.output);
+    this.wetGain.connect(this.wetAnalyser);
+    this.wetAnalyser.connect(this.output);
   }
 
   get inputNode(): AudioNode {
@@ -32,6 +40,10 @@ export class ReverbEffect implements Effect<ReverbParams> {
   }
   get outputNode(): AudioNode {
     return this.output;
+  }
+
+  getWetAnalyser(): AnalyserNode {
+    return this.wetAnalyser;
   }
 
   setParams(params: ReverbParams): void {
@@ -60,5 +72,6 @@ export class ReverbEffect implements Effect<ReverbParams> {
     this.convolver.disconnect();
     this.dryGain.disconnect();
     this.wetGain.disconnect();
+    this.wetAnalyser.disconnect();
   }
 }

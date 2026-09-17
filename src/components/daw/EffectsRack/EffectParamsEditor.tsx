@@ -11,8 +11,7 @@ import { NoiseGatePanel } from "./NoiseGatePanel";
 import { DeEsserPanel } from "./DeEsserPanel";
 import { SaturationPanel } from "./SaturationPanel";
 import { StereoWidthPanel } from "./StereoWidthPanel";
-
-const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
+import { ReverbPanel } from "./ReverbPanel";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -50,28 +49,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "noiseGate":
       return <NoiseGatePanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "reverb": {
-      const p = effect.params;
-      return (
-        <>
-          <div className="flex w-full gap-1 text-[11px]">
-            {(["room", "hall", "plate"] as const).map((sizeType) => (
-              <button
-                key={sizeType}
-                onClick={() => onChange({ ...p, sizeType })}
-                className={`min-h-11 flex-1 rounded px-1 uppercase ${
-                  p.sizeType === sizeType ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
-                }`}
-              >
-                {SIZE_LABEL[sizeType]}
-              </button>
-            ))}
-          </div>
-          <ParamSlider label="Caída" value={p.decaySec} min={0.2} max={6} step={0.1} unit=" s" onChange={(v) => onChange({ ...p, decaySec: v })} />
-          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
-        </>
-      );
-    }
+    case "reverb":
+      return <ReverbPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "delay": {
       const p = effect.params;

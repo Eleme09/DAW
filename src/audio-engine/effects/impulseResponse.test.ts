@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateImpulseResponseSamples } from "./impulseResponse";
+import { generateImpulseResponseSamples, reverbDecayEnvelopeDb } from "./impulseResponse";
 
 describe("generateImpulseResponseSamples", () => {
   it("produces the requested length for the sample rate/decay", () => {
@@ -37,6 +37,35 @@ describe("generateImpulseResponseSamples", () => {
       hallRatio += tailToHeadRatio(hall);
     }
     expect(roomRatio / trials).toBeLessThan(hallRatio / trials);
+  });
+});
+
+describe("reverbDecayEnvelopeDb", () => {
+  it("starts at 0 dB (full level) at t=0", () => {
+    expect(reverbDecayEnvelopeDb(0, "hall")).toBeCloseTo(0, 5);
+  });
+
+  it("goes to -Infinity at t=1 (fully decayed)", () => {
+    expect(reverbDecayEnvelopeDb(1, "room")).toBe(-Infinity);
+  });
+
+  it("is monotonically decreasing over time", () => {
+    let prev = reverbDecayEnvelopeDb(0, "plate");
+    for (let i = 1; i <= 10; i++) {
+      const db = reverbDecayEnvelopeDb(i / 10, "plate");
+      expect(db).toBeLessThanOrEqual(prev);
+      prev = db;
+    }
+  });
+
+  it("room (higher exponent) decays faster than hall (lower exponent) at the same t", () => {
+    const t = 0.5;
+    expect(reverbDecayEnvelopeDb(t, "room")).toBeLessThan(reverbDecayEnvelopeDb(t, "hall"));
+  });
+
+  it("clamps out-of-range t", () => {
+    expect(reverbDecayEnvelopeDb(-1, "hall")).toBeCloseTo(0, 5);
+    expect(reverbDecayEnvelopeDb(2, "hall")).toBe(-Infinity);
   });
 });
 

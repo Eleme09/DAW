@@ -8,11 +8,23 @@
  */
 import type { ReverbParams } from "@/types/effects";
 
-const DECAY_EXPONENT: Record<ReverbParams["sizeType"], number> = {
+export const DECAY_EXPONENT: Record<ReverbParams["sizeType"], number> = {
   room: 3,
   hall: 1.5,
   plate: 2,
 };
+
+/**
+ * The exact envelope `generateImpulseResponseSamples` multiplies its noise
+ * by, in dB - not a redrawn approximation of the tail, the literal formula
+ * (`(1-t)^exponent`) that produces the impulse response actually loaded
+ * into the convolver. `t` is fraction of decaySec elapsed (0..1).
+ */
+export function reverbDecayEnvelopeDb(t: number, sizeType: ReverbParams["sizeType"]): number {
+  const clamped = Math.min(1, Math.max(0, t));
+  const linear = Math.pow(1 - clamped, DECAY_EXPONENT[sizeType]);
+  return linear <= 0 ? -Infinity : 20 * Math.log10(linear);
+}
 
 export function generateImpulseResponseSamples(
   sampleRate: number,
