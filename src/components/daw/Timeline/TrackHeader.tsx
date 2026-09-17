@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
+import { likelyUsingHeadphones } from "@/lib/audio/outputHeuristics";
 import type { MonitorMode, Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
 import { Knob } from "../ui/Knob";
@@ -41,7 +42,25 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const isLiveInput = track.armed && isRecording;
   const [moreOpen, setMoreOpen] = useState(false);
   const [inputClipped, setInputClipped] = useState(false);
+  const [likelyHeadphones, setLikelyHeadphones] = useState<boolean | null>(null);
   const engine = getAudioEngine();
+  const monitoringLive = track.armed && track.monitorMode !== "off";
+
+  useEffect(() => {
+    if (!monitoringLive) return;
+    let cancelled = false;
+    const check = () => {
+      void engine.listOutputDevices().then((devices) => {
+        if (!cancelled) setLikelyHeadphones(likelyUsingHeadphones(devices));
+      });
+    };
+    check();
+    navigator.mediaDevices?.addEventListener("devicechange", check);
+    return () => {
+      cancelled = true;
+      navigator.mediaDevices?.removeEventListener("devicechange", check);
+    };
+  }, [monitoringLive, engine]);
 
   return (
     <div
@@ -133,13 +152,23 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
               onClipChange={setInputClipped}
             />
           </div>
-          {inputClipped && (
+          {inputClipped ? (
             <span
               className="shrink-0 rounded bg-red-600 px-1 text-[9px] font-bold uppercase leading-4 text-white"
               title="La entrada está saturando - baja la ganancia del micrófono o aléjate antes de grabar"
             >
               Satura
             </span>
+          ) : (
+            monitoringLive &&
+            likelyHeadphones === false && (
+              <span
+                className="shrink-0 rounded bg-yellow-500 px-1 text-[9px] font-bold uppercase leading-4 text-black"
+                title="Parece que estás monitoreando por altavoz, no por auriculares - riesgo de feedback (detección aproximada, no siempre disponible)"
+              >
+                Altavoz
+              </span>
+            )
           )}
         </div>
       )}

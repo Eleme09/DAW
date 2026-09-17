@@ -101,16 +101,27 @@ Pendiente real de 10C (no empezado):
     archivo (cabecera con back+título+nube, regla con code de tiempo,
     etc.), que no se tocó en esta pasada (solo colores/iconos/tipografía).
 
-## 10D-10I — NO EMPEZADAS
+## 10D — Grabación: COMPLETA
+
+Las 5 subfases del punto 5 del brief, cerradas una por una (ver
+`PROGRESS.md`, sección "FASE 10D — Grabación", para el detalle técnico y
+la verificación de cada una): monitorización 3 estados y toggles eco/ruido
+(ya existían de FASE 9, confirmado por auditoría antes de tocar nada),
+comping (ya existía de FASE 5), medidor de entrada con insignia explícita
+de saturación, cuenta atrás audible con acento de metrónomo, compensación
+de latencia aplicada a la toma grabada, selección de dispositivo de
+entrada, aviso heurístico de feedback por altavoz.
+
+Pendiente real: el criterio de cierre completo del brief ("grabar una voz
+sobre un beat desde un teléfono... y que quede alineada") no se probó en
+un teléfono físico - toda la verificación fue en Chromium de escritorio
+con dispositivos de audio simulados. Eso es trabajo de 10I (auditoría en
+dispositivo real), no de 10D.
+
+## 10E-10I — NO EMPEZADAS
 
 Del orden de trabajo original del brief (`fase-10-reconstruccion-interfaz.md`
 sección 6):
-- **10D — Grabación**: monitorización 3 estados (ya existe desde FASE 9),
-  conmutadores de eco/ruido (ya existen desde FASE 9), medidor de entrada
-  con detección de saturación antes de grabar, cuenta atrás audible,
-  compensación de latencia aplicada a la toma, aviso de feedback por
-  altavoz. Gran parte de esto pudo haberse cerrado ya en FASE 9 - auditar
-  contra el punto 5 del brief antes de asumir que falta todo.
 - **10E — Clip y hojas**: hoja contextual estilo BandLab al tocar un clip
   (tap abre acciones/ajustes sin cambiar de pestaña). No empezada.
 - **10F — Efectos**: visualización propia para los 14 efectos que no son

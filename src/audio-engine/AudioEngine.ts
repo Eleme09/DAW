@@ -331,6 +331,14 @@ export class AudioEngine {
     return devices.filter((d) => d.kind === "audioinput");
   }
 
+  /** Best-effort - see outputHeuristics.ts's doc comment for why this can't
+   * be trusted on its own. */
+  async listOutputDevices(): Promise<MediaDeviceInfo[]> {
+    if (!navigator.mediaDevices?.enumerateDevices) return [];
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter((d) => d.kind === "audiooutput");
+  }
+
   /** Re-acquires the mic with the new device if a monitor stream is
    * already open, same reconnect dance as setMonitorConstraints(). */
   async setSelectedInputDeviceId(deviceId: string | null): Promise<void> {
