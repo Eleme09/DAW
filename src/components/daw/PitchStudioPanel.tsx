@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { analyzePitch, correctPitchBuffer } from "@/audio-engine/pitch/applyPitchCorrection";
 import { frequencyToMidi } from "@/audio-engine/pitch/noteUtils";
+import { harmonizeBuffer } from "@/audio-engine/pitch/harmonize";
+import { doubleBuffer } from "@/audio-engine/pitch/doubler";
 import { encodeWav } from "@/audio-engine/wavEncoder";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { putSample } from "@/lib/storage/sampleStore";
@@ -56,6 +58,10 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
   const addTrack = useProjectStore((s) => s.addTrack);
   const addClip = useProjectStore((s) => s.addClip);
   const selectTrack = useProjectStore((s) => s.selectTrack);
+  const [harmonyInterval, setHarmonyInterval] = useState<2 | 4 | 7>(2);
+  const [generatingHarmony, setGeneratingHarmony] = useState(false);
+  const [doubleDetuneCents, setDoubleDetuneCents] = useState(25);
+  const [generatingDouble, setGeneratingDouble] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +83,52 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
     setSettings((prev) => ({ ...prev, mode, retuneSpeedMs: preset.retuneSpeedMs, humanizeAmount: preset.humanizeAmount }));
   }
 
+  /** Shared by every "render a processed copy as a new take on its own
+   * track" flow (correction/harmony/double) - only what differs (the DSP
+   * itself, the name suffix, where the clip starts, its default level) is
+   * a parameter, everything else (encode, cache, persist, place) is one
+   * code path instead of copy-pasted per mode. */
+  async function renderChannelsToNewTrack(
+    channels: Float32Array[],
+    sampleRate: number,
+    nameSuffix: string,
+    opts: { startTimeSec?: number; gainDb?: number } = {}
+  ) {
+    const blob = encodeWav(channels, sampleRate);
+    const newSampleId = crypto.randomUUID();
+    await getAudioEngine().decodeAndCache(newSampleId, await blob.arrayBuffer());
+    const name = `${sample.name.replace(/\.[^/.]+$/, "")} (${nameSuffix})`;
+    await putSample(newSampleId, name, blob);
+    const durationSec = channels[0].length / sampleRate;
+    const asset: SampleAsset = {
+      id: newSampleId,
+      name,
+      durationSec,
+      sampleRate,
+      channels: channels.length,
+      createdAt: new Date().toISOString(),
+    };
+    await addSampleAsset(asset);
+    onNewSample?.();
+
+    const track = addTrack(name);
+    const clip: AudioClip = {
+      id: crypto.randomUUID(),
+      trackId: track.id,
+      sampleId: newSampleId,
+      name,
+      startTime: opts.startTimeSec ?? 0,
+      duration: durationSec,
+      sourceOffset: 0,
+      gainDb: opts.gainDb ?? 0,
+      fadeInSec: 0,
+      fadeOutSec: 0,
+      color: track.color,
+    };
+    addClip(clip);
+    selectTrack(track.id);
+  }
+
   async function applyCorrection() {
     setApplying(true);
     try {
@@ -85,41 +137,50 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
       const channels: Float32Array[] = [];
       for (let ch = 0; ch < buffer.numberOfChannels; ch++) channels.push(buffer.getChannelData(ch));
       const corrected = correctPitchBuffer(channels, buffer.sampleRate, settings);
-      const blob = encodeWav(corrected, buffer.sampleRate);
-
-      const newSampleId = crypto.randomUUID();
-      await getAudioEngine().decodeAndCache(newSampleId, await blob.arrayBuffer());
-      const name = `${sample.name.replace(/\.[^/.]+$/, "")} (afinado)`;
-      await putSample(newSampleId, name, blob);
-      const asset: SampleAsset = {
-        id: newSampleId,
-        name,
-        durationSec: buffer.duration,
-        sampleRate: buffer.sampleRate,
-        channels: buffer.numberOfChannels,
-        createdAt: new Date().toISOString(),
-      };
-      await addSampleAsset(asset);
-      onNewSample?.();
-
-      const track = addTrack(name);
-      const clip: AudioClip = {
-        id: crypto.randomUUID(),
-        trackId: track.id,
-        sampleId: newSampleId,
-        name,
-        startTime: 0,
-        duration: asset.durationSec,
-        sourceOffset: 0,
-        gainDb: 0,
-        fadeInSec: 0,
-        fadeOutSec: 0,
-        color: track.color,
-      };
-      addClip(clip);
-      selectTrack(track.id);
+      await renderChannelsToNewTrack(corrected, buffer.sampleRate, "afinado");
     } finally {
       setApplying(false);
+    }
+  }
+
+  async function generateHarmony() {
+    setGeneratingHarmony(true);
+    try {
+      const buffer = await ensureSampleLoaded(sample.id);
+      if (!buffer) return;
+      const channels: Float32Array[] = [];
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) channels.push(buffer.getChannelData(ch));
+      const harmonized = harmonizeBuffer(channels, buffer.sampleRate, settings.key, settings.scale, harmonyInterval);
+      const intervalLabel = { 2: "3ra", 4: "5ta", 7: "8va" }[harmonyInterval];
+      // -4dB starting point: a harmony sitting under the lead, not fighting
+      // it for the same space - a mix starting point, not a claim that
+      // this is "the right" balance (the user still has the track fader).
+      await renderChannelsToNewTrack(harmonized, buffer.sampleRate, `armonía ${intervalLabel}`, { gainDb: -4 });
+    } finally {
+      setGeneratingHarmony(false);
+    }
+  }
+
+  async function generateDouble() {
+    setGeneratingDouble(true);
+    try {
+      const buffer = await ensureSampleLoaded(sample.id);
+      if (!buffer) return;
+      const channels: Float32Array[] = [];
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) channels.push(buffer.getChannelData(ch));
+      const doubled = doubleBuffer(channels, buffer.sampleRate, doubleDetuneCents);
+      // Timing micro-variation lives here, not inside doubler.ts (see that
+      // file's doc comment) - a few real random milliseconds of offset on
+      // where the rendered clip starts, the cheap-but-honest way to vary
+      // timing without warping the render itself. Capped at 30ms: enough
+      // to be a real double, not enough to read as sloppily out of sync.
+      const startTimeSec = (Math.random() * 2 - 1) * 0.03;
+      await renderChannelsToNewTrack(doubled, buffer.sampleRate, "doble", {
+        startTimeSec: Math.max(0, startTimeSec),
+        gainDb: -4,
+      });
+    } finally {
+      setGeneratingDouble(false);
     }
   }
 
@@ -205,6 +266,64 @@ export function PitchStudioPanel({ sample, onNewSample }: PitchStudioPanelProps)
           >
             {applying ? "Renderizando…" : "Aplicar corrección de tono"}
           </button>
+
+          <div className="mt-3 border-t border-line pt-2">
+            <p className="mb-1 font-semibold uppercase tracking-wide text-bone-2">Armonizador</p>
+            <p className="mb-1.5 text-bone-3">
+              Genera una voz nueva en una pista aparte, {harmonyInterval === 7 ? "una octava" : harmonyInterval === 4 ? "una quinta" : "una tercera"}{" "}
+              dentro de la tonalidad/escala de arriba (no un intervalo fijo en semitonos - el ancho real cambia
+              según la nota, como una armonía diatónica de verdad). Se suma a la mezcla, no reemplaza la toma
+              original.
+            </p>
+            <div className="flex gap-1">
+              {([2, 4, 7] as const).map((steps) => (
+                <button
+                  key={steps}
+                  onClick={() => setHarmonyInterval(steps)}
+                  className={`min-h-11 flex-1 rounded px-1 text-[10px] uppercase ${
+                    harmonyInterval === steps ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
+                  }`}
+                >
+                  {steps === 2 ? "3ra" : steps === 4 ? "5ta" : "8va"}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={generateHarmony}
+              disabled={generatingHarmony}
+              className="mt-1.5 min-h-11 w-full rounded bg-surf-2 px-2 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-50"
+            >
+              {generatingHarmony ? "Generando…" : "Generar armonía"}
+            </button>
+          </div>
+
+          <div className="mt-3 border-t border-line pt-2">
+            <p className="mb-1 font-semibold uppercase tracking-wide text-bone-2">Doblaje</p>
+            <p className="mb-1.5 text-bone-3">
+              Duplica la toma en una pista aparte con micro-variaciones de tono (deriva lenta, no una
+              transposición fija) y un pequeño desfase de tiempo al colocar el clip - el truco clásico de
+              &quot;doblar&quot; una voz cantando la misma línea dos veces.
+            </p>
+            <div className="flex items-center gap-2">
+              <Knob
+                value={doubleDetuneCents}
+                min={5}
+                max={50}
+                defaultValue={25}
+                decimals={0}
+                unit=" ¢"
+                label="Variación"
+                onChange={(v) => setDoubleDetuneCents(v)}
+              />
+              <button
+                onClick={generateDouble}
+                disabled={generatingDouble}
+                className="min-h-11 flex-1 rounded bg-surf-2 px-2 text-[11px] font-semibold text-bone hover:bg-surf-3 disabled:opacity-50"
+              >
+                {generatingDouble ? "Generando…" : "Generar doble"}
+              </button>
+            </div>
+          </div>
         </>
       )}
     </div>
