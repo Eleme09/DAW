@@ -10,6 +10,7 @@ import { LimiterPanel } from "./LimiterPanel";
 import { NoiseGatePanel } from "./NoiseGatePanel";
 import { DeEsserPanel } from "./DeEsserPanel";
 import { SaturationPanel } from "./SaturationPanel";
+import { StereoWidthPanel } from "./StereoWidthPanel";
 
 const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
 
@@ -151,12 +152,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       );
     }
 
-    case "stereoWidth": {
-      const p = effect.params;
-      return (
-        <ParamSlider label="Ancho" value={p.width * 100} min={0} max={200} step={5} unit="%" decimals={0} onChange={(v) => onChange({ ...p, width: v / 100 })} />
-      );
-    }
+    case "stereoWidth":
+      return <StereoWidthPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
   }
 }
 

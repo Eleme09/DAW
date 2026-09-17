@@ -29,6 +29,16 @@ export class StereoWidthEffect implements Effect<StereoWidthParams> {
   private side: GainNode;
   private widthPos: GainNode;
   private widthNeg: GainNode;
+  private leftSum: GainNode;
+  private rightSum: GainNode;
+  /** Sit inline right where L and R are actually summed, before the
+   * merger - the real post-width channels this instance produces, not a
+   * side-tap. Same "must be in series to be pulled by the graph" reasoning
+   * as the other effects' inline analysers this phase. Vectorscope/
+   * correlation need genuinely synchronized L/R, which a post-chain track
+   * analyser (mono-summed, no per-channel split) can't give at all. */
+  private leftAnalyser: AnalyserNode;
+  private rightAnalyser: AnalyserNode;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -51,6 +61,12 @@ export class StereoWidthEffect implements Effect<StereoWidthParams> {
 
     this.widthPos = ctx.createGain();
     this.widthNeg = ctx.createGain();
+    this.leftSum = ctx.createGain();
+    this.rightSum = ctx.createGain();
+    this.leftAnalyser = ctx.createAnalyser();
+    this.leftAnalyser.fftSize = 1024;
+    this.rightAnalyser = ctx.createAnalyser();
+    this.rightAnalyser.fftSize = 1024;
 
     this.input.connect(this.splitter);
     this.splitter.connect(this.midFromL, 0);
@@ -66,12 +82,25 @@ export class StereoWidthEffect implements Effect<StereoWidthParams> {
     this.side.connect(this.widthPos);
     this.side.connect(this.widthNeg);
 
-    this.mid.connect(this.merger, 0, 0);
-    this.widthPos.connect(this.merger, 0, 0);
-    this.mid.connect(this.merger, 0, 1);
-    this.widthNeg.connect(this.merger, 0, 1);
+    this.mid.connect(this.leftSum);
+    this.widthPos.connect(this.leftSum);
+    this.mid.connect(this.rightSum);
+    this.widthNeg.connect(this.rightSum);
+
+    this.leftSum.connect(this.leftAnalyser);
+    this.rightSum.connect(this.rightAnalyser);
+
+    this.leftAnalyser.connect(this.merger, 0, 0);
+    this.rightAnalyser.connect(this.merger, 0, 1);
 
     this.merger.connect(this.output);
+  }
+
+  getLeftAnalyser(): AnalyserNode {
+    return this.leftAnalyser;
+  }
+  getRightAnalyser(): AnalyserNode {
+    return this.rightAnalyser;
   }
 
   get inputNode(): AudioNode {
@@ -99,6 +128,10 @@ export class StereoWidthEffect implements Effect<StereoWidthParams> {
     this.side.disconnect();
     this.widthPos.disconnect();
     this.widthNeg.disconnect();
+    this.leftSum.disconnect();
+    this.rightSum.disconnect();
+    this.leftAnalyser.disconnect();
+    this.rightAnalyser.disconnect();
     this.output.disconnect();
   }
 }
