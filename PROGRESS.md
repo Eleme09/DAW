@@ -324,4 +324,8 @@ Desde aquí, los siguientes efectos (Clipper, Multiband, Exciter, Chorus, Flange
   - Ningún efecto LFO tiene referencia de producto en el brief, pero se les da visualización real igual, reutilizando el mismo patrón entre los tres en vez de inventar tres distintos.
   - Verificado en navegador (Chromium headless): las tres curvas se ven correctamente (seno completo, punto verde sobre la curva, no fuera de ella), el punto se mueve con el tiempo real entre capturas sucesivas, sin errores de consola. `tsc`/`eslint`/`vitest` (318 tests) limpios.
 
-Pendiente de 10F: Multiband, Exciter (sin referencia del brief, siguen con `ParamSlider`s genéricos). Rediseño de Synth/Sampler (sí está en la tabla) sigue siendo la pieza más grande de lo que queda de toda la fase.
+- [x] **Excitador / Exciter**: combina los dos patrones ya establecidos esta fase - banda sombreada sobre el cruce (como De-esser) + espectro antes/después superpuesto (como Saturación) - en vez de inventar uno nuevo. `ExciterEffect` ganó `inputAnalyser`/`outputAnalyser` en serie, mismo patrón que `SaturationEffect`. Verificado en navegador: banda sombreada por encima de 4.5kHz, líneas de espectro real antes/después visibles (la diferencia es sutil con mezcla al 25%, que es honesto - un exciter aditivo con poca mezcla no debería verse como una transformación drástica), sin errores de consola. `tsc`/`eslint`/`vitest` (318 tests) limpios.
+
+**FASE 10F queda en 13/14 efectos con visualización real** (de los 14 que listaba el punto 3 más el redondeo de esta sesión a 6 sin referencia explícita). Solo falta **Multiband** - el más grande y el único que combina 3 bandas de compresión a la vez, dejado para el final a propósito.
+
+Rediseño de Synth/Sampler (sí está en la tabla del brief, no en la lista de "efectos" sino aparte) sigue sin empezar - es la pieza más grande de lo que queda de toda la fase.

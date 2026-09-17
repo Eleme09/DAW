@@ -17,6 +17,7 @@ import { ClipperPanel } from "./ClipperPanel";
 import { ChorusPanel } from "./ChorusPanel";
 import { FlangerPanel } from "./FlangerPanel";
 import { AutoPanPanel } from "./AutoPanPanel";
+import { ExciterPanel } from "./ExciterPanel";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -85,16 +86,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
     case "flanger":
       return <FlangerPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
-    case "exciter": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Frec" value={p.freq} min={1500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...p, freq: v })} />
-          <ParamSlider label="Drive" value={p.driveDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...p, driveDb: v })} />
-          <ParamSlider label="Mezcla" value={p.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...p, mix: v / 100 })} />
-        </>
-      );
-    }
+    case "exciter":
+      return <ExciterPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "autoPan":
       return <AutoPanPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
