@@ -7,6 +7,7 @@ import { EqPanel } from "./EqPanel";
 import { PitchCorrectionPanel } from "./PitchCorrectionPanel";
 import { CompressorPanel } from "./CompressorPanel";
 import { LimiterPanel } from "./LimiterPanel";
+import { NoiseGatePanel } from "./NoiseGatePanel";
 
 const TONE_LABEL: Record<"warm" | "neutral" | "bright", string> = { warm: "cálido", neutral: "neutro", bright: "brillante" };
 const SIZE_LABEL: Record<"room" | "hall" | "plate", string> = { room: "sala", hall: "auditorio", plate: "placa" };
@@ -72,17 +73,8 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
       );
     }
 
-    case "noiseGate": {
-      const p = effect.params;
-      return (
-        <>
-          <ParamSlider label="Umbral" value={p.thresholdDb} min={-80} max={0} step={1} unit=" dB" decimals={0} onChange={(v) => onChange({ ...p, thresholdDb: v })} />
-          <ParamSlider label="Ataque" value={p.attackMs} min={0.1} max={50} step={0.1} unit=" ms" onChange={(v) => onChange({ ...p, attackMs: v })} />
-          <ParamSlider label="Liberación" value={p.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...p, releaseMs: v })} />
-          <ParamSlider label="Retención" value={p.holdMs} min={0} max={500} step={5} unit=" ms" onChange={(v) => onChange({ ...p, holdMs: v })} />
-        </>
-      );
-    }
+    case "noiseGate":
+      return <NoiseGatePanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
 
     case "reverb": {
       const p = effect.params;

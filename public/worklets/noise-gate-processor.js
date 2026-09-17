@@ -19,6 +19,8 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     super();
     this.envelope = 0; // 0..1 gain currently applied
     this.holdSamplesRemaining = 0;
+    this.samplesSincePost = 0;
+    this.postIntervalSamples = Math.round(sampleRate * 0.05); // ~20 Hz to the main thread
   }
 
   process(inputs, outputs, parameters) {
@@ -57,6 +59,14 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
       for (let i = 0; i < inCh.length; i++) {
         outCh[i] = inCh[i] * envelopeAtSample[i];
       }
+    }
+
+    // Real gate gain, not reconstructed on the main thread - throttled so
+    // it doesn't flood the message port at audio-block rate (~375/s).
+    this.samplesSincePost += blockSize;
+    if (this.samplesSincePost >= this.postIntervalSamples) {
+      this.samplesSincePost = 0;
+      this.port.postMessage(this.envelope);
     }
     return true;
   }
