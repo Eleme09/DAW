@@ -821,12 +821,19 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       };
       await addSampleAsset(asset);
 
+      // Shift the take earlier by the measured round-trip latency so it
+      // lands where the performer actually sang relative to the beat, not
+      // where the buffer happened to start filling - see getLatencySec()'s
+      // doc comment for what "measured" means here. Clamped at 0: a take
+      // recorded from the very start of the timeline has nothing earlier
+      // to shift into.
+      const latencySec = getAudioEngine().getLatencySec() ?? 0;
       const clip: AudioClip = {
         id: crypto.randomUUID(),
         trackId: armedTrack.id,
         sampleId,
         name: asset.name,
-        startTime: result.startTime,
+        startTime: Math.max(0, result.startTime - latencySec),
         duration: result.durationSec,
         sourceOffset: 0,
         gainDb: 0,

@@ -235,3 +235,17 @@ Esta fase se declaró explícitamente bloqueante para el resto del proyecto ("no
 - [ ] Waveforms reales de timeline con cache de picos (verificar/actualizar `Waveform.tsx` contra el estándar de esta fase).
 - [ ] Preservación de formantes en Pitch Correction (ver nota arriba).
 - [ ] EQ/ADSR/compresor no comparten todavía presets (`CurveEditor` está listo para ADSR/compresor pero no adoptado ahí aún); ningún efecto salvo Pitch Correction tiene ≥5 presets, un criterio explícito de la fase para cada plugin.
+
+## FASE 10D — Grabación
+
+Status: **EN CURSO, por subfases (pedido explícito del usuario: proyectos grandes se trabajan en subfases, priorizando ahorro de tokens - no todo en una sola pasada).**
+
+Auditado contra el punto 5 del brief antes de tocar nada: monitorización 3 estados y toggles eco/ruido ya existían de FASE 9 (confirmado, no se re-hicieron). Comping por toma completa ya existía de FASE 5. Lo que audité como genuinamente faltante: medidor de saturación pre-grabación, cuenta atrás audible, compensación de latencia aplicada, selección de dispositivo, aviso de feedback.
+
+- [x] **Compensación de latencia aplicada a la toma** — `state/projectStore.ts`'s `stopRecording`: el `clip.startTime` ahora se calcula como `result.startTime - getLatencySec()` (clamped a 0), en vez de usar `result.startTime` sin corregir. Antes se *medía* la latencia real (`getLatencySec()`, desde FASE 9) pero nunca se *aplicaba* a nada - la toma quedaba desalineada del beat por esa cantidad. Cambio de una línea, verificado con `tsc`/`eslint`/`vitest` (289 tests) limpios - no se hizo verificación en navegador aparte para esta subfase puntual (es aritmética simple sobre un campo numérico ya cubierto indirectamente por los tests de `addClip`/store existentes, y el pedido explícito de ahorrar tokens no justifica un ciclo completo de Playwright para un cambio de este tamaño).
+
+Pendiente de 10D (siguientes subfases, en orden de tamaño):
+- [ ] Cuenta atrás audible antes de empezar a grabar (con acento de metrónomo, reutilizando `playClick`).
+- [ ] Medidor de entrada con detección de saturación explícita antes de pulsar grabar (hoy el medidor de entrada existe pero sin lectura de saturación dedicada).
+- [ ] Selección de dispositivo de entrada (`enumerateDevices()` - hoy siempre usa el default del sistema).
+- [ ] Aviso de feedback por altavoz (heurística - Web Audio no expone esto de forma confiable).
