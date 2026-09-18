@@ -210,7 +210,7 @@ export function MixerPanel() {
                 }}
                 title={track.muted ? "Quitar silencio" : "Silenciar"}
                 className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-                  track.muted ? "bg-red-500 text-black" : "bg-surf-2 text-bone-2 hover:text-bone"
+                  track.muted ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
                 }`}
               >
                 M
@@ -222,7 +222,7 @@ export function MixerPanel() {
                 }}
                 title={track.solo ? "Quitar solo" : "Solo"}
                 className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-                  track.solo ? "bg-yellow-400 text-black" : "bg-surf-2 text-bone-2 hover:text-bone"
+                  track.solo ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
                 }`}
               >
                 S
@@ -363,7 +363,7 @@ function MobileChannelRow({
           }}
           title={track.muted ? "Quitar silencio" : "Silenciar"}
           className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-            track.muted ? "bg-red-500 text-black" : "bg-surf-2 text-bone-2 hover:text-bone"
+            track.muted ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
           }`}
         >
           M
@@ -375,7 +375,7 @@ function MobileChannelRow({
           }}
           title={track.solo ? "Quitar solo" : "Solo"}
           className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-            track.solo ? "bg-yellow-400 text-black" : "bg-surf-2 text-bone-2 hover:text-bone"
+            track.solo ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
           }`}
         >
           S

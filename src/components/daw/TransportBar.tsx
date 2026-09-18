@@ -226,10 +226,10 @@ export function TransportBar() {
           disabled={isCountingIn}
           className={`flex h-11 w-11 items-center justify-center rounded font-mono text-lg tabular-nums ${
             isRecording
-              ? "animate-pulse bg-red-600 text-white"
+              ? "animate-pulse bg-rec text-bone"
               : isCountingIn
-                ? "bg-red-600/70 text-white"
-                : "bg-surf-2 text-red-500 hover:bg-surf-3 active:bg-surf-3"
+                ? "bg-rec/70 text-bone"
+                : "bg-surf-2 text-rec hover:bg-surf-3 active:bg-surf-3"
           }`}
           aria-label={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás" : "Grabar"}
           title={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás…" : "Graba sobre la pista armada"}

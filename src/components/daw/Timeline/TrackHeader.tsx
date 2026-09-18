@@ -101,7 +101,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }}
           title={track.muted ? "Quitar silencio" : "Silenciar"}
           className={`min-h-11 flex-1 text-[11px] font-bold ${
-            track.muted ? "bg-red-500 text-black" : "bg-surf text-bone-3 hover:text-bone"
+            track.muted ? "bg-bone text-ink" : "bg-surf text-bone-3 hover:text-bone"
           }`}
         >
           M
@@ -113,7 +113,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
           }}
           title={track.solo ? "Quitar solo" : "Solo"}
           className={`min-h-11 flex-1 text-[11px] font-bold ${
-            track.solo ? "bg-yellow-400 text-black" : "bg-surf text-bone-3 hover:text-bone"
+            track.solo ? "bg-bone text-ink" : "bg-surf text-bone-3 hover:text-bone"
           }`}
         >
           S
