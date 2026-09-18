@@ -1,6 +1,7 @@
 "use client";
 
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
+import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { useProjectStore } from "@/state/projectStore";
 import type { MonitorMode, Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
@@ -31,6 +32,7 @@ export function MixerPanel() {
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
   const isRecording = useProjectStore((s) => s.isRecording);
+  const isPlaying = useProjectStore((s) => s.isPlaying);
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const engine = getAudioEngine();
@@ -77,6 +79,7 @@ export function MixerPanel() {
               track={track}
               selected={track.id === selectedTrackId}
               isRecording={isRecording}
+              monitoringLive={isTrackMonitoredLive(track.armed, track.monitorMode, isPlaying, isRecording)}
               onSelect={() => selectTrack(track.id)}
               onUpdate={(patch) => updateTrack(track.id, patch)}
               onArm={() => armTrack(track.id)}
@@ -245,10 +248,17 @@ export function MixerPanel() {
                   e.stopPropagation();
                   updateTrack(track.id, { monitorMode: MONITOR_NEXT[track.monitorMode] });
                 }}
-                title={MONITOR_LABEL[track.monitorMode]}
-                className={`flex h-11 w-11 items-center justify-center rounded ${MONITOR_CLASS[track.monitorMode]}`}
+                title={
+                  isTrackMonitoredLive(track.armed, track.monitorMode, isPlaying, isRecording)
+                    ? `${MONITOR_LABEL[track.monitorMode]} — escuchando tu micrófono ahora mismo`
+                    : MONITOR_LABEL[track.monitorMode]
+                }
+                className={`relative flex h-11 w-11 items-center justify-center rounded ${MONITOR_CLASS[track.monitorMode]}`}
               >
                 <MicIcon className="h-4 w-4" />
+                {isTrackMonitoredLive(track.armed, track.monitorMode, isPlaying, isRecording) && (
+                  <span className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
+                )}
               </button>
             </div>
             {track.armed && (
@@ -287,6 +297,7 @@ interface MobileChannelRowProps {
   track: Track;
   selected: boolean;
   isRecording: boolean;
+  monitoringLive: boolean;
   onSelect: () => void;
   onUpdate: (patch: Partial<Track>) => void;
   onArm: () => void;
@@ -303,6 +314,7 @@ function MobileChannelRow({
   track,
   selected,
   isRecording,
+  monitoringLive,
   onSelect,
   onUpdate,
   onArm,
@@ -398,10 +410,15 @@ function MobileChannelRow({
             e.stopPropagation();
             onUpdate({ monitorMode: MONITOR_NEXT[track.monitorMode] });
           }}
-          title={MONITOR_LABEL[track.monitorMode]}
-          className={`flex h-11 w-11 items-center justify-center rounded ${MONITOR_CLASS[track.monitorMode]}`}
+          title={
+            monitoringLive
+              ? `${MONITOR_LABEL[track.monitorMode]} — escuchando tu micrófono ahora mismo`
+              : MONITOR_LABEL[track.monitorMode]
+          }
+          className={`relative flex h-11 w-11 items-center justify-center rounded ${MONITOR_CLASS[track.monitorMode]}`}
         >
           <MicIcon className="h-4 w-4" />
+          {monitoringLive && <span className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-live" />}
         </button>
         {track.armed && (
           <div className="ml-1 h-2 flex-1">

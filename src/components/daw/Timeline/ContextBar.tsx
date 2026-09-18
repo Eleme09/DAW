@@ -1,5 +1,6 @@
 "use client";
 
+import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { useProjectStore } from "@/state/projectStore";
 import { MicIcon, KnobIcon, TuneIcon, ScissorsIcon, HeadphonesIcon } from "../icons";
 
@@ -22,6 +23,8 @@ const MONITOR_NEXT = { off: "auto", auto: "on", on: "off" } as const;
 export function ContextBar() {
   const project = useProjectStore((s) => s.project);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
+  const isPlaying = useProjectStore((s) => s.isPlaying);
+  const isRecording = useProjectStore((s) => s.isRecording);
   const armTrack = useProjectStore((s) => s.armTrack);
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
   const setMobileView = useProjectStore((s) => s.setMobileView);
@@ -52,7 +55,14 @@ export function ContextBar() {
     updateTrack(selectedTrackId, { monitorMode: MONITOR_NEXT[selectedTrack.monitorMode] });
   }
 
-  const monitoring = selectedTrack ? selectedTrack.monitorMode !== "off" : false;
+  // Real routing state (see isTrackMonitoredLive), not just "mode isn't
+  // off" - highlighting this button whenever the mode is merely configured
+  // would claim monitoring is on even while "auto" mode is silent (e.g.
+  // during plain playback), which is exactly the honesty gap this project
+  // avoids everywhere else.
+  const monitoring = selectedTrack
+    ? isTrackMonitoredLive(selectedTrack.armed, selectedTrack.monitorMode, isPlaying, isRecording)
+    : false;
 
   return (
     <div className="flex h-11 shrink-0 items-center gap-1 border-t border-line bg-surf px-1.5">
@@ -94,7 +104,11 @@ export function ContextBar() {
       <button
         onClick={toggleMonitor}
         disabled={disabled}
-        title={selectedTrack ? `Monitor: ${selectedTrack.monitorMode}` : "Selecciona una pista primero"}
+        title={
+          selectedTrack
+            ? `Monitor: ${selectedTrack.monitorMode}${monitoring ? " — escuchando tu micrófono ahora mismo" : ""}`
+            : "Selecciona una pista primero"
+        }
         className={`flex h-11 w-11 items-center justify-center rounded border disabled:opacity-30 ${
           monitoring ? "border-bone bg-bone text-ink" : "border-line2 text-bone-2 hover:text-bone"
         }`}

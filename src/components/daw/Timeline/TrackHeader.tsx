@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
+import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { useProjectStore } from "@/state/projectStore";
 import { likelyUsingHeadphones } from "@/lib/audio/outputHeuristics";
 import type { MonitorMode, Track } from "@/types/project";
@@ -34,6 +35,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const armTrack = useProjectStore((s) => s.armTrack);
   const isRecording = useProjectStore((s) => s.isRecording);
+  const isPlaying = useProjectStore((s) => s.isPlaying);
   const setAutomationTrackId = useProjectStore((s) => s.setAutomationTrackId);
   const hasAutomation = track.automation.volume.enabled || track.automation.pan.enabled;
   const setAssistantDraftMessage = useProjectStore((s) => s.setAssistantDraftMessage);
@@ -44,7 +46,13 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const [inputClipped, setInputClipped] = useState(false);
   const [likelyHeadphones, setLikelyHeadphones] = useState<boolean | null>(null);
   const engine = getAudioEngine();
-  const monitoringLive = track.armed && track.monitorMode !== "off";
+  // The real routing state - not just "mode isn't off". "Auto" mode only
+  // monitors while stopped or recording (see isTrackMonitoredLive), so
+  // e.g. an armed track set to "auto" during plain playback is NOT live,
+  // even though its mic-toggle button still shows the "auto" color. Same
+  // function AudioEngine itself uses to decide whether to route the mic,
+  // so this can never claim "live" when the engine actually isn't.
+  const monitoringLive = isTrackMonitoredLive(track.armed, track.monitorMode, isPlaying, isRecording);
 
   useEffect(() => {
     if (!monitoringLive) return;
@@ -136,10 +144,22 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
             e.stopPropagation();
             updateTrack(track.id, { monitorMode: MONITOR_NEXT[track.monitorMode] });
           }}
-          title={MONITOR_LABEL[track.monitorMode]}
-          className={`flex min-h-11 flex-1 items-center justify-center ${MONITOR_CLASS[track.monitorMode]}`}
+          title={
+            monitoringLive
+              ? `${MONITOR_LABEL[track.monitorMode]} — escuchando tu micrófono ahora mismo`
+              : MONITOR_LABEL[track.monitorMode]
+          }
+          className={`relative flex min-h-11 flex-1 items-center justify-center ${MONITOR_CLASS[track.monitorMode]}`}
         >
           <MicIcon className="h-4 w-4" />
+          {/* Real-time routing state, distinct from the button's own color
+             (which only ever reflects the configured mode - "auto" looks
+             identical whether or not the mic is routed at this instant).
+             Pulses only while AudioEngine is actually sending this track's
+             mic to the output right now (isTrackMonitoredLive above). */}
+          {monitoringLive && (
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
+          )}
         </button>
       </div>
 

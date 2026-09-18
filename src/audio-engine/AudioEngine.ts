@@ -2,6 +2,7 @@ import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { scheduleVoice } from "./synthVoice";
+import { isTrackMonitoredLive } from "./monitoring";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
 import type { AudioClip, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
@@ -529,15 +530,7 @@ export class AudioEngine {
   }
 
   private shouldMonitorTrack(track: Track): boolean {
-    if (!track.armed) return false;
-    switch (track.monitorMode) {
-      case "off":
-        return false;
-      case "on":
-        return true;
-      case "auto":
-        return !this.playing || this.isRecording();
-    }
+    return isTrackMonitoredLive(track.armed, track.monitorMode, this.playing, this.isRecording());
   }
 
   private refreshMonitoring(tracks: Track[]): void {
@@ -599,11 +592,18 @@ export class AudioEngine {
   play(tracks: Track[], fromTime: number, loop: LoopRegion, bpm: number): void {
     const ctx = this.ensureContext();
     this.stopSources();
-    this.syncTracks(tracks);
 
+    // `playing` must already be true before syncTracks() below - it calls
+    // refreshMonitoring(), which reads `this.playing` to decide whether an
+    // "auto"-mode armed track should hear its own mic right now. Setting it
+    // after syncTracks() (the previous order) made refreshMonitoring think
+    // playback hadn't started yet, so "auto" mode - documented as "monitor
+    // while stopped or recording, not during plain playback" - kept the raw
+    // mic routed to the output for the rest of the playback pass instead.
     this.playheadAtPlay = fromTime;
     this.contextTimeAtPlay = ctx.currentTime;
     this.playing = true;
+    this.syncTracks(tracks);
 
     this.scheduleClips(tracks, fromTime, ctx.currentTime);
     this.scheduleAutomation(tracks, fromTime, ctx.currentTime);
