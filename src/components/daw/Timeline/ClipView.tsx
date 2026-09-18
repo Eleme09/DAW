@@ -160,6 +160,16 @@ export function ClipView({ clip }: ClipViewProps) {
         top: 4,
         background: clip.color + "33",
         borderColor: clip.color,
+        // The Timeline's scroll container declares touchAction: "pan-x
+        // pan-y" so the whole session can be panned by finger. Without
+        // overriding that here, a real touchscreen (not Playwright's
+        // synthetic PointerEvents, which never exercised this) hands the
+        // very first pointermove of a drag to the browser's own native pan
+        // instead of this clip's onPointerMove - the clip never moves and
+        // the timeline scrolls out from under your finger instead. pan-y
+        // keeps vertical scroll working (e.g. a long track list) while
+        // reserving horizontal movement for the JS-driven drag below.
+        touchAction: "pan-y",
       }}
       className="group cursor-grab select-none overflow-hidden rounded border active:cursor-grabbing"
     >
@@ -203,7 +213,11 @@ export function ClipView({ clip }: ClipViewProps) {
         onPointerUp={onPointerUp}
         title={`Ganancia ${clip.gainDb.toFixed(1)} dB — arrastra arriba/abajo`}
         className="absolute left-0 right-0 h-2 -translate-y-1/2 cursor-ns-resize"
-        style={{ top: gainY }}
+        // This drag is VERTICAL (startY), the opposite axis from the
+        // parent clip's "pan-y" above - inheriting that would leave native
+        // vertical pan free to win the gesture instead of this handle's
+        // own onPointerMove, the same bug in the other axis.
+        style={{ top: gainY, touchAction: "none" }}
       >
         <div className="mt-[3px] h-px w-full bg-white/70" />
       </div>

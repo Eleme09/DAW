@@ -89,10 +89,14 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
         top: 4,
         background: clip.color + "33",
         borderColor: clip.color,
+        // See ClipView.tsx's identical comment - without this, the
+        // Timeline's own pan-x/pan-y wins the first pointermove of a real
+        // touchscreen drag before this clip's own onPointerMove ever runs.
+        touchAction: "pan-y",
       }}
       className="group cursor-grab select-none overflow-hidden rounded border active:cursor-grabbing"
     >
-      <div className="flex items-center justify-between px-1" style={{ background: clip.color + "aa" }}>
+      <div className="flex min-h-11 items-center justify-between gap-1 px-1" style={{ background: clip.color + "aa" }}>
         <span className="truncate text-[10px] font-medium text-bone">{clip.name}</span>
         <button
           onPointerDown={(e) => e.stopPropagation()}
@@ -102,12 +106,12 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
             setPianoRollClipId(clip.id);
           }}
           title="Abrir piano roll"
-          className="shrink-0 text-bone/80 hover:text-bone"
+          className="flex h-11 w-11 shrink-0 items-center justify-center text-bone/80 hover:text-bone"
         >
           <NoteIcon className="h-3 w-3" />
         </button>
       </div>
-      <div className="relative h-[calc(100%-16px)] w-full">
+      <div className="relative h-[calc(100%-44px)] w-full">
         {clip.notes.map((n) => (
           <div
             key={n.id}

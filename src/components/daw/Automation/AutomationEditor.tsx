@@ -154,8 +154,19 @@ export function AutomationEditor() {
                     removePoint(track.id, param, p.id);
                   }}
                   title={`${p.value.toFixed(range.decimals)}${range.unit} @ ${p.time.toFixed(2)}s`}
+                  style={{
+                    left: p.time * pixelsPerSecond,
+                    top: valueToY(p.value),
+                    background: track.color,
+                    // The wrapping div has native overflow-auto scroll and
+                    // no explicit touch-action, so on a real touchscreen a
+                    // drag started on one of these small (12px) points
+                    // loses its first pointermove to that native scroll
+                    // instead of this point's own onPointerMove handler -
+                    // same class of bug as ClipView's touchAction fix.
+                    touchAction: "none",
+                  }}
                   className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 border-ink active:cursor-grabbing"
-                  style={{ left: p.time * pixelsPerSecond, top: valueToY(p.value), background: track.color }}
                 />
               ))}
             </div>

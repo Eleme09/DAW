@@ -77,6 +77,7 @@ export function LoopRegion({ height }: { height: number }) {
         onPointerDown={(e) => beginDrag(e, "move")}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        style={{ touchAction: "pan-y" }}
         className={`pointer-events-auto absolute inset-x-0 top-0 h-2 cursor-grab border-b ${
           loop.enabled ? "border-bone bg-bone/40" : "border-bone-3 bg-bone-3/40"
         }`}
@@ -85,14 +86,14 @@ export function LoopRegion({ height }: { height: number }) {
         onPointerDown={(e) => beginDrag(e, "start")}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        style={{ width: EDGE_WIDTH }}
+        style={{ width: EDGE_WIDTH, touchAction: "pan-y" }}
         className="pointer-events-auto absolute left-0 top-0 h-full cursor-ew-resize"
       />
       <div
         onPointerDown={(e) => beginDrag(e, "end")}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        style={{ width: EDGE_WIDTH }}
+        style={{ width: EDGE_WIDTH, touchAction: "pan-y" }}
         className="pointer-events-auto absolute right-0 top-0 h-full cursor-ew-resize"
       />
     </div>
