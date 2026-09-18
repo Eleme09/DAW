@@ -18,43 +18,79 @@ import { VocalEngineerPanel } from "./VocalEngineerPanel";
 import { MixAssistantPanel } from "./MixAssistantPanel";
 import { BeatGeneratorPanel } from "./BeatGeneratorPanel";
 import { AiAssistantPanel } from "./AiAssistantPanel";
-import { WaveformIcon, MatchIcon, MixIcon, BeatGridIcon, SparkleIcon, FolderIcon, CloseIcon } from "./icons";
+import { WaveformIcon, MatchIcon, MixIcon, BeatGridIcon, SparkleIcon, FolderIcon, MoreIcon, CloseIcon } from "./icons";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
-const TABS: { id: BrowserTab; label: string; hint: string; Icon: ComponentType<{ className?: string }> }[] = [
+type TabDef = { id: BrowserTab; label: string; hint: string; Icon: ComponentType<{ className?: string }> };
+
+// Visible right away, one row - the tools with either their own entry point
+// elsewhere (Generar beat: Timeline's empty state; Asistente IA: every
+// "Preguntar a la IA" button) or that are the reason to open Biblioteca at
+// all (Muestras, Proyectos). "Ajustar voz"/"Mezcla IA" have no other route
+// into the app, so they still get their own icon - just tucked one tap
+// behind "Más" instead of a 2nd row shown at all times (was 6 tabs across 2
+// rows; the plan's own diagnosis called this out as buried navigation).
+const CORE_TABS: TabDef[] = [
   { id: "audio", label: "Muestras", hint: "Importa audio y usa herramientas por muestra", Icon: WaveformIcon },
-  { id: "match", label: "Ajustar voz", hint: "Ajusta una toma vocal a la tonalidad y tempo del beat", Icon: MatchIcon },
-  { id: "mix", label: "Mezcla IA", hint: "Balance de mezcla asistido por IA en todas las pistas", Icon: MixIcon },
-  { id: "generate", label: "Generar beat", hint: "Genera un nuevo patrón de beat", Icon: BeatGridIcon },
   { id: "assistant", label: "Asistente IA", hint: "Pide cambios en lenguaje natural", Icon: SparkleIcon },
+  { id: "generate", label: "Generar beat", hint: "Genera un nuevo patrón de beat", Icon: BeatGridIcon },
   { id: "projects", label: "Proyectos", hint: "Abre o guarda un proyecto", Icon: FolderIcon },
 ];
+const MORE_TABS: TabDef[] = [
+  { id: "match", label: "Ajustar voz", hint: "Ajusta una toma vocal a la tonalidad y tempo del beat", Icon: MatchIcon },
+  { id: "mix", label: "Mezcla IA", hint: "Balance de mezcla asistido por IA en todas las pistas", Icon: MixIcon },
+];
+
+function TabButton({ id, label, hint, Icon, active, onClick }: TabDef & { active: boolean; onClick: () => void }) {
+  return (
+    <button
+      key={id}
+      onClick={onClick}
+      title={hint}
+      aria-current={active}
+      className={`flex flex-col items-center gap-1 border-b-2 px-1 py-2 text-[10px] font-medium leading-tight ${
+        active ? "border-bone bg-surf text-bone" : "border-transparent text-bone-3 hover:bg-surf/60 hover:text-bone-2"
+      }`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
 
 export function BrowserPanel() {
   const tab = useProjectStore((s) => s.browserTab);
   const setTab = useProjectStore((s) => s.setBrowserTab);
+  const isMoreTab = MORE_TABS.some((t) => t.id === tab);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const showMoreRow = moreOpen || isMoreTab;
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-r border-line bg-ink md:w-64">
-      <div className="grid grid-cols-3 border-b border-line">
-        {TABS.map(({ id, label, hint, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            title={hint}
-            aria-current={tab === id}
-            className={`flex flex-col items-center gap-1 border-b-2 px-1 py-2 text-[10px] font-medium leading-tight ${
-              tab === id
-                ? "border-bone bg-surf text-bone"
-                : "border-transparent text-bone-3 hover:bg-surf/60 hover:text-bone-2"
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
+      <div className="grid grid-cols-5 border-b border-line">
+        {CORE_TABS.map((t) => (
+          <TabButton key={t.id} {...t} active={tab === t.id} onClick={() => setTab(t.id)} />
         ))}
+        <button
+          onClick={() => setMoreOpen((v) => !v)}
+          title="Más herramientas"
+          aria-current={isMoreTab}
+          className={`flex flex-col items-center gap-1 border-b-2 px-1 py-2 text-[10px] font-medium leading-tight ${
+            showMoreRow ? "border-bone bg-surf text-bone" : "border-transparent text-bone-3 hover:bg-surf/60 hover:text-bone-2"
+          }`}
+        >
+          <MoreIcon className="h-4 w-4" />
+          Más
+        </button>
       </div>
+      {showMoreRow && (
+        <div className="grid grid-cols-5 border-b border-line">
+          {MORE_TABS.map((t) => (
+            <TabButton key={t.id} {...t} active={tab === t.id} onClick={() => setTab(t.id)} />
+          ))}
+        </div>
+      )}
       {tab === "audio" && <AudioTab />}
       {tab === "match" && <VocalBeatMatchPanel />}
       {tab === "mix" && <MixAssistantPanel />}

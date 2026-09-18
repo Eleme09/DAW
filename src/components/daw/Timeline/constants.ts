@@ -7,7 +7,11 @@
 export const DEFAULT_PIXELS_PER_SECOND = 80;
 export const MIN_PIXELS_PER_SECOND = 20;
 export const MAX_PIXELS_PER_SECOND = 400;
-export const TRACK_HEIGHT = 118;
+/** Was 118 - TrackHeader packed its 5 controls (M/S/armar/monitor/más) plus
+ * the name into a single row instead of two stacked ones (FASE B, densidad
+ * visual tipo BandLab), so the row itself needs less height. Still leaves
+ * TRACK_HEIGHT - 8 = 56px for a clip's waveform/notes, enough to read. */
+export const TRACK_HEIGHT = 64;
 export const HEADER_WIDTH = 192;
 export const RULER_HEIGHT = 28;
 export const MIN_TIMELINE_SECONDS = 60;

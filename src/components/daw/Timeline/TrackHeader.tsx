@@ -39,7 +39,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
     <div
       onClick={() => selectTrack(track.id)}
       style={{ width: HEADER_WIDTH, height: TRACK_HEIGHT }}
-      className={`sticky left-0 z-10 relative flex shrink-0 flex-col gap-1 border-b border-r border-line bg-ink p-1.5 pl-2.5 ${
+      className={`sticky left-0 z-10 relative flex shrink-0 flex-col justify-center gap-1 border-b border-r border-line bg-ink p-1 pl-2.5 ${
         selected ? "ring-1 ring-inset ring-bone" : ""
       } ${isLiveInput ? "ring-1 ring-inset ring-rec" : ""} ${flash ? "animate-pulse ring-2 ring-inset ring-bone" : ""}`}
     >
@@ -47,50 +47,32 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
          (estudio-ui.html .thead::before) - identifica la pista sin abaratar
          la interfaz con color plano, como hace BandLab. */}
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: track.color }} />
-      <div className="flex items-center gap-1.5">
+      {/* Una sola fila (nombre + Armar/Monitor/Más), no dos filas separadas
+         como antes - la densidad de BandLab. Solo 3 botones (no 5) porque el
+         área táctil real es 44px cada uno sin importar el truco visual: con
+         un cuarto o quinto botón del mismo tamaño sus zonas de toque se
+         solapan de verdad (confirmado con Playwright - un tap en "Armar"
+         activaba "Monitor" en su lugar), el mismo problema de selección
+         imprecisa que ya se reportó una vez. Mute/Solo se movieron a la
+         hoja "Más" - siguen a un toque de distancia, y ya existen también
+         por canal en el Mixer, que es donde de verdad se hace mezcla. */}
+      <div className="flex items-center gap-0.5">
         <input
           value={track.name}
           onChange={(e) => updateTrack(track.id, { name: e.target.value })}
           onClick={(e) => e.stopPropagation()}
-          className="w-full min-w-0 truncate bg-transparent text-xs font-medium text-bone outline-none"
+          className={`w-full min-w-0 truncate bg-transparent text-xs font-medium outline-none ${
+            track.muted ? "text-bone-3 line-through decoration-1" : "text-bone"
+          }`}
         />
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setMoreOpen(true);
-          }}
-          title="Más opciones de pista"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-bone-2 hover:text-bone"
-        >
-          <MoreIcon className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="flex overflow-hidden rounded-[3px]">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            updateTrack(track.id, { muted: !track.muted });
-          }}
-          title={track.muted ? "Quitar silencio" : "Silenciar"}
-          className={`min-h-11 flex-1 text-[11px] font-bold ${
-            track.muted ? "bg-bone text-ink" : "bg-surf text-bone-3 hover:text-bone"
-          }`}
-        >
-          M
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            updateTrack(track.id, { solo: !track.solo });
-          }}
-          title={track.solo ? "Quitar solo" : "Solo"}
-          className={`min-h-11 flex-1 text-[11px] font-bold ${
-            track.solo ? "bg-bone text-ink" : "bg-surf text-bone-3 hover:text-bone"
-          }`}
-        >
-          S
-        </button>
+        {/* Estado de solo, visible sin abrir "Más" - el de mute ya se ve en
+           el propio nombre (tachado). No es un botón: togglear solo vive en
+           la hoja, esto es solo el indicador. */}
+        {track.solo && (
+          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-bone text-[9px] font-bold text-ink">
+            S
+          </span>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -98,11 +80,15 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
           }}
           disabled={isRecording}
           title="Armar para grabar"
-          className={`flex min-h-11 flex-1 items-center justify-center disabled:opacity-30 ${
-            track.armed ? "bg-rec text-bone" : "bg-surf text-bone-3 hover:text-bone"
-          }`}
+          className="flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-30"
         >
-          <RecordIcon className="h-3.5 w-3.5" />
+          <span
+            className={`flex h-6 w-6 items-center justify-center rounded ${
+              track.armed ? "bg-rec text-bone" : "bg-surf text-bone-3"
+            }`}
+          >
+            <RecordIcon className="h-3.5 w-3.5" />
+          </span>
         </button>
         <button
           onClick={(e) => {
@@ -114,9 +100,11 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
               ? `${MONITOR_LABEL[track.monitorMode]} — escuchando tu micrófono ahora mismo`
               : MONITOR_LABEL[track.monitorMode]
           }
-          className={`relative flex min-h-11 flex-1 items-center justify-center ${MONITOR_CLASS[track.monitorMode]}`}
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center"
         >
-          <MicIcon className="h-4 w-4" />
+          <span className={`flex h-6 w-6 items-center justify-center rounded ${MONITOR_CLASS[track.monitorMode]}`}>
+            <MicIcon className="h-4 w-4" />
+          </span>
           {/* Real-time routing state, distinct from the button's own color
              (which only ever reflects the configured mode - "auto" looks
              identical whether or not the mic is routed at this instant).
@@ -125,6 +113,16 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
           {monitoringLive && (
             <span className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
           )}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setMoreOpen(true);
+          }}
+          title="Más opciones de pista"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded text-bone-2 hover:text-bone"
+        >
+          <MoreIcon className="h-4 w-4" />
         </button>
       </div>
 
@@ -138,6 +136,24 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
       )}
 
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={track.name}>
+        <div className="flex gap-2">
+          <button
+            onClick={() => updateTrack(track.id, { muted: !track.muted })}
+            className={`min-h-11 flex-1 rounded text-sm font-bold ${
+              track.muted ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
+            }`}
+          >
+            Silenciar (M)
+          </button>
+          <button
+            onClick={() => updateTrack(track.id, { solo: !track.solo })}
+            className={`min-h-11 flex-1 rounded text-sm font-bold ${
+              track.solo ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
+            }`}
+          >
+            Solo (S)
+          </button>
+        </div>
         <div className="flex items-center justify-center gap-6">
           <Knob
             value={track.volumeDb}

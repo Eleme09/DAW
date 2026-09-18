@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useProjectStore, type EffectTarget } from "@/state/projectStore";
 import { EFFECT_LABELS, type EffectInstance } from "@/types/effects";
 import { EffectParamsEditor } from "./EffectParamsEditor";
-import { SparkleIcon, ChevronDownIcon, ChevronRightIcon, ArrowUpIcon, ArrowDownIcon, CloseIcon } from "../icons";
+import { BottomSheet } from "../BottomSheet";
+import { SparkleIcon, ChevronRightIcon, ArrowUpIcon, ArrowDownIcon, CloseIcon } from "../icons";
 
 interface EffectCardProps {
   target: EffectTarget;
@@ -14,7 +15,12 @@ interface EffectCardProps {
 }
 
 export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps) {
-  const [expanded, setExpanded] = useState(true);
+  // Collapsed by default and opens full-screen on tap, not an inline expand
+  // - one effect used to fill the whole rack with its knobs and leftover
+  // whitespace (a single EQ band reported as "taking over the screen").
+  // The compact row alone (name + bypass) already says everything needed
+  // without opening it.
+  const [sheetOpen, setSheetOpen] = useState(false);
   const updateEffectParams = useProjectStore((s) => s.updateEffectParams);
   const toggleEffectBypass = useProjectStore((s) => s.toggleEffectBypass);
   const removeEffect = useProjectStore((s) => s.removeEffect);
@@ -34,24 +40,35 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
 
   return (
     <div className={`rounded border ${effect.bypassed ? "border-line opacity-50" : "border-line-2"} bg-surf`}>
-      <div className="flex items-center gap-0.5 px-2 py-1.5">
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          title={expanded ? "Contraer" : "Expandir"}
-          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
-        >
-          {expanded ? <ChevronDownIcon className="h-4 w-4" /> : <ChevronRightIcon className="h-4 w-4" />}
-        </button>
+      <div
+        onClick={() => setSheetOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setSheetOpen(true);
+        }}
+        title="Abrir a pantalla completa"
+        className="flex w-full cursor-pointer items-center gap-0.5 px-2 py-1.5 text-left"
+      >
+        <span className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2">
+          <ChevronRightIcon className="h-4 w-4" />
+        </span>
         <span className="flex-1 truncate text-xs font-medium text-bone">{EFFECT_LABELS[effect.type]}</span>
         <button
-          onClick={askAi}
+          onClick={(e) => {
+            e.stopPropagation();
+            askAi();
+          }}
           title="Preguntar a la IA sobre este efecto"
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
         >
           <SparkleIcon className="h-3.5 w-3.5" />
         </button>
         <button
-          onClick={() => moveEffect(target, effect.id, -1)}
+          onClick={(e) => {
+            e.stopPropagation();
+            moveEffect(target, effect.id, -1);
+          }}
           disabled={isFirst}
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2 disabled:opacity-20"
           title="Subir"
@@ -59,7 +76,10 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           <ArrowUpIcon className="h-4 w-4" />
         </button>
         <button
-          onClick={() => moveEffect(target, effect.id, 1)}
+          onClick={(e) => {
+            e.stopPropagation();
+            moveEffect(target, effect.id, 1);
+          }}
           disabled={isLast}
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2 disabled:opacity-20"
           title="Bajar"
@@ -67,7 +87,10 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           <ArrowDownIcon className="h-4 w-4" />
         </button>
         <button
-          onClick={() => toggleEffectBypass(target, effect.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleEffectBypass(target, effect.id);
+          }}
           className={`flex h-11 min-w-11 shrink-0 items-center justify-center rounded px-2 text-[10px] font-bold ${
             effect.bypassed ? "bg-surf-3 text-bone-2" : "bg-bone text-ink"
           }`}
@@ -76,18 +99,21 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
           {effect.bypassed ? "OFF" : "ON"}
         </button>
         <button
-          onClick={() => removeEffect(target, effect.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            removeEffect(target, effect.id);
+          }}
           title="Eliminar efecto"
           className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-3 hover:text-red-400"
         >
           <CloseIcon className="h-4 w-4" />
         </button>
       </div>
-      {expanded && (
-        <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-line p-2">
+      <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={EFFECT_LABELS[effect.type]}>
+        <div className="flex flex-wrap gap-x-3 gap-y-2">
           <EffectParamsEditor target={target} effect={effect} onChange={(params) => updateEffectParams(target, effect.id, params)} />
         </div>
-      )}
+      </BottomSheet>
     </div>
   );
 }
