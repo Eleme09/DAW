@@ -16,12 +16,20 @@ export function EffectsRackPanel() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
   const selectedTrack = useProjectStore((s) => s.project.tracks.find((t) => t.id === s.selectedTrackId));
+  const selectedBusId = useProjectStore((s) => s.selectedBusId);
+  const selectedBus = useProjectStore((s) => s.project.buses.find((b) => b.id === s.selectedBusId));
+  const hasBuses = useProjectStore((s) => s.project.buses.length > 0);
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
   const addEffect = useProjectStore((s) => s.addEffect);
 
-  const target = mode === "master" ? "master" : selectedTrackId;
-  const inserts = mode === "master" ? masterInserts : (selectedTrack?.inserts ?? []);
-  const label = mode === "master" ? "Bus master" : (selectedTrack?.name ?? "Ninguna pista seleccionada");
+  const target = mode === "master" ? "master" : mode === "bus" ? selectedBusId : selectedTrackId;
+  const inserts = mode === "master" ? masterInserts : mode === "bus" ? (selectedBus?.inserts ?? []) : (selectedTrack?.inserts ?? []);
+  const label =
+    mode === "master"
+      ? "Bus master"
+      : mode === "bus"
+        ? (selectedBus?.name ?? "Ningún bus seleccionado")
+        : (selectedTrack?.name ?? "Ninguna pista seleccionada");
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-l border-line bg-ink md:w-80">
@@ -44,6 +52,20 @@ export function EffectsRackPanel() {
           <WaveformIcon className="h-3.5 w-3.5" />
           Pista
         </button>
+        {hasBuses && (
+          <button
+            onClick={() => setMode("bus")}
+            title="Efectos en el bus seleccionado, compartidos por las pistas que le envían señal"
+            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
+              mode === "bus"
+                ? "border-bone bg-surf text-bone"
+                : "border-transparent text-bone-3 hover:text-bone-2"
+            }`}
+          >
+            <BusIcon className="h-3.5 w-3.5" />
+            Bus
+          </button>
+        )}
         <button
           onClick={() => setMode("master")}
           title="Efectos en el bus master, aplicados a toda la mezcla"
@@ -62,7 +84,9 @@ export function EffectsRackPanel() {
       {mode === "track" && selectedTrack?.type === "instrument" && <InstrumentSettings track={selectedTrack} />}
 
       {!target ? (
-        <p className="p-4 text-center text-xs text-bone-3">Selecciona una pista para editar sus efectos.</p>
+        <p className="p-4 text-center text-xs text-bone-3">
+          {mode === "bus" ? "Selecciona un bus para editar sus efectos." : "Selecciona una pista para editar sus efectos."}
+        </p>
       ) : (
         <div className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-2 overflow-y-auto p-2">

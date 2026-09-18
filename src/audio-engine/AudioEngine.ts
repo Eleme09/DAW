@@ -4,7 +4,7 @@ import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { scheduleVoice } from "./synthVoice";
 import { isTrackMonitoredLive } from "./monitoring";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
-import type { AudioClip, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
+import type { AudioClip, Bus, BusId, Instrument, LoopRegion, MidiClip, Note, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
 
 /**
@@ -23,7 +23,26 @@ interface TrackGraph {
   pan: StereoPannerNode;
   muteGain: GainNode; // 0/1, driven by mute+solo logic
   analyser: AnalyserNode;
+  /** Per-bus send taps, keyed by busId - only present while that send is
+   * actually assigned (Track.sends), created/torn down as sends change.
+   * Tapped from `analyser` (post volume/pan/mute, same point the track's
+   * own meter reads), so a send always matches what that channel is
+   * actually contributing right now, not some earlier stage of its chain. */
+  sendGains: Map<BusId, GainNode>;
 }
+
+/** A bus has no signal source of its own (no clips, no instrument) - same
+ * shape as a track's own channel strip minus the parts only a track needs
+ * (monitor/send taps), reused so bus and track mixing behave identically. */
+interface BusGraph {
+  input: GainNode;
+  effectChain: EffectChain;
+  volume: GainNode;
+  pan: StereoPannerNode;
+  muteGain: GainNode;
+  analyser: AnalyserNode;
+}
+
 
 interface ScheduledSource {
   /** OscillatorNode for a synth voice, AudioBufferSourceNode for a sampled
@@ -102,7 +121,9 @@ export class AudioEngine {
   private noiseGateWorkletLoaded = false;
 
   private tracks = new Map<TrackId, TrackGraph>();
+  private buses = new Map<BusId, BusGraph>();
   private soloedTracks = new Set<TrackId>();
+  private soloedBuses = new Set<BusId>();
   private bufferCache = new Map<string, AudioBuffer>();
 
   private scheduled: ScheduledSource[] = [];
@@ -270,8 +291,9 @@ export class AudioEngine {
    * no other path from the declarative EffectInstance state back to the
    * live node). Returns `unknown` on purpose; EffectChain doesn't (and
    * shouldn't) know about specific effect subclasses - the caller casts. */
-  getEffectNode(target: "master" | TrackId, effectId: string): unknown {
-    const chain = target === "master" ? this.masterChain : this.tracks.get(target)?.effectChain;
+  getEffectNode(target: "master" | TrackId | BusId, effectId: string): unknown {
+    const chain =
+      target === "master" ? this.masterChain : (this.tracks.get(target)?.effectChain ?? this.buses.get(target)?.effectChain);
     return chain?.getEffect(effectId);
   }
 
@@ -279,14 +301,26 @@ export class AudioEngine {
   // Track graph
   // ---------------------------------------------------------------------
 
-  syncTracks(tracks: Track[]): void {
+  /** `buses` is optional, not defaulted to `[]` - omitting it (a caller
+   * that only cares about track state, e.g. pause()/stop() called without
+   * it) leaves whatever bus graphs already exist untouched. Passing `[]`
+   * explicitly is a real instruction ("there are now zero buses") and
+   * would tear every existing bus graph down - the empty case must be
+   * opted into, never a silent default. */
+  syncTracks(tracks: Track[], buses?: Bus[]): void {
     const ctx = this.ensureContext();
     const master = this.master!;
+
+    // Buses first - a track's sends (below) connect INTO a bus's input, so
+    // the bus graphs must already exist before any track tries to tap one.
+    if (buses) this.syncBusGraphs(buses);
+
     const liveIds = new Set(tracks.map((t) => t.id));
 
     for (const [id, graph] of this.tracks) {
       if (!liveIds.has(id)) {
         this.disconnectMonitorFromTrack(id);
+        for (const sendGain of graph.sendGains.values()) sendGain.disconnect();
         graph.input.disconnect();
         graph.effectChain.dispose();
         this.tracks.delete(id);
@@ -311,7 +345,7 @@ export class AudioEngine {
         pan.connect(muteGain);
         muteGain.connect(analyser);
         analyser.connect(master);
-        graph = { input, effectChain, volume, pan, muteGain, analyser };
+        graph = { input, effectChain, volume, pan, muteGain, analyser, sendGains: new Map() };
         this.tracks.set(track.id, graph);
       }
       graph.effectChain.setInserts(track.inserts);
@@ -319,13 +353,95 @@ export class AudioEngine {
       graph.pan.pan.value = track.pan;
       const audible = !track.muted && (this.soloedTracks.size === 0 || track.solo);
       graph.muteGain.gain.value = audible ? 1 : 0;
+
+      this.syncTrackSends(track, graph);
     }
 
     this.refreshMonitoring(tracks);
   }
 
+  /** Bus channels: no clips/instrument of their own, same strip shape as a
+   * track otherwise (inserts, volume, pan, mute/solo, feeds master) -
+   * tracks reach them only via Track.sends (see syncTrackSends). */
+  private syncBusGraphs(buses: Bus[]): void {
+    const ctx = this.ensureContext();
+    const master = this.master!;
+    const liveIds = new Set(buses.map((b) => b.id));
+
+    for (const [id, graph] of this.buses) {
+      if (!liveIds.has(id)) {
+        graph.input.disconnect();
+        graph.effectChain.dispose();
+        this.buses.delete(id);
+      }
+    }
+
+    // Solo among buses is isolated from track solo - soloing a bus
+    // silences the other buses, not the tracks feeding them (soloing a
+    // return to audit it shouldn't also cut every dry track going to
+    // master, which would make it impossible to hear the bus in context).
+    this.soloedBuses = new Set(buses.filter((b) => b.solo).map((b) => b.id));
+
+    for (const bus of buses) {
+      let graph = this.buses.get(bus.id);
+      if (!graph) {
+        const input = ctx.createGain();
+        const effectChain = new EffectChain(ctx, this.effectChainDeps());
+        const volume = ctx.createGain();
+        const pan = ctx.createStereoPanner();
+        const muteGain = ctx.createGain();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        input.connect(effectChain.inputNode);
+        effectChain.outputNode.connect(volume);
+        volume.connect(pan);
+        pan.connect(muteGain);
+        muteGain.connect(analyser);
+        analyser.connect(master);
+        graph = { input, effectChain, volume, pan, muteGain, analyser };
+        this.buses.set(bus.id, graph);
+      }
+      graph.effectChain.setInserts(bus.inserts);
+      graph.volume.gain.value = dbToGain(bus.volumeDb);
+      graph.pan.pan.value = bus.pan;
+      const audible = !bus.muted && (this.soloedBuses.size === 0 || bus.solo);
+      graph.muteGain.gain.value = audible ? 1 : 0;
+    }
+  }
+
+  /** Creates/updates/tears down this track's send taps to match
+   * `track.sends` exactly - tapped from `graph.analyser`, i.e. after this
+   * channel's own volume/pan/mute, so a send always reflects what the
+   * channel is actually contributing right now (see Send's own doc
+   * comment on why post-fader is the right default). */
+  private syncTrackSends(track: Track, graph: TrackGraph): void {
+    const liveSendBusIds = new Set(track.sends.map((s) => s.busId));
+    for (const [busId, gain] of graph.sendGains) {
+      if (!liveSendBusIds.has(busId)) {
+        gain.disconnect();
+        graph.sendGains.delete(busId);
+      }
+    }
+    for (const send of track.sends) {
+      const busGraph = this.buses.get(send.busId);
+      if (!busGraph) continue; // bus not synced yet - the next syncTracks() call (right after creating it) picks this up
+      let sendGain = graph.sendGains.get(send.busId);
+      if (!sendGain) {
+        sendGain = this.ctx!.createGain();
+        graph.analyser.connect(sendGain);
+        sendGain.connect(busGraph.input);
+        graph.sendGains.set(send.busId, sendGain);
+      }
+      sendGain.gain.value = dbToGain(send.levelDb);
+    }
+  }
+
   getTrackAnalyser(trackId: TrackId): AnalyserNode | null {
     return this.tracks.get(trackId)?.analyser ?? null;
+  }
+
+  getBusAnalyser(busId: BusId): AnalyserNode | null {
+    return this.buses.get(busId)?.analyser ?? null;
   }
 
   // ---------------------------------------------------------------------
@@ -589,7 +705,7 @@ export class AudioEngine {
     return () => this.listeners.delete(listener);
   }
 
-  play(tracks: Track[], fromTime: number, loop: LoopRegion, bpm: number): void {
+  play(tracks: Track[], fromTime: number, loop: LoopRegion, bpm: number, buses: Bus[] = []): void {
     const ctx = this.ensureContext();
     this.stopSources();
 
@@ -603,7 +719,7 @@ export class AudioEngine {
     this.playheadAtPlay = fromTime;
     this.contextTimeAtPlay = ctx.currentTime;
     this.playing = true;
-    this.syncTracks(tracks);
+    this.syncTracks(tracks, buses);
 
     this.scheduleClips(tracks, fromTime, ctx.currentTime);
     this.scheduleAutomation(tracks, fromTime, ctx.currentTime);
@@ -618,23 +734,23 @@ export class AudioEngine {
   /** `tracks`, when given, re-syncs volume/pan/etc. back to their static
    * values - otherwise an automated fader/pan stays wherever the last
    * ramp left it instead of returning to the track's base value. */
-  pause(tracks?: Track[]): void {
+  pause(tracks?: Track[], buses?: Bus[]): void {
     if (!this.playing) return;
     this.playheadAtPlay = this.getCurrentTime();
     this.playing = false;
     this.stopSources();
     this.stopMetronome();
     this.stopClock();
-    if (tracks) this.syncTracks(tracks);
+    if (tracks) this.syncTracks(tracks, buses);
   }
 
-  stop(tracks?: Track[]): void {
+  stop(tracks?: Track[], buses?: Bus[]): void {
     this.playing = false;
     this.playheadAtPlay = 0;
     this.stopSources();
     this.stopMetronome();
     this.stopClock();
-    if (tracks) this.syncTracks(tracks);
+    if (tracks) this.syncTracks(tracks, buses);
     this.emitTime();
   }
 
@@ -942,7 +1058,8 @@ export class AudioEngine {
     tracks: Track[],
     loop: LoopRegion,
     bpm: number,
-    fromTime: number
+    fromTime: number,
+    buses?: Bus[]
   ): Promise<StartRecordingResult> {
     if (this.recording) return { ok: false, error: "Already recording" };
 
@@ -986,7 +1103,7 @@ export class AudioEngine {
 
     // Play existing material under the take, same machinery as play().
     this.stopSources();
-    this.syncTracks(tracks);
+    this.syncTracks(tracks, buses);
     this.playheadAtPlay = fromTime;
     this.contextTimeAtPlay = ctx.currentTime;
     this.playing = true;

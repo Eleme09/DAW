@@ -14,7 +14,7 @@ import { dbToGain } from "./dbUtils";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { scheduleVoice } from "./synthVoice";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
-import type { AudioClip, Instrument, MidiClip, Project } from "@/types/project";
+import type { AudioClip, BusId, Instrument, MidiClip, Project } from "@/types/project";
 
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
 const PITCH_CORRECTION_WORKLET_URL = "/worklets/realtime-pitch-processor.js";
@@ -87,6 +87,32 @@ export async function bounceProject(
   masterVolume.connect(ctx.destination);
   masterChain.setInserts(project.masterInserts);
 
+  // Buses first - a track's sends (below) connect INTO a bus's input, same
+  // dependency order AudioEngine.syncTracks() follows for the live graph.
+  const soloedBuses = new Set(project.buses.filter((b) => b.solo).map((b) => b.id));
+  const busInputs = new Map<BusId, GainNode>();
+  for (const bus of project.buses) {
+    const input = ctx.createGain();
+    const effectChain = new EffectChain(ctx, deps);
+    const volume = ctx.createGain();
+    const pan = ctx.createStereoPanner();
+    const muteGain = ctx.createGain();
+
+    input.connect(effectChain.inputNode);
+    effectChain.outputNode.connect(volume);
+    volume.connect(pan);
+    pan.connect(muteGain);
+    muteGain.connect(master);
+
+    effectChain.setInserts(bus.inserts);
+    volume.gain.value = dbToGain(bus.volumeDb);
+    pan.pan.value = bus.pan;
+    const audible = !bus.muted && (soloedBuses.size === 0 || bus.solo);
+    muteGain.gain.value = audible ? 1 : 0;
+
+    busInputs.set(bus.id, input);
+  }
+
   const soloedTracks = new Set(project.tracks.filter((t) => t.solo).map((t) => t.id));
 
   for (const track of project.tracks) {
@@ -112,7 +138,20 @@ export async function bounceProject(
     const audible = !track.muted && (soloedTracks.size === 0 || track.solo);
     muteGain.gain.value = audible ? 1 : 0;
 
-    if (!audible) continue; // silent track contributes nothing — skip scheduling its sources
+    // Post-fader send taps, same point AudioEngine's live graph uses
+    // (after this channel's own volume/pan/mute) - connected from
+    // muteGain, not gated separately, so a muted track's sends go silent
+    // right along with its direct output instead of leaking into a bus.
+    for (const send of track.sends) {
+      const busInput = busInputs.get(send.busId);
+      if (!busInput) continue; // send points at a bus id that no longer exists - nothing to render
+      const sendGain = ctx.createGain();
+      sendGain.gain.value = dbToGain(send.levelDb);
+      muteGain.connect(sendGain);
+      sendGain.connect(busInput);
+    }
+
+    if (!audible) continue; // silent track contributes nothing to master — skip scheduling its sources
 
     if (track.type === "instrument") {
       if (track.instrument) {

@@ -517,3 +517,104 @@ describe("instrument tracks and patterns", () => {
     expect(useProjectStore.getState().project.tracks[0].instrument?.attack).toBeCloseTo(0.005); // default
   });
 });
+
+describe("buses and sends", () => {
+  beforeEach(resetStore);
+
+  it("addBus creates a bus and selects it", () => {
+    const { addBus } = useProjectStore.getState();
+    const bus = addBus("Reverb bus");
+
+    expect(useProjectStore.getState().project.buses).toHaveLength(1);
+    expect(useProjectStore.getState().project.buses[0].name).toBe("Reverb bus");
+    expect(useProjectStore.getState().selectedBusId).toBe(bus.id);
+  });
+
+  it("setTrackSend creates a send on first call, updates level in place on the next", () => {
+    const { addTrack, addBus, setTrackSend } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    const bus = addBus("Reverb bus");
+
+    setTrackSend(track.id, bus.id, -12);
+    let sends = useProjectStore.getState().project.tracks[0].sends;
+    expect(sends).toHaveLength(1);
+    expect(sends[0]).toMatchObject({ busId: bus.id, levelDb: -12 });
+
+    setTrackSend(track.id, bus.id, -6);
+    sends = useProjectStore.getState().project.tracks[0].sends;
+    expect(sends).toHaveLength(1); // same send updated, not a second one
+    expect(sends[0].levelDb).toBe(-6);
+  });
+
+  it("a track can hold sends to two different buses at once", () => {
+    const { addTrack, addBus, setTrackSend } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    const busA = addBus("Reverb");
+    const busB = addBus("Delay");
+
+    setTrackSend(track.id, busA.id, -10);
+    setTrackSend(track.id, busB.id, -20);
+
+    const sends = useProjectStore.getState().project.tracks[0].sends;
+    expect(sends).toHaveLength(2);
+    expect(sends.map((s) => s.busId).sort()).toEqual([busA.id, busB.id].sort());
+  });
+
+  it("removeTrackSend removes only the targeted bus's send", () => {
+    const { addTrack, addBus, setTrackSend, removeTrackSend } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    const busA = addBus("Reverb");
+    const busB = addBus("Delay");
+    setTrackSend(track.id, busA.id, -10);
+    setTrackSend(track.id, busB.id, -20);
+
+    removeTrackSend(track.id, busA.id);
+
+    const sends = useProjectStore.getState().project.tracks[0].sends;
+    expect(sends).toHaveLength(1);
+    expect(sends[0].busId).toBe(busB.id);
+  });
+
+  it("removeBus cleans up every track's send pointing at it - no dangling references", () => {
+    const { addTrack, addBus, setTrackSend, removeBus } = useProjectStore.getState();
+    const trackA = addTrack("Vocal");
+    const trackB = addTrack("Adlib");
+    const bus = addBus("Reverb");
+    setTrackSend(trackA.id, bus.id, -10);
+    setTrackSend(trackB.id, bus.id, -8);
+
+    removeBus(bus.id);
+
+    const project = useProjectStore.getState().project;
+    expect(project.buses).toHaveLength(0);
+    expect(project.tracks.every((t) => t.sends.length === 0)).toBe(true);
+  });
+
+  it("removeBus clears selectedBusId only when the removed bus was selected", () => {
+    const { addBus, removeBus, selectBus } = useProjectStore.getState();
+    const busA = addBus("A");
+    const busB = addBus("B");
+    selectBus(busA.id);
+
+    removeBus(busB.id);
+    expect(useProjectStore.getState().selectedBusId).toBe(busA.id); // untouched
+
+    removeBus(busA.id);
+    expect(useProjectStore.getState().selectedBusId).toBeNull();
+  });
+
+  it("moveBus swaps order with its neighbor, a no-op past either end", () => {
+    const { addBus, moveBus } = useProjectStore.getState();
+    const busA = addBus("A");
+    const busB = addBus("B");
+
+    moveBus(busA.id, 1);
+    let buses = useProjectStore.getState().project.buses;
+    expect(buses.map((b) => b.id)).toEqual([busB.id, busA.id]);
+    expect(buses.map((b) => b.order)).toEqual([0, 1]);
+
+    moveBus(busB.id, -1); // already leftmost - no-op
+    buses = useProjectStore.getState().project.buses;
+    expect(buses.map((b) => b.id)).toEqual([busB.id, busA.id]);
+  });
+});

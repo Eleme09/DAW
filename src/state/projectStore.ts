@@ -10,14 +10,18 @@ import {
   createMidiClip,
   createNote,
   createTrack,
+  createBus,
   type AudioClip,
   type AutomationParam,
   type AutomationPoint,
+  type Bus,
+  type BusId,
   type Instrument,
   type MidiClip,
   type Note,
   type Project,
   type SampleAsset,
+  type Send,
   type Track,
   type TrackId,
 } from "@/types/project";
@@ -25,7 +29,12 @@ import { createEffectInstance, type EffectInstance, type EffectType } from "@/ty
 import { barSeconds, type GridResolution } from "@/lib/timing/grid";
 import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND } from "@/components/daw/Timeline/constants";
 
-export type EffectTarget = TrackId | "master";
+/** A bus's id is also a valid EffectTarget - both TrackId and BusId are
+ * plain strings (uuids that never collide across the two arrays), so the
+ * type union doesn't distinguish them structurally; `mutateInserts` below
+ * resolves which one by actually looking it up in `project.tracks` then
+ * `project.buses`. */
+export type EffectTarget = TrackId | BusId | "master";
 /** Which single pane is full-width on mobile - see DawShell. Unused at `md`+,
  * where every pane renders simultaneously. */
 export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects";
@@ -62,9 +71,14 @@ interface ProjectState {
   mobileView: MobileView;
   setMobileView: (view: MobileView) => void;
   /** Which chain the EffectsRackPanel is showing - lifted out of that
-   * component so the Mixer's per-strip/master "FX" buttons can jump to it. */
-  effectsRackMode: "track" | "master";
-  setEffectsRackMode: (mode: "track" | "master") => void;
+   * component so the Mixer's per-strip/master/bus "FX" buttons can jump to
+   * it. */
+  effectsRackMode: "track" | "master" | "bus";
+  setEffectsRackMode: (mode: "track" | "master" | "bus") => void;
+  /** Which bus effectsRackMode: "bus" is currently showing - the bus
+   * counterpart of selectedTrackId. */
+  selectedBusId: BusId | null;
+  selectBus: (busId: BusId | null) => void;
   /** Which MIDI clip the piano roll bottom sheet is showing - null when closed. */
   pianoRollClipId: string | null;
   setPianoRollClipId: (clipId: string | null) => void;
@@ -92,6 +106,17 @@ interface ProjectState {
   /** Swaps a track with its immediate left/right neighbor in channel order. */
   moveTrack: (trackId: TrackId, direction: -1 | 1) => void;
   armTrack: (trackId: TrackId) => void;
+
+  addBus: (name?: string) => Bus;
+  removeBus: (busId: BusId) => void;
+  updateBus: (busId: BusId, patch: Partial<Bus>) => void;
+  /** Swaps a bus with its immediate left/right neighbor in channel order. */
+  moveBus: (busId: BusId, direction: -1 | 1) => void;
+  /** Sets or updates a track's send to `busId` at `levelDb` - creates the
+   * send if the track doesn't already have one to that bus (up to the 2
+   * the UI offers), otherwise updates its level in place. */
+  setTrackSend: (trackId: TrackId, busId: BusId, levelDb: number) => void;
+  removeTrackSend: (trackId: TrackId, busId: BusId) => void;
   addClip: (clip: AudioClip) => void;
   updateClip: (trackId: TrackId, clipId: string, patch: Partial<AudioClip>) => void;
   removeClip: (trackId: TrackId, clipId: string) => void;
@@ -258,12 +283,21 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       getAudioEngine().syncMasterInserts(nextProject.masterInserts);
       return;
     }
+    if (project.tracks.some((t) => t.id === target)) {
+      const nextProject = touch({
+        ...project,
+        tracks: project.tracks.map((t) => (t.id === target ? { ...t, inserts: updater(t.inserts) } : t)),
+      });
+      setProject(nextProject, opts);
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+      return;
+    }
     const nextProject = touch({
       ...project,
-      tracks: project.tracks.map((t) => (t.id === target ? { ...t, inserts: updater(t.inserts) } : t)),
+      buses: project.buses.map((b) => (b.id === target ? { ...b, inserts: updater(b.inserts) } : b)),
     });
     setProject(nextProject, opts);
-    getAudioEngine().syncTracks(nextProject.tracks);
+    getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
   }
 
   return {
@@ -289,6 +323,8 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     setMobileView: (view) => set({ mobileView: view }),
     effectsRackMode: "track",
     setEffectsRackMode: (mode) => set({ effectsRackMode: mode }),
+    selectedBusId: null,
+    selectBus: (busId) => set({ selectedBusId: busId }),
     pianoRollClipId: null,
     setPianoRollClipId: (clipId) => set({ pianoRollClipId: clipId }),
     automationTrackId: null,
@@ -305,7 +341,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const previous = past[past.length - 1];
       if (!previous) return;
       set({ project: previous, past: past.slice(0, -1), future: [project, ...future] });
-      getAudioEngine().syncTracks(previous.tracks);
+      getAudioEngine().syncTracks(previous.tracks, previous.buses);
       getAudioEngine().syncMasterInserts(previous.masterInserts);
       lastPushWasCoalescible = false;
     },
@@ -314,7 +350,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const next = future[0];
       if (!next) return;
       set({ project: next, past: [...past, project], future: future.slice(1) });
-      getAudioEngine().syncTracks(next.tracks);
+      getAudioEngine().syncTracks(next.tracks, next.buses);
       getAudioEngine().syncMasterInserts(next.masterInserts);
       lastPushWasCoalescible = false;
     },
@@ -344,7 +380,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         touch({ ...project, tracks: project.tracks.map((t) => (t.id === trackId ? { ...t, ...patch } : t)) }),
         { coalesce }
       );
-      getAudioEngine().syncTracks(get().project.tracks);
+      getAudioEngine().syncTracks(get().project.tracks, get().project.buses);
     },
 
     moveTrack: (trackId, direction) => {
@@ -368,6 +404,81 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
           tracks: project.tracks.map((t) => ({ ...t, armed: t.id === trackId ? nextArmed : false })),
         })
       );
+    },
+
+    addBus: (name) => {
+      const project = get().project;
+      const bus = createBus(name ?? `Bus ${project.buses.length + 1}`, project.buses.length);
+      const nextProject = touch({ ...project, buses: [...project.buses, bus] });
+      setProject(nextProject, { extra: { selectedBusId: bus.id } });
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+      return bus;
+    },
+
+    removeBus: (busId) => {
+      const project = get().project;
+      const selectedBusId = get().selectedBusId === busId ? null : get().selectedBusId;
+      // A send pointing at a bus that no longer exists is dead data, not a
+      // harmless leftover - clean it up here rather than leaving every
+      // consumer (the engine, the Mixer's send UI) to guard against it.
+      const nextProject = touch({
+        ...project,
+        buses: project.buses.filter((b) => b.id !== busId),
+        tracks: project.tracks.map((t) => ({ ...t, sends: t.sends.filter((s) => s.busId !== busId) })),
+      });
+      setProject(nextProject, { extra: { selectedBusId } });
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+    },
+
+    updateBus: (busId, patch) => {
+      const project = get().project;
+      const coalesce = Object.keys(patch).every((k) => k === "volumeDb" || k === "pan" || k === "name");
+      const nextProject = touch({
+        ...project,
+        buses: project.buses.map((b) => (b.id === busId ? { ...b, ...patch } : b)),
+      });
+      setProject(nextProject, { coalesce });
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+    },
+
+    moveBus: (busId, direction) => {
+      const project = get().project;
+      const index = project.buses.findIndex((b) => b.id === busId);
+      const newIndex = index + direction;
+      if (index === -1 || newIndex < 0 || newIndex >= project.buses.length) return;
+      const reordered = [...project.buses];
+      [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+      setProject(touch({ ...project, buses: reordered.map((b, i) => ({ ...b, order: i })) }));
+    },
+
+    setTrackSend: (trackId, busId, levelDb) => {
+      const project = get().project;
+      const nextProject = touch({
+        ...project,
+        tracks: project.tracks.map((t) => {
+          if (t.id !== trackId) return t;
+          const existing = t.sends.find((s) => s.busId === busId);
+          if (existing) {
+            return { ...t, sends: t.sends.map((s) => (s.busId === busId ? { ...s, levelDb } : s)) };
+          }
+          const send: Send = { id: crypto.randomUUID(), busId, levelDb };
+          return { ...t, sends: [...t.sends, send] };
+        }),
+      });
+      setProject(nextProject, { coalesce: true });
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+    },
+
+    removeTrackSend: (trackId, busId) => {
+      const project = get().project;
+      const nextProject = touch({
+        ...project,
+        tracks: project.tracks.map((t) =>
+          t.id === trackId ? { ...t, sends: t.sends.filter((s) => s.busId !== busId) } : t
+        ),
+      });
+      setProject(nextProject);
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
     },
 
     addClip: (clip) => {
@@ -844,15 +955,15 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     play: () => {
       const { project, currentTime } = get();
-      getAudioEngine().play(project.tracks, currentTime, project.loop, project.bpm);
+      getAudioEngine().play(project.tracks, currentTime, project.loop, project.bpm, project.buses);
       set({ isPlaying: true });
     },
     pause: () => {
-      getAudioEngine().pause(get().project.tracks);
+      getAudioEngine().pause(get().project.tracks, get().project.buses);
       set({ isPlaying: false, currentTime: getAudioEngine().getCurrentTime() });
     },
     stop: () => {
-      getAudioEngine().stop(get().project.tracks);
+      getAudioEngine().stop(get().project.tracks, get().project.buses);
       set({ isPlaying: false, currentTime: 0 });
     },
     seek: (time) => {
@@ -895,7 +1006,8 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         project.tracks,
         project.loop,
         project.bpm,
-        get().currentTime
+        get().currentTime,
+        project.buses
       );
       if (!result.ok) {
         set({ recordingError: result.error });
@@ -991,6 +1103,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const normalized: Project = {
         ...project,
         masterVolumeDb: project.masterVolumeDb ?? 0,
+        buses: project.buses ?? [],
         tracks: project.tracks.map((t) => ({
           ...t,
           type: t.type ?? "audio",
@@ -1002,9 +1115,18 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
             : null,
           automation: t.automation ?? createDefaultAutomation(),
           monitorMode: t.monitorMode ?? "auto",
+          sends: t.sends ?? [],
         })),
       };
-      set({ project: normalized, currentTime: 0, isPlaying: false, selectedTrackId: null, past: [], future: [] });
+      set({
+        project: normalized,
+        currentTime: 0,
+        isPlaying: false,
+        selectedTrackId: null,
+        selectedBusId: null,
+        past: [],
+        future: [],
+      });
       lastPushWasCoalescible = false;
     },
     newProject: () => {
@@ -1015,6 +1137,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         currentTime: 0,
         isPlaying: false,
         selectedTrackId: null,
+        selectedBusId: null,
         past: [],
         future: [],
       });

@@ -3,23 +3,31 @@
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { useProjectStore } from "@/state/projectStore";
-import type { Track } from "@/types/project";
+import type { Bus, Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
 import { MixAssistantPanel } from "../MixAssistantPanel";
 import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
+import { SendSlots } from "./SendSlots";
 import { WaveformIcon, BusIcon, MicIcon, ChevronLeftIcon, ChevronRightIcon, RecordIcon } from "../icons";
 import { Knob } from "../ui/Knob";
 import { Fader } from "./Fader";
 
 export function MixerPanel() {
   const tracks = useProjectStore((s) => s.project.tracks);
+  const buses = useProjectStore((s) => s.project.buses);
   const masterVolumeDb = useProjectStore((s) => s.project.masterVolumeDb);
   const updateTrack = useProjectStore((s) => s.updateTrack);
   const armTrack = useProjectStore((s) => s.armTrack);
   const moveTrack = useProjectStore((s) => s.moveTrack);
+  const addBus = useProjectStore((s) => s.addBus);
+  const removeBus = useProjectStore((s) => s.removeBus);
+  const updateBus = useProjectStore((s) => s.updateBus);
+  const moveBus = useProjectStore((s) => s.moveBus);
   const setMasterVolume = useProjectStore((s) => s.setMasterVolume);
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
+  const selectBus = useProjectStore((s) => s.selectBus);
+  const selectedBusId = useProjectStore((s) => s.selectedBusId);
   const isRecording = useProjectStore((s) => s.isRecording);
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
@@ -29,6 +37,12 @@ export function MixerPanel() {
   function openTrackFx(trackId: string) {
     selectTrack(trackId);
     setEffectsRackMode("track");
+    setMobileView("effects");
+  }
+
+  function openBusFx(busId: string) {
+    selectBus(busId);
+    setEffectsRackMode("bus");
     setMobileView("effects");
   }
 
@@ -77,6 +91,27 @@ export function MixerPanel() {
               liveAnalyser={track.armed && isRecording ? engine.getRecordingAnalyser() : engine.getMonitorAnalyser()}
             />
           ))}
+
+          {buses.map((bus) => (
+            <MobileBusRow
+              key={bus.id}
+              bus={bus}
+              selected={bus.id === selectedBusId}
+              onSelect={() => selectBus(bus.id)}
+              onUpdate={(patch) => updateBus(bus.id, patch)}
+              onOpenFx={() => openBusFx(bus.id)}
+              onRemove={() => removeBus(bus.id)}
+              analyser={engine.getBusAnalyser(bus.id)}
+            />
+          ))}
+          <button
+            onClick={() => addBus()}
+            title="Crea un bus/grupo al que varias pistas pueden enviar señal"
+            className="min-h-11 rounded border border-dashed border-line-2 text-xs font-medium text-bone-2 hover:text-bone"
+          >
+            + Bus
+          </button>
+
           <div className="rounded border border-line-2 bg-surf p-2">
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-[11px] font-semibold text-bone">MASTER</span>
@@ -258,8 +293,132 @@ export function MixerPanel() {
                 />
               </div>
             )}
+            <SendSlots track={track} />
           </div>
         ))}
+
+        {buses.map((bus, i) => (
+          <div
+            key={bus.id}
+            onClick={() => selectBus(bus.id)}
+            className={`flex w-32 shrink-0 flex-col items-center gap-1.5 rounded border p-2 ${
+              bus.id === selectedBusId ? "border-bone bg-surf" : "border-line bg-surf"
+            }`}
+          >
+            <div className="flex w-full items-center gap-1">
+              <BusIcon className="h-2.5 w-2.5 shrink-0 text-bone-3" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveBus(bus.id, -1);
+                }}
+                disabled={i === 0}
+                title="Mover bus a la izquierda"
+                className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-3 hover:text-bone-2 disabled:opacity-20"
+              >
+                <ChevronLeftIcon className="h-3.5 w-3.5" />
+              </button>
+              <input
+                value={bus.name}
+                onChange={(e) => updateBus(bus.id, { name: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                title="Renombrar bus"
+                className="w-full min-w-0 truncate bg-transparent text-center text-[11px] font-medium text-bone outline-none"
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  moveBus(bus.id, 1);
+                }}
+                disabled={i === buses.length - 1}
+                title="Mover bus a la derecha"
+                className="-mx-2.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-3 hover:text-bone-2 disabled:opacity-20"
+              >
+                <ChevronRightIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openBusFx(bus.id);
+              }}
+              title="Abrir cadena de inserts de este bus"
+              className="flex min-h-11 w-full items-center justify-center gap-1 rounded bg-surf-2 text-[10px] font-medium text-bone-2 hover:text-bone"
+            >
+              <WaveformIcon className="h-3 w-3" />
+              FX{bus.inserts.length > 0 ? ` (${bus.inserts.length})` : ""}
+            </button>
+
+            <div className="flex h-32 items-end gap-1">
+              <Fader
+                valueDb={bus.volumeDb}
+                onChange={(db) => updateBus(bus.id, { volumeDb: db })}
+                height={128}
+                label={bus.name}
+                showScale
+              />
+              <MeterBar analyser={engine.getBusAnalyser(bus.id)} />
+            </div>
+            <span className="font-mono text-[10px] tabular-nums text-bone-2">{bus.volumeDb.toFixed(1)}dB</span>
+
+            <Knob
+              value={bus.pan}
+              min={-1}
+              max={1}
+              defaultValue={0}
+              decimals={2}
+              label="Pan"
+              size={32}
+              onChange={(pan) => updateBus(bus.id, { pan })}
+            />
+
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateBus(bus.id, { muted: !bus.muted });
+                }}
+                title={bus.muted ? "Quitar silencio" : "Silenciar"}
+                className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
+                  bus.muted ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
+                }`}
+              >
+                M
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateBus(bus.id, { solo: !bus.solo });
+                }}
+                title={bus.solo ? "Quitar solo" : "Solo"}
+                className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
+                  bus.solo ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
+                }`}
+              >
+                S
+              </button>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                removeBus(bus.id);
+              }}
+              title="Eliminar bus"
+              className="min-h-9 w-full rounded bg-red-950 text-[10px] font-medium text-red-400"
+            >
+              Eliminar
+            </button>
+          </div>
+        ))}
+
+        <button
+          onClick={() => addBus()}
+          title="Crea un bus/grupo al que varias pistas pueden enviar señal"
+          className="flex w-16 shrink-0 flex-col items-center justify-center gap-1 rounded border border-dashed border-line-2 text-xs font-medium text-bone-2 hover:text-bone"
+        >
+          + Bus
+        </button>
 
         <div className="ml-auto flex w-32 shrink-0 flex-col items-center gap-1.5 rounded border border-line-2 bg-surf p-2">
           <span className="text-[11px] font-semibold text-bone">MASTER</span>
@@ -414,6 +573,111 @@ function MobileChannelRow({
             <MeterBar analyser={liveAnalyser} vertical={false} />
           </div>
         )}
+      </div>
+
+      <div className="mt-1.5">
+        <SendSlots track={track} />
+      </div>
+    </div>
+  );
+}
+
+interface MobileBusRowProps {
+  bus: Bus;
+  selected: boolean;
+  onSelect: () => void;
+  onUpdate: (patch: Partial<Bus>) => void;
+  onOpenFx: () => void;
+  onRemove: () => void;
+  analyser: AnalyserNode | null;
+}
+
+/** A bus's mobile row - the same shape as MobileChannelRow minus what only
+ * a track needs (arm/monitor, sends of its own - a bus doesn't record and
+ * this build doesn't chain bus-to-bus sends), plus Eliminar since a bus,
+ * unlike a track, isn't created from the Timeline. */
+function MobileBusRow({ bus, selected, onSelect, onUpdate, onOpenFx, onRemove, analyser }: MobileBusRowProps) {
+  return (
+    <div
+      onClick={onSelect}
+      className={`rounded border p-2 ${selected ? "border-bone bg-surf" : "border-line bg-surf"}`}
+    >
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: bus.color }} title="Color del bus" />
+        <BusIcon className="h-3.5 w-3.5 shrink-0 text-bone-3" />
+        <input
+          value={bus.name}
+          onChange={(e) => onUpdate({ name: e.target.value })}
+          onClick={(e) => e.stopPropagation()}
+          title="Renombrar bus"
+          className="min-w-0 flex-1 truncate bg-transparent text-[12px] font-medium text-bone outline-none"
+        />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenFx();
+          }}
+          title="Abrir cadena de inserts de este bus"
+          className="flex h-11 shrink-0 items-center gap-1 rounded bg-surf-2 px-2 text-[10px] font-medium text-bone-2 hover:text-bone"
+        >
+          <WaveformIcon className="h-3 w-3" />
+          FX{bus.inserts.length > 0 ? ` (${bus.inserts.length})` : ""}
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Fader orientation="horizontal" valueDb={bus.volumeDb} onChange={(db) => onUpdate({ volumeDb: db })} length={130} label={bus.name} />
+        <span className="w-12 shrink-0 font-mono text-[10px] tabular-nums text-bone-2">{bus.volumeDb.toFixed(1)}dB</span>
+        <Knob
+          value={bus.pan}
+          min={-1}
+          max={1}
+          defaultValue={0}
+          decimals={2}
+          label="Pan"
+          size={28}
+          onChange={(pan) => onUpdate({ pan })}
+        />
+      </div>
+      <div className="mt-1 h-1.5 w-full">
+        <MeterBar analyser={analyser} vertical={false} />
+      </div>
+
+      <div className="mt-1.5 flex items-center gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdate({ muted: !bus.muted });
+          }}
+          title={bus.muted ? "Quitar silencio" : "Silenciar"}
+          className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
+            bus.muted ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
+          }`}
+        >
+          M
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdate({ solo: !bus.solo });
+          }}
+          title={bus.solo ? "Quitar solo" : "Solo"}
+          className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
+            bus.solo ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
+          }`}
+        >
+          S
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          title="Eliminar bus"
+          className="ml-auto flex h-11 items-center gap-1 rounded bg-red-950 px-2 text-[10px] font-medium text-red-400"
+        >
+          Eliminar
+        </button>
       </div>
     </div>
   );

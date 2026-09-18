@@ -31,6 +31,7 @@ const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ class
 
 export function DawShell() {
   const tracks = useProjectStore((s) => s.project.tracks);
+  const buses = useProjectStore((s) => s.project.buses);
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
   const masterVolumeDb = useProjectStore((s) => s.project.masterVolumeDb);
   const mobileView = useProjectStore((s) => s.mobileView);
@@ -45,8 +46,8 @@ export function DawShell() {
   // Keep the audio graph in sync with track state even before the user hits
   // play, so mixer meters/pan/volume are live immediately.
   useEffect(() => {
-    getAudioEngine().syncTracks(tracks);
-  }, [tracks]);
+    getAudioEngine().syncTracks(tracks, buses);
+  }, [tracks, buses]);
 
   useEffect(() => {
     getAudioEngine().syncMasterInserts(masterInserts);

@@ -119,6 +119,20 @@ export interface TrackAutomation {
  * armed regardless of transport state. See AudioEngine's refreshMonitoring. */
 export type MonitorMode = "off" | "auto" | "on";
 
+export type BusId = string;
+
+/** One auxiliary send from a track to a bus - a parallel tap, not a
+ * reroute (the track's own dry signal keeps going to master exactly as
+ * before). Post-fader by convention (tapped after the track's own
+ * volume/pan/mute in AudioEngine), same as every mainstream DAW's default
+ * send point - so muting or trimming a track also affects what it sends,
+ * instead of the two silently diverging. */
+export interface Send {
+  id: string;
+  busId: BusId;
+  levelDb: number;
+}
+
 export interface Track {
   id: TrackId;
   name: string;
@@ -138,6 +152,26 @@ export interface Track {
   order: number;
   /** Insert effect chain, applied in array order at the track's input point. */
   inserts: EffectInstance[];
+  /** Up to 2 auxiliary sends (PROMPT_MAESTRO FASE 3) - UI caps it there,
+   * the array itself isn't hard-limited by the type. */
+  sends: Send[];
+}
+
+/** A return/group channel: tracks send to it (via Track.sends) and/or it
+ * can hold a shared effect (e.g. one reverb three vocals share instead of
+ * three separate instances). Has its own fader/pan/mute/solo/inserts and
+ * feeds master exactly like a track does - the same "en tira más" the
+ * Mixer already renders for tracks, just for a bus instead. */
+export interface Bus {
+  id: BusId;
+  name: string;
+  color: string;
+  volumeDb: number;
+  pan: number;
+  muted: boolean;
+  solo: boolean;
+  inserts: EffectInstance[];
+  order: number;
 }
 
 export interface LoopRegion {
@@ -158,6 +192,7 @@ export interface Project {
   bpm: number;
   timeSignature: [number, number];
   tracks: Track[];
+  buses: Bus[];
   loop: LoopRegion;
   markers: Marker[];
   metronomeEnabled: boolean;
@@ -187,6 +222,7 @@ export function createEmptyProject(name = "Sin título"): Project {
     bpm: 140,
     timeSignature: [4, 4],
     tracks: [],
+    buses: [],
     loop: { enabled: false, startTime: 0, endTime: 8 },
     markers: [],
     metronomeEnabled: false,
@@ -231,6 +267,30 @@ export function createTrack(name: string, order: number, type: Track["type"] = "
     automation: createDefaultAutomation(),
     order,
     inserts: [],
+    sends: [],
+  };
+}
+
+// Distinct from TRACK_COLORS on purpose - a bus is not a track (no signal
+// source of its own, no clips) and should read as visually different in a
+// mixer row at a glance, not just another color in the same rotation.
+const BUS_COLORS = ["#a67c52", "#5c7a8a", "#7a6a8a"];
+
+export function nextBusColor(existingCount: number): string {
+  return BUS_COLORS[existingCount % BUS_COLORS.length];
+}
+
+export function createBus(name: string, order: number): Bus {
+  return {
+    id: crypto.randomUUID(),
+    name,
+    color: nextBusColor(order),
+    volumeDb: 0,
+    pan: 0,
+    muted: false,
+    solo: false,
+    inserts: [],
+    order,
   };
 }
 
