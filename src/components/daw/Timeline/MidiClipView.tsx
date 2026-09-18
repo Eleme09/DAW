@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import type { MidiClip } from "@/types/project";
 import { snapToGrid } from "@/lib/timing/grid";
 import { TRACK_HEIGHT } from "./constants";
 import { NoteIcon } from "../icons";
+import { MidiClipContextSheet } from "./MidiClipContextSheet";
 
 interface MidiClipViewProps {
   clip: MidiClip;
@@ -20,11 +21,11 @@ type DragState =
 
 /** Compact block for a programmed pattern on an instrument track - the MIDI
  * counterpart to ClipView. Notes are edited in the piano roll (opened via
- * the note-icon button), not by dragging inline - only move/resize/delete
- * happen directly on the timeline, same as ClipView's own trim handles. */
+ * the note-icon button or the context sheet), not by dragging inline - only
+ * move/resize happen directly on the timeline, same as ClipView's own trim
+ * handles. Duplicate/delete live in MidiClipContextSheet (tap to open). */
 export function MidiClipView({ clip }: MidiClipViewProps) {
   const updateMidiClip = useProjectStore((s) => s.updateMidiClip);
-  const removeMidiClip = useProjectStore((s) => s.removeMidiClip);
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const setPianoRollClipId = useProjectStore((s) => s.setPianoRollClipId);
   const bpm = useProjectStore((s) => s.project.bpm);
@@ -32,6 +33,10 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
   const snapResolution = useProjectStore((s) => s.snapResolution);
   const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   const dragState = useRef<DragState | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  /** Same tap-vs-drag distinction as ClipView (see its own comment) - a tap
+   * opens MidiClipContextSheet instead of deleting the pattern outright. */
+  const moveDistance = useRef(0);
 
   const width = Math.max(4, clip.duration * pixelsPerSecond);
   const snap = (seconds: number) => snapToGrid(seconds, bpm, timeSignature, snapResolution);
@@ -41,6 +46,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
     selectTrack(clip.trackId);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragState.current = state;
+    moveDistance.current = 0;
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -48,15 +54,20 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
     if (!drag) return;
     const deltaSec = (e.clientX - drag.startX) / pixelsPerSecond;
     if (drag.mode === "move") {
+      moveDistance.current = Math.abs(e.clientX - drag.startX);
       updateMidiClip(clip.trackId, clip.id, { startTime: snap(Math.max(0, drag.startTime + deltaSec)) });
       return;
     }
     updateMidiClip(clip.trackId, clip.id, { duration: Math.max(MIN_CLIP_SEC, snap(drag.duration + deltaSec)) });
   }
 
+  const TAP_THRESHOLD_PX = 4;
+
   function onPointerUp(e: React.PointerEvent) {
+    const wasTap = dragState.current?.mode === "move" && moveDistance.current < TAP_THRESHOLD_PX;
     dragState.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    if (wasTap) setSheetOpen(true);
   }
 
   const pitches = clip.notes.map((n) => n.pitch);
@@ -69,8 +80,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
       onPointerDown={(e) => beginDrag(e, { mode: "move", startX: e.clientX, startTime: clip.startTime })}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onDoubleClick={() => removeMidiClip(clip.trackId, clip.id)}
-      title={`${clip.name} — ${clip.notes.length} notas — arrastra para mover, arrastra el borde derecho para redimensionar, doble clic para eliminar`}
+      title={`${clip.name} — ${clip.notes.length} notas — toca para abrir acciones, arrastra para mover, arrastra el borde derecho para redimensionar`}
       style={{
         position: "absolute",
         left: clip.startTime * pixelsPerSecond,
@@ -120,6 +130,7 @@ export function MidiClipView({ clip }: MidiClipViewProps) {
         style={{ width: HANDLE_WIDTH }}
         className="absolute right-0 top-0 h-full cursor-ew-resize bg-white/0 group-hover:bg-white/20"
       />
+      {sheetOpen && <MidiClipContextSheet clip={clip} onClose={() => setSheetOpen(false)} />}
     </div>
   );
 }

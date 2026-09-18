@@ -451,6 +451,37 @@ describe("instrument tracks and patterns", () => {
     expect(useProjectStore.getState().pianoRollClipId).toBeNull();
   });
 
+  it("duplicateMidiClip copies the pattern with fresh clip/note ids right after the original", () => {
+    const { addTrack, selectTrack, addPatternAtPlayhead, addNote, duplicateMidiClip } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+    selectTrack(track.id);
+    addPatternAtPlayhead();
+    const original = useProjectStore.getState().project.tracks[0].midiClips[0];
+    addNote(track.id, original.id, { pitch: 60, startTime: 0, duration: 0.25, velocity: 0.9 });
+
+    duplicateMidiClip(track.id, original.id);
+
+    const clips = useProjectStore.getState().project.tracks[0].midiClips;
+    expect(clips).toHaveLength(2);
+    const copy = clips[1];
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.startTime).toBeCloseTo(original.startTime + original.duration);
+    expect(copy.duration).toBeCloseTo(original.duration);
+    expect(copy.notes).toHaveLength(1);
+    expect(copy.notes[0].id).not.toBe(clips[0].notes[0].id);
+    expect(copy.notes[0].pitch).toBe(60);
+  });
+
+  it("duplicateMidiClip is a no-op for an unknown clip id", () => {
+    const { addTrack, addPatternAtPlayhead, duplicateMidiClip } = useProjectStore.getState();
+    const track = addTrack("Lead", "instrument");
+    addPatternAtPlayhead();
+
+    duplicateMidiClip(track.id, "not-a-real-id");
+
+    expect(useProjectStore.getState().project.tracks[0].midiClips).toHaveLength(1);
+  });
+
   it("setInstrument fully replaces the instrument (discrete, own undo step)", () => {
     const { addTrack, setInstrument, undo } = useProjectStore.getState();
     const track = addTrack("Lead", "instrument");

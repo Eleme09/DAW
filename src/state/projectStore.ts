@@ -110,6 +110,9 @@ interface ProjectState {
   addPatternAtPlayhead: () => void;
   updateMidiClip: (trackId: TrackId, clipId: string, patch: Partial<MidiClip>) => void;
   removeMidiClip: (trackId: TrackId, clipId: string) => void;
+  /** Duplicates a MIDI pattern clip (with fresh note ids), placing the copy
+   * immediately after the original - the MIDI counterpart to duplicateClip. */
+  duplicateMidiClip: (trackId: TrackId, clipId: string) => void;
   addNote: (trackId: TrackId, clipId: string, note: Omit<Note, "id">) => void;
   updateNote: (trackId: TrackId, clipId: string, noteId: string, patch: Partial<Note>) => void;
   removeNote: (trackId: TrackId, clipId: string, noteId: string) => void;
@@ -609,6 +612,25 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         })
       );
       if (get().pianoRollClipId === clipId) set({ pianoRollClipId: null });
+    },
+
+    duplicateMidiClip: (trackId, clipId) => {
+      const project = get().project;
+      const track = project.tracks.find((t) => t.id === trackId);
+      const clip = track?.midiClips.find((c) => c.id === clipId);
+      if (!clip) return;
+      const duplicate: MidiClip = {
+        ...clip,
+        id: crypto.randomUUID(),
+        startTime: clip.startTime + clip.duration,
+        notes: clip.notes.map((n) => ({ ...n, id: crypto.randomUUID() })),
+      };
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) => (t.id !== trackId ? t : { ...t, midiClips: [...t.midiClips, duplicate] })),
+        })
+      );
     },
 
     addNote: (trackId, clipId, note) => {
