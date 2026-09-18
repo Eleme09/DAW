@@ -18,7 +18,10 @@ import { EFFECT_LABELS, type EffectInstance } from "@/types/effects";
 import type { AudioClip } from "@/types/project";
 import { Waveform } from "../Waveform";
 import { PitchCurveView } from "./PitchCurveView";
-import { SparkleIcon, MicIcon, PlayIcon, PauseIcon } from "../icons";
+import { InputMeterRow } from "../InputMeterRow";
+import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
+import { useMonitoringLive } from "../useMonitoringLive";
+import { SparkleIcon, MicIcon, RecordIcon, PlayIcon, PauseIcon } from "../icons";
 
 /** How long the chain must sit still before re-rendering the A/B preview -
  * long enough that a knob/slider drag (which fires onChange continuously,
@@ -103,8 +106,20 @@ export function VozPanel() {
   const setEffectChain = useProjectStore((s) => s.setEffectChain);
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
   const setMobileView = useProjectStore((s) => s.setMobileView);
+  const armTrack = useProjectStore((s) => s.armTrack);
+  const updateTrack = useProjectStore((s) => s.updateTrack);
 
   const track = tracks.find((t) => t.id === selectedTrackId);
+  // Called unconditionally (armed:false/monitorMode:"off" when there's no
+  // track yet) so this screen's two early-return empty states below can
+  // still show real arm/monitor state instead of nothing at all - the gap
+  // named explicitly in PROGRESS.md's "indicador de monitoreo" section:
+  // this was the one screen in the app with no way to tell if the mic was
+  // live, even though it's the one people land on to actually record.
+  const { monitoringLive, likelyHeadphones, isRecording } = useMonitoringLive(
+    track?.armed ?? false,
+    track?.monitorMode ?? "off"
+  );
   const activeClips = useMemo(() => track?.clips.filter((c) => !c.muted) ?? [], [track]);
   const clip: AudioClip | null = useMemo(() => {
     if (activeClips.length === 0) return null;
@@ -265,6 +280,51 @@ export function VozPanel() {
     setMobileView("effects");
   }
 
+  // Shared by both empty states below and the normal render - the gap this
+  // closes is specifically that recording setup (arm + hear yourself) had
+  // no presence at all on the screen people land on to record, not just in
+  // the state that already has a take.
+  const armMonitorRow = track && (
+    <div className="flex shrink-0 items-center gap-2 border-b border-line bg-surf px-3 py-2">
+      <button
+        onClick={() => armTrack(track.id)}
+        disabled={isRecording}
+        title="Armar para grabar"
+        className={`flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold disabled:opacity-30 ${
+          track.armed ? "bg-rec text-bone" : "bg-surf-2 text-bone-2"
+        }`}
+      >
+        <RecordIcon className="h-3.5 w-3.5" />
+        {track.armed ? "Armada" : "Armar"}
+      </button>
+      <button
+        onClick={() => updateTrack(track.id, { monitorMode: MONITOR_NEXT[track.monitorMode] })}
+        title={
+          monitoringLive
+            ? `${MONITOR_LABEL[track.monitorMode]} — escuchando tu micrófono ahora mismo`
+            : MONITOR_LABEL[track.monitorMode]
+        }
+        className={`relative flex h-9 items-center gap-1.5 rounded px-3 text-xs font-semibold ${MONITOR_CLASS[track.monitorMode]}`}
+      >
+        <MicIcon className="h-3.5 w-3.5" />
+        Monitor
+        {monitoringLive && (
+          <span className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-live" />
+        )}
+      </button>
+      {track.armed && (
+        <div className="min-w-0 flex-1">
+          <InputMeterRow
+            track={track}
+            isRecording={isRecording}
+            monitoringLive={monitoringLive}
+            likelyHeadphones={likelyHeadphones}
+          />
+        </div>
+      )}
+    </div>
+  );
+
   if (!track) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
@@ -283,10 +343,13 @@ export function VozPanel() {
 
   if (!clip) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-        <MicIcon className="h-8 w-8 text-bone-3" />
-        <p className="text-sm font-medium text-bone-2">&quot;{track.name}&quot; todavía no tiene ninguna toma</p>
-        <p className="text-xs text-bone-3">Graba o importa audio en esta pista para verla aquí.</p>
+      <div className="flex h-full flex-col overflow-y-auto bg-ink">
+        {armMonitorRow}
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+          <MicIcon className="h-8 w-8 text-bone-3" />
+          <p className="text-sm font-medium text-bone-2">&quot;{track.name}&quot; todavía no tiene ninguna toma</p>
+          <p className="text-xs text-bone-3">Graba o importa audio en esta pista para verla aquí.</p>
+        </div>
       </div>
     );
   }
@@ -309,6 +372,8 @@ export function VozPanel() {
           </div>
         </div>
       </div>
+
+      {armMonitorRow}
 
       <div className="relative border-b border-line" style={{ height: 150, background: "#0C0C0E" }}>
         {width > 0 && <Waveform buffer={dryBuffer} width={width} height={150} color={track.color} />}

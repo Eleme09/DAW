@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getAudioEngine } from "@/audio-engine/AudioEngine";
-import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
+import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
-import { likelyUsingHeadphones } from "@/lib/audio/outputHeuristics";
-import type { MonitorMode, Track } from "@/types/project";
-import { MeterBar } from "../MeterBar";
+import type { Track } from "@/types/project";
+import { InputMeterRow } from "../InputMeterRow";
+import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
+import { useMonitoringLive } from "../useMonitoringLive";
 import { Knob } from "../ui/Knob";
 import { BottomSheet } from "../BottomSheet";
 import { AutomationIcon, SparkleIcon, MoreIcon, MicIcon, RecordIcon } from "../icons";
@@ -17,58 +16,19 @@ interface TrackHeaderProps {
   selected: boolean;
 }
 
-const MONITOR_NEXT: Record<MonitorMode, MonitorMode> = { off: "auto", auto: "on", on: "off" };
-const MONITOR_LABEL: Record<MonitorMode, string> = {
-  off: "Monitor: apagado (nunca se oye la entrada)",
-  auto: "Monitor: automático (se oye la entrada al detener o grabar)",
-  on: "Monitor: siempre (se oye la entrada mientras esté armada)",
-};
-const MONITOR_CLASS: Record<MonitorMode, string> = {
-  off: "bg-surf-2 text-bone-3",
-  auto: "bg-surf-3 text-bone-2",
-  on: "bg-live text-ink",
-};
-
 export function TrackHeader({ track, selected }: TrackHeaderProps) {
   const updateTrack = useProjectStore((s) => s.updateTrack);
   const removeTrack = useProjectStore((s) => s.removeTrack);
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const armTrack = useProjectStore((s) => s.armTrack);
-  const isRecording = useProjectStore((s) => s.isRecording);
-  const isPlaying = useProjectStore((s) => s.isPlaying);
   const setAutomationTrackId = useProjectStore((s) => s.setAutomationTrackId);
   const hasAutomation = track.automation.volume.enabled || track.automation.pan.enabled;
   const setAssistantDraftMessage = useProjectStore((s) => s.setAssistantDraftMessage);
   const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
   const setMobileView = useProjectStore((s) => s.setMobileView);
+  const { monitoringLive, likelyHeadphones, isRecording } = useMonitoringLive(track.armed, track.monitorMode);
   const isLiveInput = track.armed && isRecording;
   const [moreOpen, setMoreOpen] = useState(false);
-  const [inputClipped, setInputClipped] = useState(false);
-  const [likelyHeadphones, setLikelyHeadphones] = useState<boolean | null>(null);
-  const engine = getAudioEngine();
-  // The real routing state - not just "mode isn't off". "Auto" mode only
-  // monitors while stopped or recording (see isTrackMonitoredLive), so
-  // e.g. an armed track set to "auto" during plain playback is NOT live,
-  // even though its mic-toggle button still shows the "auto" color. Same
-  // function AudioEngine itself uses to decide whether to route the mic,
-  // so this can never claim "live" when the engine actually isn't.
-  const monitoringLive = isTrackMonitoredLive(track.armed, track.monitorMode, isPlaying, isRecording);
-
-  useEffect(() => {
-    if (!monitoringLive) return;
-    let cancelled = false;
-    const check = () => {
-      void engine.listOutputDevices().then((devices) => {
-        if (!cancelled) setLikelyHeadphones(likelyUsingHeadphones(devices));
-      });
-    };
-    check();
-    navigator.mediaDevices?.addEventListener("devicechange", check);
-    return () => {
-      cancelled = true;
-      navigator.mediaDevices?.removeEventListener("devicechange", check);
-    };
-  }, [monitoringLive, engine]);
 
   return (
     <div
@@ -164,33 +124,12 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
       </div>
 
       {track.armed && (
-        <div className="flex h-4 items-center gap-1">
-          <div className="flex h-2 flex-1 items-center">
-            <MeterBar
-              analyser={isLiveInput ? engine.getRecordingAnalyser() : engine.getMonitorAnalyser()}
-              vertical={false}
-              onClipChange={setInputClipped}
-            />
-          </div>
-          {inputClipped ? (
-            <span
-              className="shrink-0 rounded bg-red-600 px-1 text-[9px] font-bold uppercase leading-4 text-white"
-              title="La entrada está saturando - baja la ganancia del micrófono o aléjate antes de grabar"
-            >
-              Satura
-            </span>
-          ) : (
-            monitoringLive &&
-            likelyHeadphones === false && (
-              <span
-                className="shrink-0 rounded bg-yellow-500 px-1 text-[9px] font-bold uppercase leading-4 text-black"
-                title="Parece que estás monitoreando por altavoz, no por auriculares - riesgo de feedback (detección aproximada, no siempre disponible)"
-              >
-                Altavoz
-              </span>
-            )
-          )}
-        </div>
+        <InputMeterRow
+          track={track}
+          isRecording={isRecording}
+          monitoringLive={monitoringLive}
+          likelyHeadphones={likelyHeadphones}
+        />
       )}
 
       <BottomSheet open={moreOpen} onClose={() => setMoreOpen(false)} title={track.name}>

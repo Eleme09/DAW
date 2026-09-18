@@ -3,24 +3,13 @@
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { useProjectStore } from "@/state/projectStore";
-import type { MonitorMode, Track } from "@/types/project";
+import type { Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
 import { MixAssistantPanel } from "../MixAssistantPanel";
+import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
 import { WaveformIcon, BusIcon, MicIcon, ChevronLeftIcon, ChevronRightIcon, RecordIcon } from "../icons";
 import { Knob } from "../ui/Knob";
 import { Fader } from "./Fader";
-
-const MONITOR_NEXT: Record<MonitorMode, MonitorMode> = { off: "auto", auto: "on", on: "off" };
-const MONITOR_LABEL: Record<MonitorMode, string> = {
-  off: "Monitor: apagado (nunca se oye la entrada)",
-  auto: "Monitor: automático (se oye la entrada al detener o grabar)",
-  on: "Monitor: siempre (se oye la entrada mientras esté armada)",
-};
-const MONITOR_CLASS: Record<MonitorMode, string> = {
-  off: "bg-surf-2 text-bone-3 hover:text-bone",
-  auto: "bg-surf-3 text-bone-2",
-  on: "bg-live text-ink",
-};
 
 export function MixerPanel() {
   const tracks = useProjectStore((s) => s.project.tracks);
