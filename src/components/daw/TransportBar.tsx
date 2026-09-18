@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
 import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/AudioEngine";
-import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon, CloseIcon, FolderIcon } from "./icons";
+import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon, RewindIcon, CloseIcon, FolderIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 import { Picker } from "./ui/Picker";
 import { Knob } from "./ui/Knob";
@@ -37,6 +37,7 @@ export function TransportBar() {
   const play = useProjectStore((s) => s.play);
   const pause = useProjectStore((s) => s.pause);
   const stop = useProjectStore((s) => s.stop);
+  const seek = useProjectStore((s) => s.seek);
   const startRecording = useProjectStore((s) => s.startRecording);
   const stopRecording = useProjectStore((s) => s.stopRecording);
   const cancelRecording = useProjectStore((s) => s.cancelRecording);
@@ -68,6 +69,23 @@ export function TransportBar() {
   const [outputDeviceError, setOutputDeviceError] = useState<string | null>(null);
   const outputSelectionSupported = getAudioEngine().isOutputDeviceSelectionSupported();
   const hasAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
+
+  // "Volver al inicio" toggles between 0 and wherever the playhead was
+  // before the last press - one tap jumps to the start, a second tap (right
+  // after, or any time later) jumps back to the point you were actually
+  // working at, instead of leaving you stranded at 0. Standard DAW "return
+  // to zero" convention, not timing-based double-tap detection - more
+  // reliable on a touch screen than requiring two fast taps.
+  const lastPositionRef = useRef<number | null>(null);
+  function handleReturnToStart() {
+    if (currentTime > 0.05) {
+      lastPositionRef.current = currentTime;
+      seek(0);
+    } else if (lastPositionRef.current !== null) {
+      seek(lastPositionRef.current);
+      lastPositionRef.current = null;
+    }
+  }
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -233,6 +251,15 @@ export function TransportBar() {
           aria-label="Detener"
         >
           <StopIcon className="h-4 w-4" />
+        </button>
+        <button
+          onClick={handleReturnToStart}
+          disabled={isRecording || isCountingIn}
+          title="Volver al inicio — un toque más vuelve a donde estabas"
+          className="flex h-11 w-11 items-center justify-center rounded bg-surf-2 hover:bg-surf-3 active:bg-surf-3 disabled:opacity-40"
+          aria-label="Volver al inicio"
+        >
+          <RewindIcon className="h-4 w-4" />
         </button>
         <button
           onClick={() => (isRecording ? stopRecording() : startRecording())}

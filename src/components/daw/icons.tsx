@@ -205,6 +205,17 @@ export function RecordIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** "Return to zero" transport icon - a filled bar + triangle pointing left,
+ * the standard skip-to-start glyph. */
+export function RewindIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props} fill="currentColor" stroke="none">
+      <rect x="5" y="5" width="2.5" height="14" rx="1" />
+      <path d="M18 5.5v13a1 1 0 0 1-1.55.83l-8.5-6.5a1 1 0 0 1 0-1.66l8.5-6.5A1 1 0 0 1 18 5.5z" />
+    </svg>
+  );
+}
+
 export function ChevronLeftIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
