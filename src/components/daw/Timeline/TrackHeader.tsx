@@ -14,9 +14,14 @@ import { HEADER_WIDTH, TRACK_HEIGHT } from "./constants";
 interface TrackHeaderProps {
   track: Track;
   selected: boolean;
+  /** Briefly true right after this track was just created - the visible
+   * confirmation that "+ Nueva pista" actually did something, distinct
+   * from `selected` (which addTrack also sets, but stays on indefinitely
+   * and is easy to miss if the row scrolled off-screen). */
+  flash?: boolean;
 }
 
-export function TrackHeader({ track, selected }: TrackHeaderProps) {
+export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
   const updateTrack = useProjectStore((s) => s.updateTrack);
   const removeTrack = useProjectStore((s) => s.removeTrack);
   const selectTrack = useProjectStore((s) => s.selectTrack);
@@ -36,7 +41,7 @@ export function TrackHeader({ track, selected }: TrackHeaderProps) {
       style={{ width: HEADER_WIDTH, height: TRACK_HEIGHT }}
       className={`sticky left-0 z-10 relative flex shrink-0 flex-col gap-1 border-b border-r border-line bg-ink p-1.5 pl-2.5 ${
         selected ? "ring-1 ring-inset ring-bone" : ""
-      } ${isLiveInput ? "ring-1 ring-inset ring-rec" : ""}`}
+      } ${isLiveInput ? "ring-1 ring-inset ring-rec" : ""} ${flash ? "animate-pulse ring-2 ring-inset ring-bone" : ""}`}
     >
       {/* Color de pista: barra de 3px en el canto, no fondo teñido entero
          (estudio-ui.html .thead::before) - identifica la pista sin abaratar

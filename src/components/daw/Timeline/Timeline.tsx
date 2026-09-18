@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
+import type { Track } from "@/types/project";
 import { GRID_RESOLUTIONS, type GridResolution } from "@/lib/timing/grid";
 import { Picker } from "../ui/Picker";
 import { HEADER_WIDTH, MIN_TIMELINE_SECONDS, RULER_HEIGHT, TRACK_HEIGHT } from "./constants";
@@ -21,6 +22,7 @@ export function Timeline() {
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
   const seek = useProjectStore((s) => s.seek);
   const addTrack = useProjectStore((s) => s.addTrack);
+  const removeEmptyTracks = useProjectStore((s) => s.removeEmptyTracks);
   const splitClipAtPlayhead = useProjectStore((s) => s.splitClipAtPlayhead);
   const duplicateClipAtPlayhead = useProjectStore((s) => s.duplicateClipAtPlayhead);
   const addPatternAtPlayhead = useProjectStore((s) => s.addPatternAtPlayhead);
@@ -31,8 +33,36 @@ export function Timeline() {
   const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [flashTrackId, setFlashTrackId] = useState<string | null>(null);
+  // Guards only this button's own double-tap/double-fire (a stuck pointer
+  // event on touch screens was creating a pile of empty tracks with no
+  // visible cause). Local to this component instance, not the store - the
+  // store's addTrack() itself stays a plain, always-succeeds action so
+  // programmatic batch callers (Beat Generator, tests) are unaffected.
+  const lastAddClickAt = useRef(0);
 
   usePinchZoom(scrollRef, pixelsPerSecond, setPixelsPerSecond);
+
+  // Visible feedback for "+ Nueva pista"/"+ Nuevo instrumento": a track
+  // appended off-screen (a session already scrolled down, or a tall list)
+  // otherwise gives zero indication anything happened - scroll it into view
+  // and flash its header briefly. Driven directly from the click, not an
+  // effect watching the tracks array, so it fires exactly once per add and
+  // never for removals/reorders.
+  function handleAddTrack(type?: Track["type"]) {
+    const now = Date.now();
+    if (now - lastAddClickAt.current < 600) return;
+    lastAddClickAt.current = now;
+    const track = addTrack(undefined, type);
+    const index = useProjectStore.getState().project.tracks.findIndex((t) => t.id === track.id);
+    const el = scrollRef.current;
+    if (el && index !== -1) {
+      const rowTop = RULER_HEIGHT + index * TRACK_HEIGHT;
+      el.scrollTop = Math.max(0, rowTop - el.clientHeight / 2 + TRACK_HEIGHT / 2);
+    }
+    setFlashTrackId(track.id);
+    window.setTimeout(() => setFlashTrackId((current) => (current === track.id ? null : current)), 1200);
+  }
 
   // Keeps the playhead on-screen during playback instead of letting it run
   // off the right edge of the scrolled viewport - re-checks on every
@@ -62,6 +92,7 @@ export function Timeline() {
 
   const selectedTrack = project.tracks.find((t) => t.id === selectedTrackId);
   const canAddPattern = selectedTrack?.type === "instrument";
+  const emptyTrackCount = project.tracks.filter((t) => t.clips.length === 0 && t.midiClips.length === 0).length;
 
   const clipEnd = project.tracks.reduce(
     (max, t) => Math.max(max, ...t.clips.map((c) => c.startTime + c.duration), 0),
@@ -90,13 +121,13 @@ export function Timeline() {
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <button
-                onClick={() => addTrack()}
+                onClick={() => handleAddTrack()}
                 className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
               >
                 + Nueva pista
               </button>
               <button
-                onClick={() => addTrack(undefined, "instrument")}
+                onClick={() => handleAddTrack("instrument")}
                 title="Una pista con un instrumento synth/sampler, reproducible desde patrones programados"
                 className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
               >
@@ -127,7 +158,7 @@ export function Timeline() {
 
           {project.tracks.map((track) => (
             <div key={track.id} className="flex">
-              <TrackHeader track={track} selected={track.id === selectedTrackId} />
+              <TrackHeader track={track} selected={track.id === selectedTrackId} flash={track.id === flashTrackId} />
               <TrackLane track={track} width={contentWidth} selected={track.id === selectedTrackId} />
             </div>
           ))}
@@ -150,19 +181,32 @@ export function Timeline() {
         {project.tracks.length > 0 && (
           <>
             <button
-              onClick={() => addTrack()}
+              onClick={() => handleAddTrack()}
               className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
             >
               + Nueva pista
             </button>
             <button
-              onClick={() => addTrack(undefined, "instrument")}
+              onClick={() => handleAddTrack("instrument")}
               title="Agrega una pista con un instrumento synth/sampler, reproducible desde patrones programados"
               className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
             >
               + Nuevo instrumento
             </button>
           </>
+        )}
+        {emptyTrackCount >= 2 && (
+          <button
+            onClick={() => {
+              if (window.confirm(`Vas a eliminar ${emptyTrackCount} pistas vacías (sin audio ni MIDI). ¿Continuar?`)) {
+                removeEmptyTracks();
+              }
+            }}
+            title="Elimina de una vez todas las pistas que no tienen ningún clip"
+            className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone-2 hover:bg-surf-3 hover:text-bone"
+          >
+            Eliminar {emptyTrackCount} pistas vacías
+          </button>
         )}
         <button
           onClick={addPatternAtPlayhead}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
 import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/AudioEngine";
-import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon, CloseIcon } from "./icons";
+import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon, CloseIcon, FolderIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 import { Picker } from "./ui/Picker";
 import { Knob } from "./ui/Knob";
@@ -50,6 +50,8 @@ export function TransportBar() {
   const redo = useProjectStore((s) => s.redo);
   const canUndo = useProjectStore((s) => s.past.length > 0);
   const canRedo = useProjectStore((s) => s.future.length > 0);
+  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
+  const setMobileView = useProjectStore((s) => s.setMobileView);
 
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingStems, setIsExportingStems] = useState(false);
@@ -128,6 +130,17 @@ export function TransportBar() {
     } finally {
       setIsExportingStems(false);
     }
+  }
+
+  // "Salir del proyecto" existed only as a buried side-effect of opening
+  // Biblioteca -> Proyectos -> Nuevo/otro proyecto - there was no direct way
+  // to leave the one you're in. This saves first (so nothing is lost) and
+  // then surfaces that same list, on both desktop and mobile.
+  async function handleExitProject() {
+    setMoreOpen(false);
+    await persist();
+    setBrowserTab("projects");
+    setMobileView("browser");
   }
 
   const bpmField = (
@@ -310,6 +323,13 @@ export function TransportBar() {
         >
           Guardar proyecto
         </button>
+        <button
+          onClick={() => void handleExitProject()}
+          title="Guarda y vuelve a la lista de proyectos"
+          className="flex items-center gap-1.5 rounded bg-surf-2 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
+        >
+          <FolderIcon className="h-3.5 w-3.5" /> Salir del proyecto
+        </button>
       </div>
 
       <button
@@ -459,6 +479,12 @@ export function TransportBar() {
           className="h-11 w-full rounded bg-bone text-sm font-semibold text-ink"
         >
           Guardar proyecto
+        </button>
+        <button
+          onClick={() => void handleExitProject()}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded bg-surf-2 text-sm font-medium text-bone"
+        >
+          <FolderIcon className="h-4 w-4" /> Salir del proyecto
         </button>
       </BottomSheet>
     </div>

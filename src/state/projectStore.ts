@@ -102,6 +102,11 @@ interface ProjectState {
 
   addTrack: (name?: string, type?: Track["type"]) => Track;
   removeTrack: (trackId: TrackId) => void;
+  /** Removes every track with no audio/MIDI clips in it, in one undo step -
+   * the bulk cleanup for a session that accumulated empty tracks (e.g. from
+   * repeated taps before the addTrack debounce existed). No-op if none are
+   * empty. */
+  removeEmptyTracks: () => void;
   updateTrack: (trackId: TrackId, patch: Partial<Track>) => void;
   /** Swaps a track with its immediate left/right neighbor in channel order. */
   moveTrack: (trackId: TrackId, direction: -1 | 1) => void;
@@ -370,6 +375,18 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const selectedTrackId = get().selectedTrackId === trackId ? null : get().selectedTrackId;
       setProject(touch({ ...project, tracks: project.tracks.filter((t) => t.id !== trackId) }), {
         extra: { selectedTrackId },
+      });
+    },
+
+    removeEmptyTracks: () => {
+      const project = get().project;
+      const isEmpty = (t: Track) => t.clips.length === 0 && t.midiClips.length === 0;
+      if (!project.tracks.some(isEmpty)) return;
+      const remaining = project.tracks.filter((t) => !isEmpty(t));
+      const selectedTrackId = get().selectedTrackId;
+      const keepSelection = remaining.some((t) => t.id === selectedTrackId);
+      setProject(touch({ ...project, tracks: remaining }), {
+        extra: { selectedTrackId: keepSelection ? selectedTrackId : null },
       });
     },
 
