@@ -807,6 +807,16 @@ export class AudioEngine {
     }
   }
 
+  /** Public re-anchor of the automation ramp, called by the store's
+   * write/touch/latch recorder after it writes a new point mid-playback -
+   * without this, a curve edited live would only sound correct starting
+   * from the *next* play()/seek(), not during the pass where it was just
+   * recorded. No-op while stopped (nothing scheduled to re-anchor). */
+  rescheduleAutomation(tracks: Track[], fromTime: number): void {
+    if (!this.ctx || !this.playing) return;
+    this.scheduleAutomation(tracks, fromTime, this.ctx.currentTime);
+  }
+
   private scheduleMidiClip(
     clip: MidiClip,
     instrument: Instrument,

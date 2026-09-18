@@ -16,6 +16,12 @@ interface KnobProps {
   size?: number;
   /** Drag distance (px) needed to sweep the full range - higher = finer control. */
   throwPx?: number;
+  /** Gesture boundaries - used by automation write/touch/latch recording to
+   * know exactly when a drag starts/ends, distinct from onChange (which
+   * fires on every intermediate value during the drag). Optional/no-op for
+   * every other caller. */
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }
 
 const START_ANGLE = -135;
@@ -60,6 +66,8 @@ export function Knob({
   decimals = 1,
   size = 40,
   throwPx = 150,
+  onDragStart,
+  onDragEnd,
 }: KnobProps) {
   const dragRef = useRef<{ startY: number; startValue: number; moved: boolean } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +91,7 @@ export function Knob({
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = { startY: e.clientY, startValue: value, moved: false };
+    onDragStart?.();
     longPressTimer.current = setTimeout(() => {
       setEditValue(value.toFixed(decimals));
       setEditing(true);
@@ -105,6 +114,7 @@ export function Knob({
     clearLongPress();
     dragRef.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    onDragEnd?.();
   }
 
   function handleDoubleClick() {

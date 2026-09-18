@@ -39,6 +39,12 @@ interface FaderProps {
   /** Track length in px along the fader's travel axis - height for
    * vertical, width for horizontal. */
   length?: number;
+  /** Gesture boundaries - used by automation write/touch/latch recording to
+   * know exactly when a drag starts/ends, distinct from onChange (which
+   * fires on every intermediate value during the drag). Optional/no-op for
+   * every other caller. */
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
 }
 
 /** Touch-friendly long-throw fader (vertical or horizontal) with a real dB
@@ -55,6 +61,8 @@ export function Fader({
   showScale = false,
   orientation = "vertical",
   length,
+  onDragStart,
+  onDragEnd,
 }: FaderProps) {
   const drag = useRef<{ start: number; startDb: number } | null>(null);
   const horizontal = orientation === "horizontal";
@@ -64,6 +72,7 @@ export function Fader({
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     drag.current = { start: horizontal ? e.clientX : e.clientY, startDb: valueDb };
+    onDragStart?.();
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -78,6 +87,7 @@ export function Fader({
   function onPointerUp(e: React.PointerEvent) {
     drag.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    onDragEnd?.();
   }
 
   const pct = ((Math.min(MAX_DB, Math.max(MIN_DB, valueDb)) - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
