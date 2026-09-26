@@ -18,6 +18,8 @@ import { EFFECT_LABELS, type EffectInstance } from "@/types/effects";
 import type { AudioClip } from "@/types/project";
 import { Waveform } from "../Waveform";
 import { PitchCurveView } from "./PitchCurveView";
+import { LyricsSection, LyricsTeleprompter } from "./LyricsSection";
+import { FirstUseHint } from "../FirstUseHint";
 import { InputMeterRow } from "../InputMeterRow";
 import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
 import { useMonitoringLive } from "../useMonitoringLive";
@@ -108,6 +110,8 @@ export function VozPanel() {
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const armTrack = useProjectStore((s) => s.armTrack);
   const updateTrack = useProjectStore((s) => s.updateTrack);
+  const lyrics = useProjectStore((s) => s.project.lyrics);
+  const setLyrics = useProjectStore((s) => s.setLyrics);
 
   const track = tracks.find((t) => t.id === selectedTrackId);
   // Called unconditionally (armed:false/monitorMode:"off" when there's no
@@ -341,10 +345,24 @@ export function VozPanel() {
     );
   }
 
+  if (isRecording) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden bg-ink">
+        {armMonitorRow}
+        <FirstUseHint id="teleprompter">
+          Esta es tu letra en pantalla completa mientras grabás - escribila desde la pestaña Letra antes de armar la
+          pista para verla acá la próxima vez.
+        </FirstUseHint>
+        <LyricsTeleprompter lyrics={lyrics} />
+      </div>
+    );
+  }
+
   if (!clip) {
     return (
       <div className="flex h-full flex-col overflow-y-auto bg-ink">
         {armMonitorRow}
+        <LyricsSection lyrics={lyrics} setLyrics={setLyrics} />
         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
           <MicIcon className="h-8 w-8 text-bone-3" />
           <p className="text-sm font-medium text-bone-2">&quot;{track.name}&quot; todavía no tiene ninguna toma</p>
@@ -374,6 +392,7 @@ export function VozPanel() {
       </div>
 
       {armMonitorRow}
+      <LyricsSection lyrics={lyrics} setLyrics={setLyrics} />
 
       <div className="relative border-b border-line" style={{ height: 150, background: "#0C0C0E" }}>
         {width > 0 && <Waveform buffer={dryBuffer} width={width} height={150} color={track.color} />}

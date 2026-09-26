@@ -192,6 +192,7 @@ interface ProjectState {
   cancelRecording: () => void;
 
   renameProject: (name: string) => void;
+  setLyrics: (lyrics: string) => void;
   loadProject: (project: Project) => void;
   /** Loads a saved project by id from disk and hydrates its samples into
    * the audio engine cache. Returns false if the project no longer exists
@@ -1100,6 +1101,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     },
 
     renameProject: (name) => setProject(touch({ ...get().project, name }), { coalesce: true }),
+    setLyrics: (lyrics) => setProject(touch({ ...get().project, lyrics }), { coalesce: true }),
     loadProject: (project) => {
       // Switching documents mid-take would otherwise leave a genuinely
       // broken state: the old project's tracks (armed track included) are
@@ -1121,6 +1123,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         ...project,
         masterVolumeDb: project.masterVolumeDb ?? 0,
         buses: project.buses ?? [],
+        lyrics: project.lyrics ?? "",
         tracks: project.tracks.map((t) => ({
           ...t,
           type: t.type ?? "audio",

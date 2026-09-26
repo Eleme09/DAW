@@ -200,6 +200,9 @@ export interface Project {
   masterInserts: EffectInstance[];
   /** Final output trim, applied after the master insert chain. */
   masterVolumeDb: number;
+  /** Free-form lyrics for the song, shown large on VozPanel while
+   * recording (a real teleprompter guide, not just a place to jot notes). */
+  lyrics: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +231,7 @@ export function createEmptyProject(name = "Sin título"): Project {
     metronomeEnabled: false,
     masterInserts: [],
     masterVolumeDb: 0,
+    lyrics: "",
     createdAt: now,
     updatedAt: now,
   };

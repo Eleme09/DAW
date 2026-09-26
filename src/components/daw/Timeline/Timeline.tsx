@@ -10,6 +10,7 @@ import { Ruler } from "./Ruler";
 import { TrackHeader } from "./TrackHeader";
 import { TrackLane } from "./TrackLane";
 import { LoopRegion } from "./LoopRegion";
+import { GridLines } from "./GridLines";
 import { ContextBar } from "./ContextBar";
 import { ZoomControl } from "./ZoomControl";
 import { usePinchZoom } from "./usePinchZoom";
@@ -162,6 +163,23 @@ export function Timeline() {
               <TrackLane track={track} width={contentWidth} selected={track.id === selectedTrackId} />
             </div>
           ))}
+
+          {/* A session with only 1-2 tracks otherwise leaves a huge flat
+             black gap below them (the scroll container is taller than
+             tracksHeight) - reads as broken, not as "room to add more
+             tracks". Every real DAW keeps its grid visible past the last
+             track; this is that, not a cosmetic flourish. Generous fixed
+             height (not measured against the actual viewport) is
+             deliberate - scrolling into extra empty grid space is normal
+             DAW behavior, not something to avoid. */}
+          {project.tracks.length > 0 && (
+            <div
+              className="absolute"
+              style={{ left: HEADER_WIDTH, top: tracksHeight, width: contentWidth, height: 2000 }}
+            >
+              <GridLines width={contentWidth} pixelsPerSecond={pixelsPerSecond} />
+            </div>
+          )}
 
           <div
             className="pointer-events-none absolute top-0 z-10 w-px bg-bone"

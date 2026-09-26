@@ -5,6 +5,7 @@ import type { Track } from "@/types/project";
 import { TRACK_HEIGHT } from "./constants";
 import { ClipView } from "./ClipView";
 import { MidiClipView } from "./MidiClipView";
+import { GridLines } from "./GridLines";
 
 interface TrackLaneProps {
   track: Track;
@@ -21,13 +22,7 @@ export function TrackLane({ track, width, selected }: TrackLaneProps) {
         selected ? "bg-surf/60" : "bg-ink"
       }`}
     >
-      {Array.from({ length: Math.ceil(width / pixelsPerSecond) }, (_, i) => (
-        <div
-          key={i}
-          className="absolute top-0 h-full border-l border-surf"
-          style={{ left: i * pixelsPerSecond }}
-        />
-      ))}
+      <GridLines width={width} pixelsPerSecond={pixelsPerSecond} />
       {track.type === "instrument"
         ? track.midiClips.map((clip) => <MidiClipView key={clip.id} clip={clip} />)
         : track.clips
