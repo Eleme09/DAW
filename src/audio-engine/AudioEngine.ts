@@ -166,6 +166,22 @@ export class AudioEngine {
   /** Must be called from a user-gesture handler (click) before any playback. */
   ensureContext(): AudioContext {
     if (!this.ctx) {
+      // Reported real: monitoring/recording came out of one earbud only on
+      // a real iPhone, correct pan or not. The mixer graph itself is fine
+      // (native StereoPannerNode, verified) - this is a documented WebKit/
+      // iOS quirk where, absent an explicit category, a page with both mic
+      // input and audio output can get routed through the mono earpiece
+      // instead of stereo. The Web Audio Session API (Safari 17+, silently
+      // absent everywhere else) is the documented fix for exactly that:
+      // declare this is a play-and-record app so iOS keeps stereo out.
+      if ("audioSession" in navigator) {
+        try {
+          (navigator as unknown as { audioSession: { type: string } }).audioSession.type = "play-and-record";
+        } catch {
+          // Unsupported value on this OS version - leave the session at
+          // its default rather than throwing during context setup.
+        }
+      }
       // Explicit per the FASE 9 addendum, even though "interactive" is
       // already the spec default - a recording/monitoring app should never
       // silently end up on "playback" latency (larger buffers, worse for
