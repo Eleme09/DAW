@@ -355,3 +355,312 @@ export function createEffectInstance(type: EffectType): EffectInstance {
       return { id, type, bypassed: false, params: { carrierType: "sawtooth", carrierFreqHz: 110, mix: 1 } };
   }
 }
+
+/**
+ * Named presets, one array per effect type - "zona 10" of the plugin
+ * anatomy brief ("preajustes con nombre de músico, no técnico"). Before
+ * this, only Pitch Correction had presets (`PITCH_CORRECTION_PRESETS`
+ * above); the other 15 effect types were bare knobs with zero personality,
+ * confirmed as a real reported gap ("los fx son un embudo de mierdas sin
+ * personalidad"). Every value here is a deliberate, musically-reasoned
+ * point in that effect's own real parameter space - grounded against each
+ * type's defaults in `createEffectInstance` above, not arbitrary.
+ */
+export interface EffectPreset<P> {
+  id: string;
+  label: string;
+  params: Partial<P>;
+}
+
+export const EQ_PRESETS: EffectPreset<EqParams>[] = [
+  {
+    id: "vozAlFrente",
+    label: "Voz al frente",
+    params: {
+      bands: [
+        { id: crypto.randomUUID(), type: "highpass", freq: 90, gainDb: 0, q: 0.707, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 320, gainDb: -3, q: 1.1, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 3000, gainDb: 3, q: 1, enabled: true },
+        { id: crypto.randomUUID(), type: "highshelf", freq: 9000, gainDb: 2, q: 0.707, enabled: true },
+      ],
+    },
+  },
+  {
+    id: "calido",
+    label: "Cálido",
+    params: {
+      bands: [
+        { id: crypto.randomUUID(), type: "highpass", freq: 80, gainDb: 0, q: 0.707, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 280, gainDb: 2, q: 1, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 2500, gainDb: 0, q: 1, enabled: true },
+        { id: crypto.randomUUID(), type: "highshelf", freq: 8000, gainDb: -2, q: 0.707, enabled: true },
+      ],
+    },
+  },
+  {
+    id: "brillante",
+    label: "Brillante",
+    params: {
+      bands: [
+        { id: crypto.randomUUID(), type: "highpass", freq: 100, gainDb: 0, q: 0.707, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 300, gainDb: 0, q: 1, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 2800, gainDb: 1, q: 1, enabled: true },
+        { id: crypto.randomUUID(), type: "highshelf", freq: 9000, gainDb: 4, q: 0.707, enabled: true },
+      ],
+    },
+  },
+  {
+    id: "transparente",
+    label: "Transparente",
+    params: {
+      bands: [
+        { id: crypto.randomUUID(), type: "highpass", freq: 40, gainDb: 0, q: 0.707, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 300, gainDb: 0, q: 1, enabled: true },
+        { id: crypto.randomUUID(), type: "peaking", freq: 2500, gainDb: 0, q: 1, enabled: true },
+        { id: crypto.randomUUID(), type: "highshelf", freq: 8000, gainDb: 0, q: 0.707, enabled: true },
+      ],
+    },
+  },
+];
+
+export const COMPRESSOR_PRESETS: EffectPreset<CompressorParams>[] = [
+  { id: "suave", label: "Suave", params: { thresholdDb: -20, ratio: 2, attackMs: 15, releaseMs: 150, kneeDb: 8, makeupDb: 2 } },
+  { id: "pegado", label: "Pegado", params: { thresholdDb: -26, ratio: 5, attackMs: 5, releaseMs: 90, kneeDb: 3, makeupDb: 3 } },
+  { id: "transparente", label: "Transparente", params: { thresholdDb: -18, ratio: 1.8, attackMs: 25, releaseMs: 200, kneeDb: 10, makeupDb: 1 } },
+  { id: "bombeo", label: "Bombeo", params: { thresholdDb: -22, ratio: 8, attackMs: 1, releaseMs: 45, kneeDb: 1, makeupDb: 4 } },
+];
+
+export const DEESSER_PRESETS: EffectPreset<DeEsserParams>[] = [
+  { id: "suave", label: "Suave", params: { freq: 6000, thresholdDb: -25, ratio: 2.5 } },
+  { id: "fuerte", label: "Fuerte", params: { freq: 7500, thresholdDb: -35, ratio: 6 } },
+  { id: "transparente", label: "Transparente", params: { freq: 6500, thresholdDb: -20, ratio: 1.8 } },
+];
+
+export const SATURATION_PRESETS: EffectPreset<SaturationParams>[] = [
+  { id: "calido", label: "Cálido", params: { driveDb: 4, mix: 0.3, tone: "warm" } },
+  { id: "grit", label: "Grit", params: { driveDb: 14, mix: 0.55, tone: "bright" } },
+  { id: "sutil", label: "Sutil", params: { driveDb: 2, mix: 0.15, tone: "neutral" } },
+];
+
+export const LIMITER_PRESETS: EffectPreset<LimiterParams>[] = [
+  { id: "seguro", label: "Seguro", params: { thresholdDb: -3, releaseMs: 100, ceilingDb: -0.3 } },
+  { id: "maximo", label: "Máximo", params: { thresholdDb: -9, releaseMs: 35, ceilingDb: -0.1 } },
+  { id: "transparente", label: "Transparente", params: { thresholdDb: -1, releaseMs: 150, ceilingDb: -0.5 } },
+];
+
+export const CLIPPER_PRESETS: EffectPreset<ClipperParams>[] = [
+  { id: "suave", label: "Suave", params: { ceilingDb: -1 } },
+  { id: "duro", label: "Duro", params: { ceilingDb: -0.1 } },
+];
+
+export const NOISE_GATE_PRESETS: EffectPreset<NoiseGateParams>[] = [
+  { id: "ambienteLimpio", label: "Ambiente limpio", params: { thresholdDb: -50, attackMs: 1, releaseMs: 200, holdMs: 80 } },
+  { id: "agresivo", label: "Agresivo", params: { thresholdDb: -35, attackMs: 0.5, releaseMs: 70, holdMs: 15 } },
+];
+
+export const REVERB_PRESETS: EffectPreset<ReverbParams>[] = [
+  { id: "salaIntima", label: "Sala íntima", params: { mix: 0.15, decaySec: 0.9, sizeType: "room" } },
+  { id: "auditorio", label: "Auditorio", params: { mix: 0.32, decaySec: 2.4, sizeType: "hall" } },
+  { id: "platoVintage", label: "Plato vintage", params: { mix: 0.25, decaySec: 1.5, sizeType: "plate" } },
+  { id: "ambienteSutil", label: "Ambiente sutil", params: { mix: 0.1, decaySec: 1.1, sizeType: "room" } },
+];
+
+export const DELAY_PRESETS: EffectPreset<DelayParams>[] = [
+  { id: "slapCorto", label: "Slap corto", params: { timeMs: 90, feedback: 0.1, mix: 0.18, filterFreq: 5500 } },
+  { id: "ecoMusical", label: "Eco musical", params: { timeMs: 350, feedback: 0.35, mix: 0.25, filterFreq: 4000 } },
+  { id: "dubProfundo", label: "Dub profundo", params: { timeMs: 480, feedback: 0.55, mix: 0.35, filterFreq: 2200 } },
+];
+
+export const MULTIBAND_PRESETS: EffectPreset<MultibandCompressorParams>[] = [
+  {
+    id: "balanceGeneral",
+    label: "Balance general",
+    params: {
+      lowMidFreq: 200,
+      midHighFreq: 2000,
+      attackMs: 15,
+      releaseMs: 150,
+      low: { thresholdDb: -22, ratio: 2.5, makeupDb: 0 },
+      mid: { thresholdDb: -24, ratio: 3, makeupDb: 0 },
+      high: { thresholdDb: -22, ratio: 2.5, makeupDb: 0 },
+    },
+  },
+  {
+    id: "controlDeGraves",
+    label: "Control de graves",
+    params: {
+      low: { thresholdDb: -28, ratio: 5, makeupDb: 1 },
+      mid: { thresholdDb: -20, ratio: 2, makeupDb: 0 },
+      high: { thresholdDb: -18, ratio: 1.5, makeupDb: 0 },
+    },
+  },
+  {
+    id: "domarAgudos",
+    label: "Domar agudos",
+    params: {
+      low: { thresholdDb: -18, ratio: 1.5, makeupDb: 0 },
+      mid: { thresholdDb: -20, ratio: 2, makeupDb: 0 },
+      high: { thresholdDb: -26, ratio: 4, makeupDb: 1 },
+    },
+  },
+];
+
+export const CHORUS_PRESETS: EffectPreset<ChorusParams>[] = [
+  { id: "sutil", label: "Sutil", params: { rateHz: 0.5, depthMs: 2, mix: 0.2 } },
+  { id: "ancho80s", label: "Ancho (80s)", params: { rateHz: 1.2, depthMs: 5, mix: 0.45 } },
+];
+
+export const FLANGER_PRESETS: EffectPreset<FlangerParams>[] = [
+  { id: "suave", label: "Suave", params: { rateHz: 0.25, depthMs: 2, feedback: 0.2, mix: 0.25 } },
+  { id: "jetIntenso", label: "Jet intenso", params: { rateHz: 0.8, depthMs: 5, feedback: 0.65, mix: 0.5 } },
+];
+
+export const EXCITER_PRESETS: EffectPreset<ExciterParams>[] = [
+  { id: "aireSutil", label: "Aire sutil", params: { freq: 6000, driveDb: 5, mix: 0.15 } },
+  { id: "brilloFuerte", label: "Brillo fuerte", params: { freq: 4000, driveDb: 12, mix: 0.35 } },
+];
+
+export const AUTOPAN_PRESETS: EffectPreset<AutoPanParams>[] = [
+  { id: "lentoAmbiental", label: "Lento ambiental", params: { rateHz: 0.2, depth: 0.4 } },
+  { id: "rapidoRitmico", label: "Rápido rítmico", params: { rateHz: 2, depth: 0.85 } },
+];
+
+export const STEREO_WIDTH_PRESETS: EffectPreset<StereoWidthParams>[] = [
+  { id: "angostoSeguro", label: "Angosto seguro", params: { width: 0.6 } },
+  { id: "natural", label: "Natural", params: { width: 1 } },
+  { id: "ancho", label: "Ancho", params: { width: 1.5 } },
+];
+
+export const VOCODER_PRESETS: EffectPreset<VocoderParams>[] = [
+  { id: "roboGrave", label: "Robot grave", params: { carrierType: "sawtooth", carrierFreqHz: 110, mix: 0.85 } },
+  { id: "roboAgudo", label: "Robot agudo", params: { carrierType: "square", carrierFreqHz: 220, mix: 0.75 } },
+];
+
+/** Erased-to-metadata view of every preset list above, plus Pitch
+ * Correction's own (already-existing) presets - the one place `EffectCard`
+ * (which only knows a generic `EffectInstance`, not each type's concrete
+ * param shape) can list "how many presets, what are they called" for the
+ * header's preset navigator (zona 1) without needing per-type generics. */
+export const EFFECT_PRESET_META: Record<EffectType, { id: string; label: string }[]> = {
+  eq: EQ_PRESETS,
+  compressor: COMPRESSOR_PRESETS,
+  deesser: DEESSER_PRESETS,
+  saturation: SATURATION_PRESETS,
+  limiter: LIMITER_PRESETS,
+  clipper: CLIPPER_PRESETS,
+  noiseGate: NOISE_GATE_PRESETS,
+  reverb: REVERB_PRESETS,
+  delay: DELAY_PRESETS,
+  multibandCompressor: MULTIBAND_PRESETS,
+  chorus: CHORUS_PRESETS,
+  flanger: FLANGER_PRESETS,
+  exciter: EXCITER_PRESETS,
+  autoPan: AUTOPAN_PRESETS,
+  stereoWidth: STEREO_WIDTH_PRESETS,
+  pitchCorrection: PITCH_CORRECTION_PRESET_NAMES.map((name) => ({ id: name, label: PITCH_CORRECTION_PRESET_LABELS[name] })),
+  vocoder: VOCODER_PRESETS,
+};
+
+/** Applies preset `presetId` (from `EFFECT_PRESET_META[effect.type]`) to
+ * `effect`, returning its new params - the one place that actually knows
+ * how to merge each type's own preset array, so `EffectCard`'s prev/next
+ * navigator can stay generic. No-op (returns the unchanged params) if the
+ * id doesn't match anything for this effect's type. */
+export function applyEffectPreset(effect: EffectInstance, presetId: string): EffectInstance["params"] {
+  switch (effect.type) {
+    case "eq": {
+      const p = EQ_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "compressor": {
+      const p = COMPRESSOR_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "deesser": {
+      const p = DEESSER_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "saturation": {
+      const p = SATURATION_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "limiter": {
+      const p = LIMITER_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "clipper": {
+      const p = CLIPPER_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "noiseGate": {
+      const p = NOISE_GATE_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "reverb": {
+      const p = REVERB_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "delay": {
+      const p = DELAY_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "multibandCompressor": {
+      const p = MULTIBAND_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "chorus": {
+      const p = CHORUS_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "flanger": {
+      const p = FLANGER_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "exciter": {
+      const p = EXCITER_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "autoPan": {
+      const p = AUTOPAN_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "stereoWidth": {
+      const p = STEREO_WIDTH_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+    case "pitchCorrection": {
+      const name = PITCH_CORRECTION_PRESET_NAMES.find((n) => n === presetId);
+      return name ? { ...effect.params, ...PITCH_CORRECTION_PRESETS[name] } : effect.params;
+    }
+    case "vocoder": {
+      const p = VOCODER_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
+  }
+}
+
+/** One desaturated accent color per effect TYPE (zona 9: "un acento por
+ * plugin, no cinco colores"), reusing the same signal palette already
+ * defined for tracks (`--cabina-s1..s6` in globals.css / `bg-s1..s6`
+ * Tailwind utilities) instead of inventing a second palette - effects are
+ * grouped by function (EQ/tone, dynamics, time-based, character, spatial,
+ * pitch/robot) and each group gets one of the 6 existing signal hues. */
+export const EFFECT_ACCENT: Record<EffectType, string> = {
+  eq: "s3",
+  compressor: "s2",
+  limiter: "s2",
+  clipper: "s2",
+  multibandCompressor: "s2",
+  noiseGate: "s2",
+  deesser: "s1",
+  saturation: "s1",
+  exciter: "s1",
+  reverb: "s4",
+  delay: "s4",
+  chorus: "s4",
+  flanger: "s4",
+  autoPan: "s5",
+  stereoWidth: "s5",
+  pitchCorrection: "s6",
+  vocoder: "s6",
+};

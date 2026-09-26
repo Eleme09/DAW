@@ -37,6 +37,15 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
+  // Sin esto, el gesto de dos dedos hace zoom de la PÁGINA entera (Safari/
+  // Chrome nativo) al mismo tiempo que `usePinchZoom` intenta hacer zoom
+  // solo del timeline - dos zooms compitiendo, reportado como "el zoom es
+  // para toda la pantalla, no para los clips". Bloqueado a escala 1 para
+  // que el único pinch-zoom posible sea el del timeline.
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
