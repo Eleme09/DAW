@@ -12,34 +12,26 @@ import { useProjectStore, type BrowserTab } from "@/state/projectStore";
 import { VocalAnalysisPanel } from "./VocalAnalysisPanel";
 import { PitchStudioPanel } from "./PitchStudioPanel";
 import { DenoisePanel } from "./DenoisePanel";
-import { BeatAnalyzerPanel } from "./BeatAnalyzerPanel";
-import { VocalBeatMatchPanel } from "./VocalBeatMatchPanel";
 import { VocalEngineerPanel } from "./VocalEngineerPanel";
 import { MixAssistantPanel } from "./MixAssistantPanel";
-import { BeatGeneratorPanel } from "./BeatGeneratorPanel";
 import { AiAssistantPanel } from "./AiAssistantPanel";
-import { WaveformIcon, MatchIcon, MixIcon, BeatGridIcon, SparkleIcon, FolderIcon, MoreIcon, CloseIcon } from "./icons";
+import { WaveformIcon, MixIcon, SparkleIcon, FolderIcon, CloseIcon } from "./icons";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
 type TabDef = { id: BrowserTab; label: string; hint: string; Icon: ComponentType<{ className?: string }> };
 
-// Visible right away, one row - the tools with either their own entry point
-// elsewhere (Generar beat: Timeline's empty state; Asistente IA: every
-// "Preguntar a la IA" button) or that are the reason to open Biblioteca at
-// all (Muestras, Proyectos). "Ajustar voz"/"Mezcla IA" have no other route
-// into the app, so they still get their own icon - just tucked one tap
-// behind "Más" instead of a 2nd row shown at all times (was 6 tabs across 2
-// rows; the plan's own diagnosis called this out as buried navigation).
+// Every "beat" surface (Generar beat, Ajustar voz - vocal-to-beat matching,
+// and the per-sample Beat analyzer button below) is hidden per explicit
+// request - not deleted, not reachable from any tab/button, but the
+// components/store fields/routes still exist for later. Only 4 tabs left,
+// so "Más"/a second row is gone too - no more crowding to bury anything
+// behind.
 const CORE_TABS: TabDef[] = [
   { id: "audio", label: "Muestras", hint: "Importa audio y usa herramientas por muestra", Icon: WaveformIcon },
   { id: "assistant", label: "Asistente IA", hint: "Pide cambios en lenguaje natural", Icon: SparkleIcon },
-  { id: "generate", label: "Generar beat", hint: "Genera un nuevo patrón de beat", Icon: BeatGridIcon },
-  { id: "projects", label: "Proyectos", hint: "Abre o guarda un proyecto", Icon: FolderIcon },
-];
-const MORE_TABS: TabDef[] = [
-  { id: "match", label: "Ajustar voz", hint: "Ajusta una toma vocal a la tonalidad y tempo del beat", Icon: MatchIcon },
   { id: "mix", label: "Mezcla IA", hint: "Balance de mezcla asistido por IA en todas las pistas", Icon: MixIcon },
+  { id: "projects", label: "Proyectos", hint: "Abre o guarda un proyecto", Icon: FolderIcon },
 ];
 
 function TabButton({ id, label, hint, Icon, active, onClick }: TabDef & { active: boolean; onClick: () => void }) {
@@ -62,39 +54,16 @@ function TabButton({ id, label, hint, Icon, active, onClick }: TabDef & { active
 export function BrowserPanel() {
   const tab = useProjectStore((s) => s.browserTab);
   const setTab = useProjectStore((s) => s.setBrowserTab);
-  const isMoreTab = MORE_TABS.some((t) => t.id === tab);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const showMoreRow = moreOpen || isMoreTab;
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-r border-line bg-ink md:w-64">
-      <div className="grid grid-cols-5 border-b border-line">
+      <div className="grid grid-cols-4 border-b border-line">
         {CORE_TABS.map((t) => (
           <TabButton key={t.id} {...t} active={tab === t.id} onClick={() => setTab(t.id)} />
         ))}
-        <button
-          onClick={() => setMoreOpen((v) => !v)}
-          title="Más herramientas"
-          aria-current={isMoreTab}
-          className={`flex flex-col items-center gap-1 border-b-2 px-1 py-2 text-[10px] font-medium leading-tight ${
-            showMoreRow ? "border-bone bg-surf text-bone" : "border-transparent text-bone-3 hover:bg-surf/60 hover:text-bone-2"
-          }`}
-        >
-          <MoreIcon className="h-4 w-4" />
-          Más
-        </button>
       </div>
-      {showMoreRow && (
-        <div className="grid grid-cols-5 border-b border-line">
-          {MORE_TABS.map((t) => (
-            <TabButton key={t.id} {...t} active={tab === t.id} onClick={() => setTab(t.id)} />
-          ))}
-        </div>
-      )}
       {tab === "audio" && <AudioTab />}
-      {tab === "match" && <VocalBeatMatchPanel />}
       {tab === "mix" && <MixAssistantPanel />}
-      {tab === "generate" && <BeatGeneratorPanel />}
       {tab === "assistant" && <AiAssistantPanel />}
       {tab === "projects" && <ProjectsTab />}
     </div>
@@ -108,7 +77,6 @@ function AudioTab() {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [enhancingId, setEnhancingId] = useState<string | null>(null);
   const [pitchOpenId, setPitchOpenId] = useState<string | null>(null);
-  const [beatOpenId, setBeatOpenId] = useState<string | null>(null);
   const [engineerOpenId, setEngineerOpenId] = useState<string | null>(null);
   const [denoiseOpenId, setDenoiseOpenId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -239,37 +207,40 @@ function AudioTab() {
               <div className="truncate font-medium text-bone">{s.name}</div>
               <div className="text-bone-2">{s.durationSec.toFixed(1)}s</div>
             </button>
+            {/* Etiquetas descriptivas, no una palabra suelta - "Analizar",
+               "Ingeniero", "Tono" solos no dicen qué hace el botón ni qué
+               son los números que muestra después (reportado directo: "solo
+               es letras y botones diciendo decibeles que no se sabe para
+               qué son"). */}
             <div className="mt-1 grid grid-cols-2 gap-1">
               <button
                 onClick={() => analyzeSample(s)}
                 disabled={analyzingId === s.id}
+                title="Mide sonoridad, pico y ruido de esta muestra"
                 className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3 disabled:opacity-50"
               >
-                {analyzingId === s.id ? "Analizando…" : "Analizar"}
+                {analyzingId === s.id ? "Analizando…" : "Analizar calidad"}
               </button>
               <button
                 onClick={() => setEngineerOpenId((prev) => (prev === s.id ? null : s.id))}
+                title="Aplica una cadena de efectos de voz automática con IA"
                 className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
               >
-                Ingeniero
+                Mejorar con IA
               </button>
               <button
                 onClick={() => setPitchOpenId((prev) => (prev === s.id ? null : s.id))}
+                title="Corrige la afinación de esta muestra (autotune)"
                 className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
               >
-                Tono
-              </button>
-              <button
-                onClick={() => setBeatOpenId((prev) => (prev === s.id ? null : s.id))}
-                className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
-              >
-                Beat
+                Afinar voz
               </button>
               <button
                 onClick={() => setDenoiseOpenId((prev) => (prev === s.id ? null : s.id))}
+                title="Quita ruido de fondo constante (aire acondicionado, zumbido)"
                 className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
               >
-                Reducir ruido
+                Quitar ruido
               </button>
             </div>
             {analysisResults[s.id] && (
@@ -283,7 +254,6 @@ function AudioTab() {
             {pitchOpenId === s.id && (
               <PitchStudioPanel sample={s} onNewSample={() => listSampleAssets().then(setSamples)} />
             )}
-            {beatOpenId === s.id && <BeatAnalyzerPanel sample={s} />}
             {denoiseOpenId === s.id && (
               <DenoisePanel sample={s} onNewSample={() => listSampleAssets().then(setSamples)} />
             )}

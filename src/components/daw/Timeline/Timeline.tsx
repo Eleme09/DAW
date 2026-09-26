@@ -31,8 +31,6 @@ export function Timeline() {
   const setSnapResolution = useProjectStore((s) => s.setSnapResolution);
   const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   const setPixelsPerSecond = useProjectStore((s) => s.setPixelsPerSecond);
-  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
-  const setMobileView = useProjectStore((s) => s.setMobileView);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [flashTrackId, setFlashTrackId] = useState<string | null>(null);
   // Guards only this button's own double-tap/double-fire (a stuck pointer
@@ -86,11 +84,6 @@ export function Timeline() {
     }
   }, [currentTime, isPlaying, pixelsPerSecond]);
 
-  function goToBeatGen() {
-    setBrowserTab("generate");
-    setMobileView("browser");
-  }
-
   const selectedTrack = project.tracks.find((t) => t.id === selectedTrackId);
   const canAddPattern = selectedTrack?.type === "instrument";
   const emptyTrackCount = project.tracks.filter((t) => t.clips.length === 0 && t.midiClips.length === 0).length;
@@ -133,13 +126,6 @@ export function Timeline() {
                 className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
               >
                 + Nuevo instrumento
-              </button>
-              <button
-                onClick={goToBeatGen}
-                title="Genera un boceto completo de batería/bajo/acordes/melodía para empezar"
-                className="rounded bg-bone min-h-11 px-3 py-1.5 text-xs font-semibold text-ink hover:opacity-90"
-              >
-                Generar un beat
               </button>
             </div>
           </div>

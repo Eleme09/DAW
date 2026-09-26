@@ -112,8 +112,18 @@ export function VozPanel() {
   const updateTrack = useProjectStore((s) => s.updateTrack);
   const lyrics = useProjectStore((s) => s.project.lyrics);
   const setLyrics = useProjectStore((s) => s.setLyrics);
+  const selectTrack = useProjectStore((s) => s.selectTrack);
 
   const track = tracks.find((t) => t.id === selectedTrackId);
+
+  // "Ninguna pista seleccionada" was a dead end - landing on the screen
+  // meant to be the product with a message and a button back to Sesión,
+  // instead of just showing something useful. Auto-select the last track
+  // (most likely the one just worked on) the moment one exists and none is
+  // selected - reported directly as confusing with a real screenshot.
+  useEffect(() => {
+    if (!track && tracks.length > 0) selectTrack(tracks[tracks.length - 1].id);
+  }, [track, tracks, selectTrack]);
   // Called unconditionally (armed:false/monitorMode:"off" when there's no
   // track yet) so this screen's two early-return empty states below can
   // still show real arm/monitor state instead of nothing at all - the gap
