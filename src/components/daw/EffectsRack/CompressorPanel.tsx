@@ -9,6 +9,7 @@ import type { EffectTarget } from "@/state/projectStore";
 import type { CompressorParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
 import { GainReductionMeter } from "./GainReductionMeter";
+import { useDraggableDbX } from "./useDraggableDbX";
 
 const DB_MIN = -60;
 const DB_MAX = 0;
@@ -43,6 +44,8 @@ export function CompressorPanel({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reductionRef = useRef(0);
+
+  useDraggableDbX(canvasRef, DB_MIN, DB_MAX, (v) => onChange({ ...params, thresholdDb: v }));
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -113,7 +116,12 @@ export function CompressorPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ew-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para fijar el umbral"
+      />
       <GainReductionMeter reductionRef={reductionRef} />
       <ParamSlider label="Umbral" value={params.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...params, thresholdDb: v })} />
       <ParamSlider label="Ratio" value={params.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...params, ratio: v })} />

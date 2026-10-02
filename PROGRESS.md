@@ -688,3 +688,16 @@ De los 15 paneles no-EQ, este era el único con un problema real de zona 5 (13 p
 - **Verificado en navegador** (Chromium headless, Playwright, viewport de teléfono 390px): "Avanzado" arranca cerrado (0 knobs de Ratio visibles), se abre y cierra con un toque (3 knobs de Ratio aparecen/desaparecen). Arrastre cerca de la esquina superior izquierda del gráfico (donde la curva de Graves está más alta con los valores por defecto) movió **solo** el umbral de Graves (-24dB → -42dB), Medios y Agudos sin cambios - confirma que la detección de banda más cercana funciona, no mueve las 3 a la vez. Captura de pantalla confirma la curva de Graves visualmente separada de las otras dos tras el arrastre. Cero errores de página.
 - `tsc`/`eslint`/`vitest` (367 tests) y `next build` de producción limpios.
 - **Pendiente real**: quedan 11 paneles sin visualización-control (Compresor, De-esser, Saturación, Reverb, Delay [parcial], Chorus, Flanger, Excitador, Paneo automático, Imagen estéreo, Vocoder) - ninguno con problema de zona 5 (todos con 6 parámetros o menos). El trabajo sigue, mismo orden que antes: primero los de menor riesgo/mayor claridad.
+
+## Fase D (continúa): Compresor, De-esser y Excitador — la curva/banda pasa a ser el control
+
+Tres paneles más cerrados en una misma pasada, los tres con el mismo patrón horizontal (el valor vive en la posición X del gráfico, no en Y como los tres anteriores):
+
+- [x] **`useDraggableDbX.ts` (nuevo, compartido)**: gemelo horizontal de `useDraggableDb.ts` - mismo patrón de listeners estables + refs, pero mapea la posición X del puntero a un valor dB lineal (`min` a la izquierda, `max` a la derecha, la misma convención `frac*w` que esos gráficos ya usan para dibujarse).
+- [x] **`CompressorPanel.tsx`**: la línea vertical de "umbral" (ya dibujada sobre la curva de transferencia) ahora se arrastra para fijar `thresholdDb` en vivo (-60..0dB). Ratio/ataque/liberación/knee/makeup siguen solo por knob - no tienen una posición representable en esta curva.
+- [x] **`useDraggableFreqX.ts` (nuevo, compartido)**: mismo patrón pero en escala logarítmica de Hz (`freqMin * (freqMax/freqMin)^frac`), igual a como `DeEsserPanel`/`ExciterPanel` ya convertían frecuencia a X para dibujar su línea de cruce - una escala lineal habría amontonado todo el rango grave en una esquina.
+- [x] **`DeEsserPanel.tsx`**: la banda de detección sombreada se arrastra para mover `freq` (2-16kHz).
+- [x] **`ExciterPanel.tsx`**: la línea de cruce sobre el espectro antes/después se arrastra para mover `freq` (1-18kHz).
+- **Verificado en navegador** (Chromium headless, Playwright, viewport de teléfono 390px): arrastre de extremo a extremo (izquierda↔derecha) en los 3, leyendo el valor real del knob por su `title` antes/después - Compresor -24→-6dB (derecha)→-54dB (izquierda); De-esser 6500→12996Hz→2462Hz; Excitador 4500→13482Hz→1335Hz. El parámetro real se mueve en los 3, no es decorativo. Cero errores de página.
+- `tsc`/`eslint`/`vitest` (367 tests) y `next build` de producción limpios.
+- **Pendiente real**: quedan 8 paneles (Saturación, Reverb, Delay [parcial], Chorus, Flanger, Paneo automático, Imagen estéreo, Vocoder). Van 7 de 15 cerrados.

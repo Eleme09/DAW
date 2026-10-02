@@ -8,6 +8,7 @@ import type { EffectTarget } from "@/state/projectStore";
 import type { DeEsserParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
 import { GainReductionMeter } from "./GainReductionMeter";
+import { useDraggableFreqX } from "./useDraggableFreqX";
 
 const FREQ_MIN = 2000;
 const FREQ_MAX = 16000;
@@ -42,6 +43,8 @@ export function DeEsserPanel({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const freqDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const reductionRef = useRef(0);
+
+  useDraggableFreqX(canvasRef, FREQ_MIN, FREQ_MAX, (v) => onChange({ ...params, freq: v }));
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -112,7 +115,12 @@ export function DeEsserPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ew-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para mover la banda de detección"
+      />
       <GainReductionMeter reductionRef={reductionRef} />
       <ParamSlider label="Frec" value={params.freq} min={FREQ_MIN} max={FREQ_MAX} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...params, freq: v })} />
       <ParamSlider label="Umbral" value={params.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...params, thresholdDb: v })} />

@@ -7,6 +7,7 @@ import { useRafLoop } from "@/hooks/useRafLoop";
 import type { EffectTarget } from "@/state/projectStore";
 import type { ExciterParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
+import { useDraggableFreqX } from "./useDraggableFreqX";
 
 const HEIGHT = 130;
 const FREQ_MIN = 1000;
@@ -40,6 +41,8 @@ export function ExciterPanel({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inFreqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const outFreqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+
+  useDraggableFreqX(canvasRef, FREQ_MIN, FREQ_MAX, (v) => onChange({ ...params, freq: v }));
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -117,7 +120,12 @@ export function ExciterPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ew-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para mover la frecuencia de corte"
+      />
       <ParamSlider label="Frec" value={params.freq} min={FREQ_MIN} max={FREQ_MAX} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...params, freq: v })} />
       <ParamSlider label="Drive" value={params.driveDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...params, driveDb: v })} />
       <ParamSlider label="Mezcla" value={params.mix * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...params, mix: v / 100 })} />
