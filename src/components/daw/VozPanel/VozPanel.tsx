@@ -18,6 +18,7 @@ import { EFFECT_LABELS, type EffectInstance } from "@/types/effects";
 import type { AudioClip } from "@/types/project";
 import { Waveform } from "../Waveform";
 import { PitchCurveView } from "./PitchCurveView";
+import { AfinacionPanel } from "./AfinacionPanel";
 import { LyricsSection, LyricsTeleprompter } from "./LyricsSection";
 import { FirstUseHint } from "../FirstUseHint";
 import { InputMeterRow } from "../InputMeterRow";
@@ -110,6 +111,7 @@ export function VozPanel() {
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const armTrack = useProjectStore((s) => s.armTrack);
   const updateTrack = useProjectStore((s) => s.updateTrack);
+  const updateEffectParams = useProjectStore((s) => s.updateEffectParams);
   const lyrics = useProjectStore((s) => s.project.lyrics);
   const setLyrics = useProjectStore((s) => s.setLyrics);
   const selectTrack = useProjectStore((s) => s.selectTrack);
@@ -289,7 +291,20 @@ export function VozPanel() {
     }
   }
 
-  function openChainEffect() {
+  const [afinacionEffectId, setAfinacionEffectId] = useState<string | null>(null);
+  const afinacionEffectRaw = track?.inserts.find((fx) => fx.id === afinacionEffectId);
+  const afinacionEffect = afinacionEffectRaw?.type === "pitchCorrection" ? afinacionEffectRaw : null;
+
+  // "Afinación" gets its own simple dedicated screen (Cabina v2's "pantalla
+  // 4" - a single big Intensidad knob + auto key detection + 5 named
+  // styles) instead of opening the generic effects rack like every other
+  // chain link - the whole point of this screen is that it's NOT the dense
+  // PitchCorrectionPanel. Every other effect still opens the normal rack.
+  function openChainEffect(fx: EffectInstance) {
+    if (fx.type === "pitchCorrection") {
+      setAfinacionEffectId(fx.id);
+      return;
+    }
     setEffectsRackMode("track");
     setMobileView("effects");
   }
@@ -431,7 +446,7 @@ export function VozPanel() {
           {track.inserts.map((fx) => (
             <button
               key={fx.id}
-              onClick={openChainEffect}
+              onClick={() => openChainEffect(fx)}
               title={`${EFFECT_LABELS[fx.type]} — toca para abrir su panel`}
               className={`shrink-0 rounded border px-2.5 py-2 text-left ${
                 fx.bypassed ? "border-line opacity-40" : "border-line-2 bg-surf"
@@ -494,6 +509,18 @@ export function VozPanel() {
           </div>
         </div>
       </div>
+
+      {afinacionEffect && track && (
+        <AfinacionPanel
+          open
+          onClose={() => setAfinacionEffectId(null)}
+          target={track.id}
+          effectId={afinacionEffect.id}
+          params={afinacionEffect.params}
+          onChange={(params) => updateEffectParams(track.id, afinacionEffect.id, params)}
+          pitchAnalysis={pitchAnalysis}
+        />
+      )}
     </div>
   );
 }
