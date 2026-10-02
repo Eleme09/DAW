@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import type { SaturationEffect } from "@/audio-engine/effects/SaturationEffect";
 import { makeSaturationCurve } from "@/audio-engine/effects/curves";
@@ -47,6 +47,34 @@ export function SaturationPanel({
   const inFreqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const outFreqRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
 
+  // The curve's SHAPE is the one thing it actually has a real position for
+  // - it's drawn straight from `makeSaturationCurve(tone)`, a fixed shape
+  // per tone, not continuously parameterized by driveDb/mix (those are a
+  // pre-gain and a dry/wet blend applied around this fixed curve, with no
+  // honest position on it to drag - same reasoning CompressorPanel's doc
+  // comment gives for not drawing a guessed operating-point dot). So this
+  // is a tap-to-pick-a-third, matching the tone buttons below exactly,
+  // not a continuous drag.
+  const onChangeRef = useRef(onChange);
+  const paramsRef = useRef(params);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    paramsRef.current = params;
+  }, [onChange, params]);
+
+  useEffect(() => {
+    const canvas = curveCanvasRef.current;
+    if (!canvas) return;
+    function onPointerDown(e: PointerEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const tone: SaturationParams["tone"] = frac < 1 / 3 ? "warm" : frac < 2 / 3 ? "neutral" : "bright";
+      onChangeRef.current({ ...paramsRef.current, tone });
+    }
+    canvas.addEventListener("pointerdown", onPointerDown);
+    return () => canvas.removeEventListener("pointerdown", onPointerDown);
+  }, []);
+
   useRafLoop(() => {
     const curveCanvas = curveCanvasRef.current;
     const curveCtx = curveCanvas?.getContext("2d");
@@ -76,6 +104,13 @@ export function SaturationPanel({
     curveCtx.lineTo(cw, 0);
     curveCtx.stroke();
     curveCtx.setLineDash([]);
+    curveCtx.strokeStyle = "rgba(255,255,255,0.08)";
+    curveCtx.beginPath();
+    curveCtx.moveTo(cw / 3, 0);
+    curveCtx.lineTo(cw / 3, ch);
+    curveCtx.moveTo((cw * 2) / 3, 0);
+    curveCtx.lineTo((cw * 2) / 3, ch);
+    curveCtx.stroke();
     const curve = makeSaturationCurve(params.tone);
     curveCtx.strokeStyle = "#f2ede4";
     curveCtx.lineWidth = 2;
@@ -143,7 +178,12 @@ export function SaturationPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={curveCanvasRef} className="block w-full rounded bg-ink" style={{ height: CURVE_HEIGHT }} />
+      <canvas
+        ref={curveCanvasRef}
+        className="block w-full cursor-pointer rounded bg-ink"
+        style={{ height: CURVE_HEIGHT, touchAction: "none" }}
+        title="Toca un tercio para elegir el tono"
+      />
       <canvas ref={spectrumCanvasRef} className="block w-full rounded bg-ink" style={{ height: SPECTRUM_HEIGHT }} />
       <div className="flex w-full gap-1 text-[11px]">
         {(["warm", "neutral", "bright"] as const).map((tone) => (

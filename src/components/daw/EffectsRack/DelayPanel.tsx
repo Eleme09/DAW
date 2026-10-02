@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import type { DelayEffect } from "@/audio-engine/effects/DelayEffect";
 import { divisionToMs, msToClosestDivision, TEMPO_DIVISIONS } from "@/audio-engine/effects/tempoGrid";
@@ -11,7 +11,7 @@ import type { EffectTarget } from "@/state/projectStore";
 import type { DelayParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
 
-const HEIGHT = 130;
+const HEIGHT = 170;
 const TIME_WINDOW_MS = 2500; // canvas shows echoes out to this point
 const MAX_TAPS = 10;
 const AMP_MIN_DB = -36;
@@ -44,6 +44,60 @@ export function DelayPanel({
   const bpm = useProjectStore((s) => s.project.bpm);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wetDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+
+  // Already had real X-axis interactivity (tap-to-snap timeMs to a tempo
+  // division) - extended here to a full XY pad: X still sets time the same
+  // way, Y now sets feedback directly (top of the canvas = near-max
+  // feedback, bottom = none), matching the same "more height = more
+  // repeats" reading the echo-tap bars already draw with. filterFreq/mix
+  // don't have an honest position on this chart (it's a time/amplitude
+  // diagram, neither axis is frequency or dry/wet) - they stay knob-only.
+  const onChangeRef = useRef(onChange);
+  const paramsRef = useRef(params);
+  const bpmRef = useRef(bpm);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    paramsRef.current = params;
+    bpmRef.current = bpm;
+  }, [onChange, params, bpm]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const draggingRef = { current: false };
+
+    function applyFromPoint(clientX: number, clientY: number) {
+      const rect = canvas!.getBoundingClientRect();
+      const ms = ((clientX - rect.left) / rect.width) * TIME_WINDOW_MS;
+      const { ms: snappedMs } = msToClosestDivision(ms, bpmRef.current);
+      const feedback = Math.min(0.95, Math.max(0, (rect.height - (clientY - rect.top)) / rect.height));
+      onChangeRef.current({ ...paramsRef.current, timeMs: Math.round(snappedMs), feedback });
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      draggingRef.current = true;
+      canvas!.setPointerCapture(e.pointerId);
+      applyFromPoint(e.clientX, e.clientY);
+    }
+    function onPointerMove(e: PointerEvent) {
+      if (!draggingRef.current) return;
+      applyFromPoint(e.clientX, e.clientY);
+    }
+    function endDrag() {
+      draggingRef.current = false;
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endDrag);
+      canvas.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -108,22 +162,17 @@ export function DelayPanel({
     }
   }, true);
 
-  function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const ms = (x / rect.width) * TIME_WINDOW_MS;
-    const { ms: snappedMs } = msToClosestDivision(ms, bpm);
-    onChange({ ...params, timeMs: Math.round(snappedMs) });
-  }
-
   const closest = msToClosestDivision(params.timeMs, bpm);
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} onClick={handleCanvasClick} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
-      <p className="text-[9px] text-bone-3">Toca la rejilla para ajustar el tiempo a una división musical ({bpm} BPM). Más cercana ahora: {closest.division.label}.</p>
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-crosshair rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra: horizontal fija el tiempo a la rejilla, vertical fija el feedback"
+      />
+      <p className="text-[9px] text-bone-3">Arrastra: horizontal ajusta el tiempo a una división musical ({bpm} BPM), vertical ajusta el feedback. Más cercana ahora: {closest.division.label}.</p>
       <ParamSlider label="Tiempo" value={params.timeMs} min={10} max={2000} step={10} unit=" ms" decimals={0} onChange={(v) => onChange({ ...params, timeMs: v })} />
       <ParamSlider label="Feedback" value={params.feedback * 100} min={0} max={95} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...params, feedback: v / 100 })} />
       <ParamSlider label="Tono" value={params.filterFreq} min={500} max={12000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...params, filterFreq: v })} />

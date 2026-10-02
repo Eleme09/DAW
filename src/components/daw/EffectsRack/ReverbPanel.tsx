@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import type { ReverbEffect } from "@/audio-engine/effects/ReverbEffect";
 import { reverbDecayEnvelopeDb } from "@/audio-engine/effects/impulseResponse";
@@ -48,6 +48,43 @@ export function ReverbPanel({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wetDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
+
+  // All 3 size curves are already drawn overlaid (one bright, two dim) -
+  // tapping picks whichever curve is nearest the touch point, same
+  // nearest-curve-to-touch approach as MultibandPanel's per-band threshold
+  // drag. decaySec/mix don't get an honest position here (the X axis is
+  // always "one full IR length" regardless of decaySec, same reason
+  // Chorus/Flanger don't try to represent rate on their LFO curve) - they
+  // stay knob-only, correctly.
+  const onChangeRef = useRef(onChange);
+  const paramsRef = useRef(params);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    paramsRef.current = params;
+  }, [onChange, params]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    function onPointerDown(e: PointerEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      const t = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const touchFrac = 1 - (e.clientY - rect.top) / rect.height;
+      let best: ReverbParams["sizeType"] = "room";
+      let bestDist = Infinity;
+      for (const sizeType of SIZE_ORDER) {
+        const db = reverbDecayEnvelopeDb(t, sizeType);
+        const dist = Math.abs(dbToFrac(db) - touchFrac);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = sizeType;
+        }
+      }
+      onChangeRef.current({ ...paramsRef.current, sizeType: best });
+    }
+    canvas.addEventListener("pointerdown", onPointerDown);
+    return () => canvas.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -116,7 +153,12 @@ export function ReverbPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-pointer rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Toca la curva de un tamaño para elegirlo"
+      />
       <div className="flex w-full gap-1 text-[11px]">
         {SIZE_ORDER.map((sizeType) => (
           <button
