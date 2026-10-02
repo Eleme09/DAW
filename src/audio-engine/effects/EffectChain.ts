@@ -1,4 +1,5 @@
 import type { Effect } from "./Effect";
+import { BypassWrapper } from "./BypassWrapper";
 import { EqEffect } from "./EqEffect";
 import { CompressorEffect } from "./CompressorEffect";
 import { DeEsserEffect } from "./DeEsserEffect";
@@ -93,6 +94,7 @@ function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unkno
 interface ChainEntry {
   instance: Effect<unknown>;
   type: EffectType;
+  wrapper: BypassWrapper;
 }
 
 /**
@@ -139,7 +141,10 @@ export class EffectChain {
     }
 
     for (const ins of inserts) {
-      this.effects.get(ins.id)?.instance.setParams(ins.params);
+      const entry = this.effects.get(ins.id);
+      if (!entry) continue;
+      entry.instance.setParams(ins.params);
+      entry.wrapper.setBypassed(ins.bypassed, this.ctx);
     }
 
     this.rewire(inserts);
@@ -149,34 +154,54 @@ export class EffectChain {
     const worklet = WORKLET_BACKED_TYPES[ins.type];
     if (worklet && !worklet.isLoaded(this.deps)) {
       const placeholder = new PassthroughEffect(this.ctx);
-      this.effects.set(ins.id, { instance: placeholder, type: ins.type });
+      const wrapper = new BypassWrapper(this.ctx, placeholder.inputNode, placeholder.outputNode);
+      this.effects.set(ins.id, { instance: placeholder, type: ins.type, wrapper });
       worklet.ensure(this.deps).then(() => {
         if (!this.effects.has(ins.id)) return; // removed while loading
         placeholder.dispose();
+        this.effects.get(ins.id)?.wrapper.dispose();
         const real = createEffectNode(this.ctx, ins.type);
-        this.effects.set(ins.id, { instance: real, type: ins.type });
+        const realWrapper = new BypassWrapper(this.ctx, real.inputNode, real.outputNode);
+        this.effects.set(ins.id, { instance: real, type: ins.type, wrapper: realWrapper });
         const current = this.lastInserts.find((i) => i.id === ins.id);
-        if (current) real.setParams(current.params);
+        if (current) {
+          real.setParams(current.params);
+          realWrapper.setBypassed(current.bypassed, this.ctx);
+        }
         this.rewire(this.lastInserts);
       });
       return;
     }
-    this.effects.set(ins.id, { instance: createEffectNode(this.ctx, ins.type), type: ins.type });
+    const instance = createEffectNode(this.ctx, ins.type);
+    const wrapper = new BypassWrapper(this.ctx, instance.inputNode, instance.outputNode);
+    wrapper.setBypassed(ins.bypassed, this.ctx);
+    this.effects.set(ins.id, { instance, type: ins.type, wrapper });
   }
 
+  /** Every entry is always wired into the series chain now - bypass (zona
+   * 8, "bypass honesto") is a gain crossfade inside each entry's own
+   * `BypassWrapper`, not a graph-topology change, so toggling it no longer
+   * needs a reconnect (and the dry path stays available to measure even
+   * while the effect is inaudible - see BypassWrapper's doc comment). */
   private rewire(inserts: EffectInstance[]): void {
     this.input.disconnect();
-    for (const [, entry] of this.effects) entry.instance.outputNode.disconnect();
+    for (const [, entry] of this.effects) entry.wrapper.outputNode.disconnect();
 
     let node: AudioNode = this.input;
     for (const ins of inserts) {
-      if (ins.bypassed) continue;
       const entry = this.effects.get(ins.id);
       if (!entry) continue; // still pending (e.g. worklet loading)
-      node.connect(entry.instance.inputNode);
-      node = entry.instance.outputNode;
+      node.connect(entry.wrapper.inputNode);
+      node = entry.wrapper.outputNode;
     }
     node.connect(this.output);
+  }
+
+  /** Called continuously by AudioEngine's own maintenance loop (not tied to
+   * any UI panel being open) so every entry's dry/wet loudness measurement
+   * - and therefore its bypass compensation gain - is always current. */
+  tick(): void {
+    for (const [, entry] of this.effects) entry.wrapper.tick(this.ctx);
   }
 
   /** The live audio-node instance behind one insert, if it exists and has
@@ -186,8 +211,20 @@ export class EffectChain {
     return this.effects.get(id)?.instance;
   }
 
+  /** Real measured dB gap between this insert's processed and dry signal
+   * right now (positive = processed is louder) - zona 8's "bypass
+   * honesto" means this is shown to the user, not only silently
+   * compensated for. Undefined while the entry doesn't exist yet (e.g. a
+   * worklet still loading). */
+  getBypassDeltaDb(id: string): number | undefined {
+    return this.effects.get(id)?.wrapper.getMeasuredDeltaDb();
+  }
+
   dispose(): void {
-    for (const [, entry] of this.effects) entry.instance.dispose();
+    for (const [, entry] of this.effects) {
+      entry.instance.dispose();
+      entry.wrapper.dispose();
+    }
     this.effects.clear();
     this.input.disconnect();
     this.output.disconnect();

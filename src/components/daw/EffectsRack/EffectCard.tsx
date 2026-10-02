@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { getAudioEngine } from "@/audio-engine/AudioEngine";
+import { useRafLoop } from "@/hooks/useRafLoop";
 import { useProjectStore, type EffectTarget } from "@/state/projectStore";
 import {
   EFFECT_LABELS,
@@ -50,6 +52,15 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
     B: { params: effect.params, presetId: null },
   }));
   const [activeSlot, setActiveSlot] = useState<"A" | "B">("A");
+  // Zona 8 "bypass honesto": the real measured dB gap between this effect's
+  // processed and dry signal, read from the engine's own continuous
+  // BypassWrapper measurement (AudioEngine.getEffectBypassDeltaDb) - not a
+  // guess. Polled only while the sheet is open (the compensation itself
+  // runs in the engine regardless; this is just the display catching up).
+  const [bypassDeltaDb, setBypassDeltaDb] = useState(0);
+  useRafLoop(() => {
+    setBypassDeltaDb(getAudioEngine().getEffectBypassDeltaDb(target, effect.id) ?? 0);
+  }, sheetOpen);
 
   const updateEffectParams = useProjectStore((s) => s.updateEffectParams);
   const toggleEffectBypass = useProjectStore((s) => s.toggleEffectBypass);
@@ -66,6 +77,11 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
   const activePresetId = slots[activeSlot].presetId;
   const presetLabel = (activePresetId && presets.find((p) => p.id === activePresetId)?.label) || "Personalizado";
   const accent = `var(--cabina-${EFFECT_ACCENT[effect.type]})`;
+  // Below this, the gap is close enough to read as "basically matched" -
+  // showing e.g. "+0.05dB" would just be noise, not honesty.
+  const deltaIsMeaningful = Math.abs(bypassDeltaDb) >= 0.3;
+  const deltaText = `${bypassDeltaDb > 0 ? "+" : ""}${bypassDeltaDb.toFixed(1)}dB`;
+  const bypassTitle = deltaIsMeaningful ? `Bypass (diferencia real ${deltaText} - ya compensada al volumen)` : "Bypass";
 
   function applyParams(params: EffectInstance["params"], newPresetId: string | null) {
     updateEffectParams(target, effect.id, params);
@@ -170,51 +186,58 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         title={EFFECT_LABELS[effect.type]}
         accent={accent}
         subtitle={
-          <div className="flex items-center gap-1 pt-2">
-            {presets.length > 0 && (
-              <>
+          <div className="pt-2">
+            <div className="flex items-center gap-1">
+              {presets.length > 0 && (
+                <>
+                  <button
+                    onClick={() => cyclePreset(-1)}
+                    title="Preset anterior"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
+                  >
+                    <ChevronLeftIcon className="h-4 w-4" />
+                  </button>
+                  <span className="flex-1 truncate text-center text-[11px] font-medium text-bone-2">{presetLabel}</span>
+                  <button
+                    onClick={() => cyclePreset(1)}
+                    title="Preset siguiente"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+              <div className="ml-2 flex shrink-0 overflow-hidden rounded border border-line">
                 <button
-                  onClick={() => cyclePreset(-1)}
-                  title="Preset anterior"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
+                  onClick={() => selectSlot("A")}
+                  title="Comparar A"
+                  className={`h-10 w-9 text-[11px] font-bold ${activeSlot === "A" ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"}`}
                 >
-                  <ChevronLeftIcon className="h-4 w-4" />
+                  A
                 </button>
-                <span className="flex-1 truncate text-center text-[11px] font-medium text-bone-2">{presetLabel}</span>
                 <button
-                  onClick={() => cyclePreset(1)}
-                  title="Preset siguiente"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
+                  onClick={() => selectSlot("B")}
+                  title="Comparar B"
+                  className={`h-10 w-9 text-[11px] font-bold ${activeSlot === "B" ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"}`}
                 >
-                  <ChevronRightIcon className="h-4 w-4" />
+                  B
                 </button>
-              </>
-            )}
-            <div className="ml-2 flex shrink-0 overflow-hidden rounded border border-line">
+              </div>
               <button
-                onClick={() => selectSlot("A")}
-                title="Comparar A"
-                className={`h-10 w-9 text-[11px] font-bold ${activeSlot === "A" ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"}`}
+                onClick={() => toggleEffectBypass(target, effect.id)}
+                className={`ml-2 flex h-10 min-w-10 shrink-0 items-center justify-center rounded px-2 text-[10px] font-bold ${
+                  effect.bypassed ? "bg-surf-3 text-bone-2" : "bg-bone text-ink"
+                }`}
+                title={bypassTitle}
               >
-                A
-              </button>
-              <button
-                onClick={() => selectSlot("B")}
-                title="Comparar B"
-                className={`h-10 w-9 text-[11px] font-bold ${activeSlot === "B" ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"}`}
-              >
-                B
+                {effect.bypassed ? "OFF" : "ON"}
               </button>
             </div>
-            <button
-              onClick={() => toggleEffectBypass(target, effect.id)}
-              className={`ml-2 flex h-10 min-w-10 shrink-0 items-center justify-center rounded px-2 text-[10px] font-bold ${
-                effect.bypassed ? "bg-surf-3 text-bone-2" : "bg-bone text-ink"
-              }`}
-              title="Bypass"
-            >
-              {effect.bypassed ? "OFF" : "ON"}
-            </button>
+            {deltaIsMeaningful && (
+              <p className="px-1 pt-1 text-center text-[10px] text-bone-3">
+                Diferencia real: {deltaText} {effect.bypassed ? "(bypass ya la compensa)" : "(se compensará al hacer bypass)"}
+              </p>
+            )}
           </div>
         }
       >

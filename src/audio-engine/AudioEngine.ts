@@ -132,6 +132,12 @@ export class AudioEngine {
   private playheadAtPlay = 0;
   private rafId: number | null = null;
   private listeners = new Set<TransportListener>();
+  /** Zona 8 "bypass honesto" maintenance loop - keeps every live effect's
+   * dry/wet loudness measurement (BypassWrapper) current independent of
+   * the transport and of whether any effect panel is open, so a bypass
+   * toggle's gain compensation is never catching up after the fact. See
+   * startBypassMaintenanceLoop(). */
+  private bypassTickRafId: number | null = null;
 
   private metronomeEnabled = false;
   private metronomeTimer: ReturnType<typeof setInterval> | null = null;
@@ -225,6 +231,8 @@ export class AudioEngine {
       this.loudnessAnalyser = loudnessAnalyser;
       this.masterChain = masterChain;
 
+      this.startBypassMaintenanceLoop();
+
       if (this.selectedOutputDeviceId && this.isOutputDeviceSelectionSupported()) {
         void (ctx as unknown as { setSinkId(id: string): Promise<void> }).setSinkId(this.selectedOutputDeviceId);
       }
@@ -311,6 +319,33 @@ export class AudioEngine {
     const chain =
       target === "master" ? this.masterChain : (this.tracks.get(target)?.effectChain ?? this.buses.get(target)?.effectChain);
     return chain?.getEffect(effectId);
+  }
+
+  /** Real measured dB gap between one insert's processed and dry signal
+   * right now (positive = processed is louder) - zona 8 "bypass honesto".
+   * Undefined if the target/effect doesn't resolve to a live chain entry. */
+  getEffectBypassDeltaDb(target: "master" | TrackId | BusId, effectId: string): number | undefined {
+    const chain =
+      target === "master" ? this.masterChain : (this.tracks.get(target)?.effectChain ?? this.buses.get(target)?.effectChain);
+    return chain?.getBypassDeltaDb(effectId);
+  }
+
+  /** Runs for the lifetime of the AudioContext, independent of transport
+   * play state and of whether any effect panel is mounted - every live
+   * EffectChain's entries need their dry/wet loudness measured
+   * continuously (BypassWrapper.tick) so a bypass toggle's gain
+   * compensation is already correct the instant it fires, not computed
+   * afterward. Cheap: a handful of Map iterations and small Float32Array
+   * reads per frame, same order of cost as the existing per-panel meters. */
+  private startBypassMaintenanceLoop(): void {
+    if (this.bypassTickRafId !== null) return;
+    const tick = () => {
+      this.masterChain?.tick();
+      for (const graph of this.tracks.values()) graph.effectChain.tick();
+      for (const graph of this.buses.values()) graph.effectChain.tick();
+      this.bypassTickRafId = requestAnimationFrame(tick);
+    };
+    this.bypassTickRafId = requestAnimationFrame(tick);
   }
 
   // ---------------------------------------------------------------------
