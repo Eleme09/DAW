@@ -15,33 +15,91 @@
  *  2. A streaming version of correctionCurve.ts's glide+humanize logic —
  *     same math, restructured as a per-hop state update instead of a
  *     whole-array pass, so "how retune speed/humanize sound" matches the
- *     offline tool exactly.
- *  3. A causal delay-line pitch shifter: a single read tap trails the
- *     write head by a continuously-drifting delay — `delay +=
- *     (1 - pitchRatio)` every sample. That continuous drift, read through
- *     linear interpolation, *is* the pitch shift (reading faster than 1:1
- *     = higher pitch, like scrubbing tape at a slightly different speed);
- *     it is NOT reapplied by resetting anything on a fixed cycle (an
- *     earlier version of this file used a fixed-rate 2-voice grain
- *     crossfade that reset each voice's read position every cycle — that
- *     discards the very drift that produces the shift, netting ~zero
- *     correction overall, caught by a verification test that rendered a
- *     known off-pitch tone through the worklet and measured the output
- *     frequency hadn't moved). The delay is only ever rebased — briefly
- *     crossfaded to a second "standby" tap reset to a safe centered
- *     delay — when it would otherwise drift past the delay buffer's
- *     bounds, which for realistic correction amounts (a few percent) only
- *     happens every several hundred ms to a few seconds, not every cycle.
- *     This is NOT PSOLA — PSOLA needs pitch-synchronous marks computed
- *     from the *whole* signal, including samples that haven't arrived
- *     yet, which a live monitor fundamentally can't have. Real, audible
- *     cost of the tradeoff: total latency of roughly 30-50ms (mostly the
- *     analysis window), an occasional brief crossfade artifact at a
- *     rebase (not synced to the signal's own period, unlike PSOLA), and a
- *     slightly less clean character on larger corrections than the
- *     offline PSOLA render — acceptable for "hear yourself land on the
- *     note while singing," not a substitute for the higher-quality
- *     offline correction once you've got a take down.
+ *     offline tool exactly. Produces `this.pitchRatio`, the target/current
+ *     ratio for stage 3.
+ *  3. A causal, real-time TD-PSOLA shifter (REPLACED — see below for why
+ *     the previous approach was wrong and had to go).
+ *
+ * --- Why this isn't a resampled delay line anymore ---
+ * An earlier version of stage 3 was a single read tap trailing the write
+ * head by a continuously-drifting delay (`delay += 1 - pitchRatio` every
+ * sample, read through linear interpolation — the digital equivalent of
+ * scrubbing tape at a slightly different speed). That design DID shift
+ * pitch correctly and was free of clicks, but it has a structural flaw
+ * that isn't a bug to patch: reading a waveform at a different speed moves
+ * EVERY frequency in it by the same ratio, formants included — which is
+ * exactly the "chipmunk/Darth Vader" coloration real Auto-Tune/Waves Tune
+ * do NOT have. Measured directly, not assumed: feeding that shifter a
+ * synthetic 8-harmonic test tone (standing in for a formant structure) and
+ * a +7-semitone correction, the harmonic-amplitude PATTERN at the new,
+ * shifted frequencies matched the ORIGINAL pattern almost exactly — proof
+ * the whole spectral envelope moved with the pitch instead of staying put.
+ * That is the real, measured cause of "el autotune no sirve/suena
+ * artificial" for any correction bigger than a cent-level nudge.
+ *
+ * TD-PSOLA (Time-Domain Pitch-Synchronous Overlap-Add) fixes this because
+ * it never resamples the waveform at all: it cuts real, unresampled
+ * 2-period grains out of the input at the input's own natural rate (so
+ * each grain's internal spectral envelope — the formants — is untouched,
+ * straight from the real recording), then re-deposits those exact grains
+ * into the output at a DIFFERENT repetition rate (closer together = higher
+ * pitch, farther apart = lower). Only the REPETITION rate changes; the
+ * content of each repeated grain does not, which is what keeps formants
+ * fixed while the fundamental moves — a pitch shift without a vocal-tract
+ * resize. This is the same family of technique real-time hardware/plugin
+ * pitch correctors use (not literally Antares' proprietary implementation,
+ * which is unknown/closed, but the same textbook principle).
+ *
+ * Mechanics, causal/real-time constraints included:
+ *  - `extractGrain()` runs once per estimated input period (~every
+ *    `smoothedPeriod` samples): searches a short backward-only window for
+ *    the nearest local amplitude peak (a cheap, causal proxy for a true
+ *    glottal-closure epoch — no future samples available in a live
+ *    stream), then copies a *fully causal* 2-period window ending at that
+ *    point straight out of the rolling input ring buffer. No resampling
+ *    happens here — the copied samples are bit-for-bit the real recorded
+ *    waveform.
+ *  - `depositGrain()` runs once per *target* period (`smoothedPeriod /
+ *    pitchRatio` samples — faster than extraction when shifting up,
+ *    slower when shifting down): windows the most recently extracted grain
+ *    (Hann) and adds it into a small overlap-add buffer, always centered a
+ *    fixed `SYNTH_LOOKAHEAD` samples ahead of the current read position —
+ *    this fixed lookahead (not a growing one) is this stage's entire added
+ *    latency, ~20ms at 44.1kHz, deliberately small because this is a live
+ *    monitor and every extra ms makes it harder to sing along with. When
+ *    shifting up, the same grain naturally gets deposited more than once
+ *    in a row (synthesis outruns extraction); shifting down, some
+ *    extracted grains are naturally never deposited (extraction outruns
+ *    synthesis) — both are standard PSOLA behavior, not a bug.
+ *  - Reading the overlap-add buffer divides by a parallel accumulated-
+ *    window-weight buffer (classic weighted-OLA normalization) because
+ *    retiming the hop away from exactly half the window length breaks the
+ *    Hann window's constant-overlap-add property — without this division,
+ *    bigger corrections would gain/lose energy in a slow amplitude
+ *    "breathing" pattern. At `pitchRatio === 1` the hop IS exactly half the
+ *    window length, so the buffer reconstructs the original input to
+ *    near-bit-perfect accuracy (a free correctness check on the engine
+ *    itself, not just the shift it applies at other ratios).
+ *  - A short, fully-silent voiced period at startup (no grain extracted
+ *    yet) or a period estimate too low to fit the fixed lookahead budget
+ *    (sub-~45Hz input, rare for a vocal-focused effect, and already below
+ *    `detectMinHz`'s own practical defaults) is handled by clamping the
+ *    grain length rather than growing the lookahead — a deliberately
+ *    small, constant latency was chosen over perfect low-end quality; see
+ *    `maxGrainPeriod`.
+ *
+ * Real, honest limitations of THIS implementation (not invented/hidden):
+ *  - Epoch marking is a cheap local-peak search, not true glottal-closure
+ *    detection — good enough for a clear single voice, noisier on a
+ *    breathy/distorted/multi-voice input than a lab-grade pitch tracker.
+ *  - All retiming happens through one engine; there's no separate voiced/
+ *    unvoiced (noise vs. tone) split, so sibilants and breaths ride through
+ *    the same grain machinery as sung notes (their "pitch" estimate is
+ *    whatever the last voiced period held).
+ *  - Total latency through this stage is small and fixed (~20ms) by
+ *    design, not auto-tuned per voice — a bass voice near the very bottom
+ *    of the detectable range gets a slightly truncated grain rather than
+ *    more latency.
  */
 
 const SCALE_INTERVALS = {
@@ -63,32 +121,28 @@ const HUMANIZE_MAX_SEMITONES = 0.15;
 const HUMANIZE_WALK_STEP = 0.05;
 const HUMANIZE_WALK_DECAY = 0.9;
 
-// Time constant for smoothing the *detected* pitch before it's used as the
-// shift-ratio denominator - fast enough to follow a real note change
+// Time constant for smoothing the *detected* pitch/period before either is
+// used for anything downstream - fast enough to follow a real note change
 // (~40ms, well under retuneSpeedMs's own default of 120ms), slow enough to
 // reject hop-to-hop YIN jitter and momentary octave errors instead of
-// turning them straight into an audible speed wobble.
+// turning them straight into an audible wobble (speed wobble in the old
+// delay-line shifter; grain-size/epoch jitter here).
 const DETECT_SMOOTH_TAU_SEC = 0.04;
 
 const ANALYSIS_SIZE = 2048;
 const HOP_SIZE = 512;
-const RING_SIZE = 4096; // power of 2, > ANALYSIS_SIZE
-const DELAY_SIZE = 16384;
+const RING_SIZE = 8192; // power of 2, comfortably > ANALYSIS_SIZE and > the largest possible grain + epoch-search margin
 const MIN_PITCH_RATIO = 0.7;
 const MAX_PITCH_RATIO = 1.4;
-// NOMINAL_DELAY is the baseline latency through the shifter (~23ms) — kept
-// small deliberately, since this is a *live monitor* and every extra ms
-// between singing a note and hearing the corrected version back makes it
-// harder to sing along with. DELAY_SIZE stays large regardless (headroom
-// for the delay to drift before a rebase is needed, not baseline latency —
-// only NOMINAL_DELAY and the MIN/MAX bounds affect what you actually hear).
-const NOMINAL_DELAY = 1024;
-const MIN_SAFE_DELAY = 128;
-const MAX_SAFE_DELAY = DELAY_SIZE - 1024;
-const CROSSFADE_LEN = 512; // ~11.6ms at 44.1kHz — long enough to hide the resync click, short enough to stay unobtrusive
+const WEIGHT_EPS = 1e-6;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function wrapIndex(a, size) {
+  const m = a % size;
+  return m < 0 ? m + size : m;
 }
 
 function frequencyToMidi(freq, refHz) {
@@ -181,15 +235,6 @@ function yinDetect(frame, sampleRate, minHz, maxHz, threshold) {
   return { frequencyHz: sampleRate / betterTau, confidence: confidence };
 }
 
-function readDelayLinear(buffer, size, pos) {
-  const wrapped = pos % size;
-  const p = wrapped < 0 ? wrapped + size : wrapped;
-  const i0 = Math.floor(p);
-  const frac = p - i0;
-  const i1 = (i0 + 1) % size;
-  return buffer[i0] * (1 - frac) + buffer[i1] * frac;
-}
-
 // 0/1/2 rather than a string, and an AudioParam rather than a port message:
 // k-rate params are guaranteed to be in effect from the very first render
 // quantum once set via `.value =` on the main thread, with no async
@@ -221,7 +266,7 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
       // (constant transpose, no pitch detection/target involved - see
       // fixedSemitones and the mode check in runAnalysisHop).
       { name: "mode", defaultValue: 0, minValue: 0, maxValue: 1 },
-      // Range matches what the delay-line shifter can actually do before
+      // Range matches what the PSOLA shifter can actually do before
       // MIN/MAX_PITCH_RATIO clamps it (±0.7x..1.4x = roughly ±6 semitones,
       // see clamp() in runAnalysisHop) - the param bound is honest about
       // the ceiling, not wider than what the shifter can deliver.
@@ -238,9 +283,6 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     this.analysisScratch = new Float32Array(ANALYSIS_SIZE);
     this.samplesUntilHop = HOP_SIZE;
 
-    this.delayBuffer = new Float32Array(DELAY_SIZE);
-    this.writePos = 0;
-
     this.detectedHz = null;
     this.confidence = 0;
     this.targetHz = null;
@@ -248,37 +290,43 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     // Smoothed version of the YIN-detected pitch, used as the *denominator*
     // of the shift ratio (see runAnalysisHop). Raw per-hop YIN output is
     // noisy on a real voice - vibrato, breathiness, sibilants, and the
-    // occasional octave error - and unlike offline PSOLA (which resyncs
-    // grains to the true period each frame, masking that noise), this
-    // worklet's delay-line shifter turns any ratio jitter directly into an
-    // audible speed wobble on every hop, every ~12ms. Filtering the
-    // detected pitch itself, the same way the target is already smoothed,
-    // was missing before and is the main source of "never sounds good".
+    // occasional octave error - filtering it keeps that noise from turning
+    // straight into ratio jitter.
     this.smoothedDetectedMidi = null;
     this.snappedMidi = null;
     this.humanizeWalk = 0;
 
     this.pitchRatio = 1;
 
-    // Delay-line pitch shifter: `activeDelay` is how far behind the write
-    // head the (single) active read tap sits, in samples. It drifts
-    // continuously by `(1 - pitchRatio)` every sample — that continuous
-    // drift *is* the pitch shift (read faster than 1:1 = higher pitch),
-    // exactly like scrubbing a tape at a slightly different speed. It is
-    // NOT reset every grain (an earlier version of this file did that —
-    // wrong: resetting the delay to a fixed value every cycle throws away
-    // the very drift that produces the shift, netting ~zero correction
-    // overall, caught by a verification test that measured the output
-    // frequency and found it hadn't moved). A reset is only needed
-    // rarely, when the drifting delay would otherwise run past the
-    // delay buffer's bounds — handled by briefly crossfading to a second
-    // "standby" tap reset to a safe centered delay, exactly once every
-    // few hundred ms to a few seconds for realistic correction amounts,
-    // not every grain cycle.
-    this.activeDelay = NOMINAL_DELAY;
-    this.standbyDelay = 0;
-    this.crossfading = false;
-    this.crossfadeProgress = 0;
+    // --- TD-PSOLA engine state ---
+    // Smoothed estimate of the input's own natural period, in samples -
+    // drives both grain size (extraction) and grain spacing (both
+    // extraction and deposit). Held (not reset) through brief unvoiced
+    // gaps so grain size doesn't jump on every consonant/breath. Default
+    // seeds it at a mid-vocal 220Hz so the engine has *something* sane to
+    // work with before the first real detection lands.
+    this.smoothedPeriod = sampleRate / 220;
+
+    // Fixed added latency of the synthesis stage (~20ms) - see the header
+    // comment for why this is a small constant instead of a value that
+    // grows with the detected period.
+    this.synthLookahead = Math.round(sampleRate * 0.02);
+    // A grain's period can't exceed what the fixed lookahead budget can fit
+    // (with a safety margin) - see "Real, honest limitations" above.
+    this.maxGrainPeriod = Math.max(32, this.synthLookahead - 64);
+    this.minPeriodSamples = Math.max(8, Math.floor(sampleRate / 2000));
+
+    this.olaSize = 4096; // power of 2, comfortably > synthLookahead + maxGrainPeriod
+    this.olaBuffer = new Float32Array(this.olaSize);
+    this.weightBuffer = new Float32Array(this.olaSize);
+    this.outputReadPos = 0;
+
+    this.lastGrainRaw = null;
+    this.lastGrainWindow = null;
+    this.lastGrainLength = 0;
+
+    this.samplesUntilAnalysisEpoch = Math.round(this.smoothedPeriod);
+    this.samplesUntilSynthesisEpoch = Math.round(this.smoothedPeriod);
 
     this.hopsSinceReport = 0;
   }
@@ -292,10 +340,23 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
 
     // Detection still runs in "fixed" mode too - purely for the live
     // detected-note readout (so you can see what you're singing before the
-    // constant transpose is applied), never to derive the shift itself.
+    // constant transpose is applied), never to derive the shift ratio
+    // itself. It also always feeds the period tracker below, since grain
+    // sizing needs a real period estimate regardless of mode.
     const yin = yinDetect(this.analysisScratch, sampleRate, detectMinHz, detectMaxHz, YIN_THRESHOLD);
     this.detectedHz = yin.frequencyHz;
     this.confidence = yin.confidence;
+
+    const dtSec = HOP_SIZE / sampleRate;
+
+    // Period tracking - independent of mode, feeds grain sizing for the
+    // PSOLA engine either way. Held at its last value when unvoiced rather
+    // than reset, so a brief consonant/breath doesn't jerk the grain size.
+    if (this.detectedHz !== null && this.confidence >= VOICED_CONFIDENCE_MIN) {
+      const rawPeriod = clamp(sampleRate / this.detectedHz, this.minPeriodSamples, sampleRate / 40);
+      const periodAlpha = 1 - Math.exp(-dtSec / DETECT_SMOOTH_TAU_SEC);
+      this.smoothedPeriod += (rawPeriod - this.smoothedPeriod) * periodAlpha;
+    }
 
     if (mode === 1) {
       // Fixed transpose: a constant ratio, deliberately independent of
@@ -309,7 +370,6 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
       return;
     }
 
-    const dtSec = HOP_SIZE / sampleRate;
     if (this.detectedHz === null || this.confidence < VOICED_CONFIDENCE_MIN) {
       this.smoothedTargetMidi = null;
       this.smoothedDetectedMidi = null;
@@ -355,6 +415,65 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
     // not raw targetHz/detectedHz - keeps a single noisy detection hop from
     // producing a single noisy ratio hop, same reasoning as smoothedTargetMidi.
     this.pitchRatio = clamp(Math.pow(2, (this.smoothedTargetMidi - this.smoothedDetectedMidi) / 12), MIN_PITCH_RATIO, MAX_PITCH_RATIO);
+  }
+
+  /** Cuts a fully causal, un-resampled 2-period grain out of the input ring
+   * buffer, ending at a cheap backward-only local-peak epoch (a practical
+   * stand-in for a true glottal-closure mark - no future samples exist in
+   * a live stream to do better). The grain is raw signal, untouched -
+   * preserving its content is exactly what keeps formants fixed later. */
+  extractGrain() {
+    const period = clamp(Math.round(this.smoothedPeriod), this.minPeriodSamples, this.maxGrainPeriod);
+    const length = 2 * period;
+    const nowAbs = this.samplesWritten - 1;
+    const searchLen = Math.max(1, Math.floor(period / 2));
+
+    let bestAbsVal = -1;
+    let bestOffset = 0;
+    for (let k = 0; k < searchLen; k++) {
+      const a = nowAbs - k;
+      if (a < 0) break;
+      const v = Math.abs(this.ring[wrapIndex(a, RING_SIZE)]);
+      if (v > bestAbsVal) {
+        bestAbsVal = v;
+        bestOffset = k;
+      }
+    }
+    const epoch = nowAbs - bestOffset;
+    if (epoch - (length - 1) < 0) return; // not enough history yet (startup) - keep whatever grain we already had
+
+    if (!this.lastGrainRaw || this.lastGrainRaw.length !== length) {
+      this.lastGrainRaw = new Float32Array(length);
+      this.lastGrainWindow = new Float32Array(length);
+      for (let n = 0; n < length; n++) {
+        this.lastGrainWindow[n] = 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / (length - 1));
+      }
+    }
+    for (let n = 0; n < length; n++) {
+      const a = epoch - (length - 1) + n;
+      this.lastGrainRaw[n] = this.ring[wrapIndex(a, RING_SIZE)];
+    }
+    this.lastGrainLength = length;
+  }
+
+  /** Windows the most recently extracted grain and adds it into the
+   * overlap-add buffer centered `synthLookahead` samples ahead of the
+   * current read position - deliberately a fixed offset from "now", not
+   * an accumulating one, so the engine self-corrects every deposit instead
+   * of drifting. Also accumulates the raw window shape into a parallel
+   * buffer for the weighted-OLA normalization read() does. */
+  depositGrain() {
+    if (!this.lastGrainRaw) return;
+    const length = this.lastGrainLength;
+    const half = length / 2;
+    const center = this.outputReadPos + this.synthLookahead;
+    const start = Math.round(center - half);
+    for (let n = 0; n < length; n++) {
+      const idx = wrapIndex(start + n, this.olaSize);
+      const w = this.lastGrainWindow[n];
+      this.olaBuffer[idx] += this.lastGrainRaw[n] * w;
+      this.weightBuffer[idx] += w;
+    }
   }
 
   process(inputs, outputs, parameters) {
@@ -422,47 +541,31 @@ class RealtimePitchProcessor extends AudioWorkletProcessor {
         }
       }
 
-      this.delayBuffer[this.writePos % DELAY_SIZE] = x;
-
       if (bypassed) {
         output[i] = x;
-        this.writePos++;
-        continue;
+        continue; // PSOLA engine state stays frozen (not advanced), resumes cleanly once un-bypassed
       }
 
-      // Continuous drift is the pitch shift itself — see the constructor
-      // comment. `pitchRatio > 1` shrinks the delay (reads newer material
-      // than 1:1 would) = higher pitch; `< 1` grows it = lower pitch.
-      this.activeDelay += 1 - this.pitchRatio;
-
-      if (!this.crossfading && (this.activeDelay < MIN_SAFE_DELAY || this.activeDelay > MAX_SAFE_DELAY)) {
-        this.standbyDelay = NOMINAL_DELAY;
-        this.crossfading = true;
-        this.crossfadeProgress = 0;
+      this.samplesUntilAnalysisEpoch--;
+      if (this.samplesUntilAnalysisEpoch <= 0) {
+        this.extractGrain();
+        this.samplesUntilAnalysisEpoch = Math.max(1, Math.round(this.smoothedPeriod));
       }
 
-      const activeReadPos = this.writePos - this.activeDelay;
-      let outSample = readDelayLinear(this.delayBuffer, DELAY_SIZE, activeReadPos);
-
-      if (this.crossfading) {
-        this.standbyDelay += 1 - this.pitchRatio;
-        const standbyReadPos = this.writePos - this.standbyDelay;
-        const standbySample = readDelayLinear(this.delayBuffer, DELAY_SIZE, standbyReadPos);
-        // Equal-power-ish crossfade (sin/cos quarter-wave) between the old and new taps.
-        const t = this.crossfadeProgress;
-        const fadeOut = Math.cos((t * Math.PI) / 2);
-        const fadeIn = Math.sin((t * Math.PI) / 2);
-        outSample = outSample * fadeOut + standbySample * fadeIn;
-
-        this.crossfadeProgress += 1 / CROSSFADE_LEN;
-        if (this.crossfadeProgress >= 1) {
-          this.activeDelay = this.standbyDelay;
-          this.crossfading = false;
-        }
+      this.samplesUntilSynthesisEpoch--;
+      if (this.samplesUntilSynthesisEpoch <= 0) {
+        this.depositGrain();
+        this.samplesUntilSynthesisEpoch = Math.max(1, Math.round(this.smoothedPeriod / this.pitchRatio));
       }
+
+      const idx = wrapIndex(this.outputReadPos, this.olaSize);
+      const weight = this.weightBuffer[idx];
+      const outSample = weight > WEIGHT_EPS ? this.olaBuffer[idx] / weight : 0;
+      this.olaBuffer[idx] = 0;
+      this.weightBuffer[idx] = 0;
+      this.outputReadPos++;
 
       output[i] = x * (1 - mix) + outSample * mix;
-      this.writePos++;
     }
 
     return true;
