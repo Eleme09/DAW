@@ -15,11 +15,6 @@ const SCALE_MARKS: { db: number; label: string }[] = [
   { db: -48, label: "-48" },
   { db: MIN_DB, label: "-∞" },
 ];
-/** Drag sensitivity - deliberately finer than the visual travel would imply
- * (same delta-based approach as the clip gain handle in ClipView), so a
- * short thumb drag on a narrow mobile strip still gives precise control. */
-const PX_PER_DB = 2.5;
-
 interface FaderProps {
   valueDb: number;
   onChange: (db: number) => void;
@@ -67,6 +62,18 @@ export function Fader({
   const drag = useRef<{ start: number; startDb: number } | null>(null);
   const horizontal = orientation === "horizontal";
   const trackLength = length ?? height;
+  // Drag maps 1:1 to the visible track, not a fixed px-per-dB constant - a
+  // short mobile strip (130px, MobileChannelRow) used to need a full 150px
+  // of drag (60dB * the old fixed 2.5px/dB) just to reach the bottom of its
+  // own 130px-long track, and saturated at +6dB after barely 15px, leaving
+  // most of the visible travel dead. Measured directly (not guessed) before
+  // fixing: dragging the full 130px from 0dB landed on +6dB (clamped) -
+  // confirming you physically could not reach the far end in one drag.
+  // Mapping the whole MIN_DB..MAX_DB range across whatever length this
+  // instance is actually drawn at means the thumb always tracks the
+  // finger exactly, on every strip size (mobile row, desktop channel,
+  // master) - not a second special case for the short one.
+  const pxPerDb = trackLength / (MAX_DB - MIN_DB);
 
   function beginDrag(e: React.PointerEvent) {
     e.stopPropagation();
@@ -80,7 +87,7 @@ export function Fader({
     const pos = horizontal ? e.clientX : e.clientY;
     // Horizontal: moving right increases the value, same sign as moving
     // up does for vertical - both are "toward the loud end" of the travel.
-    const deltaDb = ((horizontal ? 1 : -1) * (pos - drag.current.start)) / PX_PER_DB;
+    const deltaDb = ((horizontal ? 1 : -1) * (pos - drag.current.start)) / pxPerDb;
     onChange(Math.min(MAX_DB, Math.max(MIN_DB, drag.current.startDb + deltaDb)));
   }
 
