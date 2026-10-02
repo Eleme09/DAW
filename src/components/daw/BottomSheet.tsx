@@ -8,6 +8,14 @@ interface BottomSheetProps {
   open: boolean;
   onClose: () => void;
   title: string;
+  /** CSS color value (e.g. "var(--cabina-s3)") shown as a small dot before
+   * the title — lets a caller like EffectCard carry its one-accent-per-type
+   * identity (zona 9) into the full-screen view, not just the rack row. */
+  accent?: string;
+  /** Extra row rendered below the title inside the same sticky header, e.g.
+   * EffectCard's preset navigator + A/B — content that must stay visible
+   * while the sheet's body scrolls (zona 1: "cabecera fija"). */
+  subtitle?: ReactNode;
   children: ReactNode;
 }
 
@@ -28,22 +36,28 @@ interface BottomSheetProps {
  * body. A portal sidesteps the whole class of ancestor-dependent CSS bugs
  * (this one and any future one) by mounting the sheet as a sibling of
  * `<body>`, matching its own `position: fixed` semantics exactly. */
-export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, title, accent, subtitle, children }: BottomSheetProps) {
   if (!open || typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative max-h-[80vh] w-full overflow-y-auto rounded-t-[3px] border-t border-line bg-ink pb-[env(safe-area-inset-bottom)]">
-        <div className="sticky top-0 flex items-center justify-between border-b border-line bg-ink px-4 py-3">
-          <span className="text-sm font-semibold text-bone">{title}</span>
-          <button
-            onClick={onClose}
-            aria-label="Cerrar"
-            title="Cerrar"
-            className="flex h-11 w-11 items-center justify-center text-bone-2 hover:text-bone-2"
-          >
-            <CloseIcon className="h-4 w-4" />
-          </button>
+        <div className="sticky top-0 z-10 border-b border-line bg-ink">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="flex items-center gap-2 text-sm font-semibold text-bone">
+              {accent && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent }} />}
+              {title}
+            </span>
+            <button
+              onClick={onClose}
+              aria-label="Cerrar"
+              title="Cerrar"
+              className="flex h-11 w-11 items-center justify-center text-bone-2 hover:text-bone-2"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
+          </div>
+          {subtitle && <div className="border-t border-line px-2 pb-2">{subtitle}</div>}
         </div>
         <div className="space-y-4 p-4">{children}</div>
       </div>
