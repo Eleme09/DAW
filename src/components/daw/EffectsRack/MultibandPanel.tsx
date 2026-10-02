@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import type { MultibandCompressorEffect } from "@/audio-engine/effects/MultibandCompressorEffect";
 import { compressorTransferDb } from "@/audio-engine/effects/curves";
@@ -50,6 +50,81 @@ export function MultibandPanel({
   const lowReductionRef = useRef(0);
   const midReductionRef = useRef(0);
   const highReductionRef = useRef(0);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // The overlay curve becomes the control for the one thing it actually
+  // draws (per-band threshold, as the knee position along the input-dB
+  // axis) - rest of the pointer-event wiring below, same stable-listener
+  // pattern as `useDraggableDb.ts` (refs for live params/onChange so the
+  // ~60fps useRafLoop re-renders below don't tear the listeners down
+  // mid-gesture). Ratio/makeup don't have a position on this curve to drag
+  // (same input dB can map to many ratio/makeup combos), so they stay
+  // knob-only in "Avanzado" below - dragging here was never going to be
+  // able to set them unambiguously.
+  const paramsRef = useRef(params);
+  const onChangeRef = useRef(onChange);
+  const draggingBandRef = useRef<"low" | "mid" | "high" | null>(null);
+  useEffect(() => {
+    paramsRef.current = params;
+    onChangeRef.current = onChange;
+  }, [params, onChange]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function bandNearest(clientX: number, clientY: number): "low" | "mid" | "high" {
+      const rect = canvas!.getBoundingClientRect();
+      const inputDb = DB_MIN + ((clientX - rect.left) / rect.width) * (DB_MAX - DB_MIN);
+      const touchFrac = 1 - (clientY - rect.top) / rect.height;
+      let best: "low" | "mid" | "high" = "mid";
+      let bestDist = Infinity;
+      for (const key of ["low", "mid", "high"] as const) {
+        const band = paramsRef.current[key];
+        const outputDb = compressorTransferDb(inputDb, band.thresholdDb, band.ratio, DEFAULT_KNEE_DB);
+        const dist = Math.abs(dbToFrac(outputDb) - touchFrac);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = key;
+        }
+      }
+      return best;
+    }
+
+    function setThresholdFromX(clientX: number, key: "low" | "mid" | "high") {
+      const rect = canvas!.getBoundingClientRect();
+      const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const inputDb = DB_MIN + frac * (DB_MAX - DB_MIN);
+      const current = paramsRef.current;
+      onChangeRef.current({ ...current, [key]: { ...current[key], thresholdDb: inputDb } });
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      const key = bandNearest(e.clientX, e.clientY);
+      draggingBandRef.current = key;
+      canvas!.setPointerCapture(e.pointerId);
+      setThresholdFromX(e.clientX, key);
+    }
+    function onPointerMove(e: PointerEvent) {
+      const key = draggingBandRef.current;
+      if (!key) return;
+      setThresholdFromX(e.clientX, key);
+    }
+    function endDrag() {
+      draggingBandRef.current = null;
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endDrag);
+      canvas.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -125,7 +200,7 @@ export function MultibandPanel({
     }
   }, true);
 
-  const bandEditor = (key: "low" | "mid" | "high", band: MultibandBandParams, reductionRef: React.RefObject<number>) => (
+  const bandBasic = (key: "low" | "mid" | "high", band: MultibandBandParams, reductionRef: React.RefObject<number>) => (
     <div key={key} className="rounded border border-line p-1.5">
       <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-bone-2">
         <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: BAND_COLOR[key] }} />
@@ -133,6 +208,15 @@ export function MultibandPanel({
       </div>
       <GainReductionMeter reductionRef={reductionRef} label="Red." />
       <ParamSlider label="Umbral" value={band.thresholdDb} min={-60} max={0} step={0.5} unit=" dB" onChange={(v) => onChange({ ...params, [key]: { ...band, thresholdDb: v } })} />
+    </div>
+  );
+
+  const bandAdvanced = (key: "low" | "mid" | "high", band: MultibandBandParams) => (
+    <div key={key} className="rounded border border-line p-1.5">
+      <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-bone-2">
+        <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: BAND_COLOR[key] }} />
+        {BAND_LABEL[key]}
+      </div>
       <ParamSlider label="Ratio" value={band.ratio} min={1} max={20} step={0.5} unit=":1" onChange={(v) => onChange({ ...params, [key]: { ...band, ratio: v } })} />
       <ParamSlider label="Makeup" value={band.makeupDb} min={0} max={24} step={0.5} unit=" dB" onChange={(v) => onChange({ ...params, [key]: { ...band, makeupDb: v } })} />
     </div>
@@ -140,14 +224,41 @@ export function MultibandPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
-      <ParamSlider label="Grave/Medio" value={params.lowMidFreq} min={40} max={1000} step={10} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...params, lowMidFreq: v })} />
-      <ParamSlider label="Medio/Agudo" value={params.midHighFreq} min={500} max={10000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...params, midHighFreq: v })} />
-      <ParamSlider label="Ataque" value={params.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...params, attackMs: v })} />
-      <ParamSlider label="Liberación" value={params.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...params, releaseMs: v })} />
-      {bandEditor("low", params.low, lowReductionRef)}
-      {bandEditor("mid", params.mid, midReductionRef)}
-      {bandEditor("high", params.high, highReductionRef)}
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-pointer rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra una curva para mover su umbral"
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <ParamSlider label="Grave/Medio" value={params.lowMidFreq} min={40} max={1000} step={10} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...params, lowMidFreq: v })} />
+        <ParamSlider label="Medio/Agudo" value={params.midHighFreq} min={500} max={10000} step={100} unit=" Hz" decimals={0} onChange={(v) => onChange({ ...params, midHighFreq: v })} />
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {bandBasic("low", params.low, lowReductionRef)}
+        {bandBasic("mid", params.mid, midReductionRef)}
+        {bandBasic("high", params.high, highReductionRef)}
+      </div>
+      <button
+        onClick={() => setAdvancedOpen((v) => !v)}
+        className="flex min-h-9 w-full items-center justify-between rounded border border-line px-2 text-[11px] font-medium text-bone-2 hover:text-bone"
+      >
+        Avanzado (ataque, liberación, ratio, makeup)
+        <span>{advancedOpen ? "▲" : "▼"}</span>
+      </button>
+      {advancedOpen && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <ParamSlider label="Ataque" value={params.attackMs} min={0.1} max={100} step={0.1} unit=" ms" onChange={(v) => onChange({ ...params, attackMs: v })} />
+            <ParamSlider label="Liberación" value={params.releaseMs} min={10} max={1000} step={5} unit=" ms" onChange={(v) => onChange({ ...params, releaseMs: v })} />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {bandAdvanced("low", params.low)}
+            {bandAdvanced("mid", params.mid)}
+            {bandAdvanced("high", params.high)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
