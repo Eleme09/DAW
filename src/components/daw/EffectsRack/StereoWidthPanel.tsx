@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import type { StereoWidthEffect } from "@/audio-engine/effects/StereoWidthEffect";
 import { computeStereoCorrelation } from "@/audio-engine/stereoAnalysis";
@@ -39,6 +39,60 @@ export function StereoWidthPanel({
   const rightDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const [correlation, setCorrelation] = useState(1);
 
+  // The vectorscope was the largest canvas of the 15 audited (zona 2/3) but
+  // a pure readout - dragging it did nothing. Width already visibly spreads
+  // the dot cloud horizontally in real time (the analysers are tapped post-
+  // width, see the doc comment above), so distance-from-center is the
+  // natural control axis: drag to where you want the cloud's edge to sit.
+  // Same stable-listener-plus-refs structure as the other draggable-chart
+  // hooks in this folder, kept inline (not a `useDraggableX` variant) since
+  // the center-relative mapping here doesn't match their left-to-right
+  // min/max convention.
+  const paramsRef = useRef(params);
+  const onChangeRef = useRef(onChange);
+  const draggingRef = useRef(false);
+  useEffect(() => {
+    paramsRef.current = params;
+    onChangeRef.current = onChange;
+  }, [params, onChange]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function widthFromClientX(clientX: number): number {
+      const rect = canvas!.getBoundingClientRect();
+      const cx = rect.width / 2;
+      const scale = Math.min(rect.width, rect.height) / 2 - 6;
+      const dist = Math.abs(clientX - rect.left - cx);
+      return scale > 0 ? Math.min(2, Math.max(0, dist / scale)) : 1;
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      draggingRef.current = true;
+      canvas!.setPointerCapture(e.pointerId);
+      onChangeRef.current({ ...paramsRef.current, width: widthFromClientX(e.clientX) });
+    }
+    function onPointerMove(e: PointerEvent) {
+      if (!draggingRef.current) return;
+      onChangeRef.current({ ...paramsRef.current, width: widthFromClientX(e.clientX) });
+    }
+    function endDrag() {
+      draggingRef.current = false;
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endDrag);
+      canvas.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
+
   useRafLoop(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
@@ -74,6 +128,19 @@ export function StereoWidthPanel({
     ctx.fillText("M", cx + 3, 10);
     ctx.fillText("S", w - 12, cy - 3);
 
+    // Target-width guide lines - visible even with no signal (silence draws
+    // an empty scope), so the control's current state is never just blank.
+    const targetX = params.width * scale;
+    ctx.strokeStyle = "rgba(122,214,146,0.35)";
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(cx - targetX, 0);
+    ctx.lineTo(cx - targetX, h);
+    ctx.moveTo(cx + targetX, 0);
+    ctx.lineTo(cx + targetX, h);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
     if (leftAnalyser && rightAnalyser) {
       if (!leftDataRef.current || leftDataRef.current.length !== leftAnalyser.fftSize) {
         leftDataRef.current = new Float32Array(leftAnalyser.fftSize);
@@ -105,7 +172,12 @@ export function StereoWidthPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ew-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para fijar el ancho"
+      />
       <div className="flex items-center gap-2">
         <span className="w-24 shrink-0 text-[10px] uppercase tracking-wide text-bone-3">Correlación</span>
         <div className="relative h-2 flex-1 overflow-hidden rounded bg-surf-2">

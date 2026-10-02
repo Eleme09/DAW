@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { FLANGER_BASE_DELAY_MS, type FlangerEffect } from "@/audio-engine/effects/FlangerEffect";
 import { useRafLoop } from "@/hooks/useRafLoop";
@@ -27,6 +27,51 @@ export function FlangerPanel({
   onChange: (params: FlangerParams) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Same "distance from the base-delay line IS the depth" idea as
+  // ChorusPanel's curve (see its doc comment).
+  const paramsRef = useRef(params);
+  const onChangeRef = useRef(onChange);
+  const draggingRef = useRef(false);
+  useEffect(() => {
+    paramsRef.current = params;
+    onChangeRef.current = onChange;
+  }, [params, onChange]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function depthMsFromClientY(clientY: number): number {
+      const rect = canvas!.getBoundingClientRect();
+      const ms = ((rect.height - (clientY - rect.top)) / rect.height) * Y_MAX_MS;
+      return Math.min(MAX_DEPTH_MS, Math.max(0.2, Math.abs(ms - FLANGER_BASE_DELAY_MS)));
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      draggingRef.current = true;
+      canvas!.setPointerCapture(e.pointerId);
+      onChangeRef.current({ ...paramsRef.current, depthMs: depthMsFromClientY(e.clientY) });
+    }
+    function onPointerMove(e: PointerEvent) {
+      if (!draggingRef.current) return;
+      onChangeRef.current({ ...paramsRef.current, depthMs: depthMsFromClientY(e.clientY) });
+    }
+    function endDrag() {
+      draggingRef.current = false;
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endDrag);
+      canvas.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -79,7 +124,12 @@ export function FlangerPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ns-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para fijar la profundidad"
+      />
       <ParamSlider label="Velocidad" value={params.rateHz} min={0.05} max={5} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...params, rateHz: v })} />
       <ParamSlider label="Profundidad" value={params.depthMs} min={0.2} max={MAX_DEPTH_MS} step={0.2} unit=" ms" onChange={(v) => onChange({ ...params, depthMs: v })} />
       <ParamSlider label="Feedback" value={params.feedback * 100} min={0} max={90} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...params, feedback: v / 100 })} />

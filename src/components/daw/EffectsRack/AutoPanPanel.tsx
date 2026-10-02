@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import type { AutoPanEffect } from "@/audio-engine/effects/AutoPanEffect";
 import { useRafLoop } from "@/hooks/useRafLoop";
@@ -26,6 +26,56 @@ export function AutoPanPanel({
   onChange: (params: AutoPanParams) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // How far the curve swings from the center line IS the depth it's
+  // drawn from (`panToY` below) - drag vertically to set it directly,
+  // same "distance from center" idea as StereoWidthPanel's vectorscope.
+  // Rate has no position on this curve (one LFO cycle always fills the
+  // full width regardless of rateHz), so it stays knob-only.
+  const paramsRef = useRef(params);
+  const onChangeRef = useRef(onChange);
+  const draggingRef = useRef(false);
+  useEffect(() => {
+    paramsRef.current = params;
+    onChangeRef.current = onChange;
+  }, [params, onChange]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function depthFromClientY(clientY: number): number {
+      const rect = canvas!.getBoundingClientRect();
+      const halfH = rect.height / 2;
+      const scale = halfH - 6;
+      const pan = (halfH - (clientY - rect.top)) / scale;
+      return Math.min(1, Math.max(0, Math.abs(pan)));
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      draggingRef.current = true;
+      canvas!.setPointerCapture(e.pointerId);
+      onChangeRef.current({ ...paramsRef.current, depth: depthFromClientY(e.clientY) });
+    }
+    function onPointerMove(e: PointerEvent) {
+      if (!draggingRef.current) return;
+      onChangeRef.current({ ...paramsRef.current, depth: depthFromClientY(e.clientY) });
+    }
+    function endDrag() {
+      draggingRef.current = false;
+    }
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endDrag);
+      canvas.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -80,7 +130,12 @@ export function AutoPanPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ns-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para fijar la profundidad"
+      />
       <ParamSlider label="Velocidad" value={params.rateHz} min={0.05} max={8} step={0.05} unit=" Hz" decimals={2} onChange={(v) => onChange({ ...params, rateHz: v })} />
       <ParamSlider label="Profundidad" value={params.depth * 100} min={0} max={100} step={1} unit="%" decimals={0} onChange={(v) => onChange({ ...params, depth: v / 100 })} />
     </div>
