@@ -8,6 +8,10 @@ import { useRafLoop } from "@/hooks/useRafLoop";
 import type { EffectTarget } from "@/state/projectStore";
 import type { ClipperParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
+import { useDraggableDb } from "./useDraggableDb";
+
+const CEILING_MIN = -6;
+const CEILING_MAX = 0;
 
 const HEIGHT = 130;
 const DB_MIN = -30;
@@ -47,6 +51,8 @@ export function ClipperPanel({
   const timeDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const historyRef = useRef<number[]>([]);
   const [clipping, setClipping] = useState(false);
+
+  useDraggableDb(canvasRef, CEILING_MIN, CEILING_MAX, (v) => onChange({ ...params, ceilingDb: v }));
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -116,7 +122,12 @@ export function ClipperPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ns-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para fijar el techo"
+      />
       <div className="flex items-center gap-2">
         <span className="w-24 shrink-0 text-[10px] uppercase tracking-wide text-bone-3">Estado</span>
         <span
@@ -127,7 +138,15 @@ export function ClipperPanel({
           {clipping ? "Recortando" : "Libre"}
         </span>
       </div>
-      <ParamSlider label="Techo" value={params.ceilingDb} min={-6} max={0} step={0.1} unit=" dB" onChange={(v) => onChange({ ...params, ceilingDb: v })} />
+      <ParamSlider
+        label="Techo"
+        value={params.ceilingDb}
+        min={CEILING_MIN}
+        max={CEILING_MAX}
+        step={0.1}
+        unit=" dB"
+        onChange={(v) => onChange({ ...params, ceilingDb: v })}
+      />
     </div>
   );
 }

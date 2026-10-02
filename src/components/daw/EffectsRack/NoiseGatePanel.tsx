@@ -8,6 +8,7 @@ import { useRafLoop } from "@/hooks/useRafLoop";
 import type { EffectTarget } from "@/state/projectStore";
 import type { NoiseGateParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
+import { useDraggableDb } from "./useDraggableDb";
 
 const HEIGHT = 130;
 const OPEN_THRESHOLD = 0.5; // envelope above this reads as "open" for the badge
@@ -56,6 +57,8 @@ export function NoiseGatePanel({
   const historyRef = useRef<number[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [envelope, setEnvelope] = useState(0);
+
+  useDraggableDb(canvasRef, DB_MIN, DB_MAX, (v) => onChange({ ...params, thresholdDb: Math.round(v) }));
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -132,7 +135,12 @@ export function NoiseGatePanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ns-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para fijar el umbral"
+      />
       <div className="flex items-center gap-2">
         <span className="w-24 shrink-0 text-[10px] uppercase tracking-wide text-bone-3">Puerta</span>
         <span

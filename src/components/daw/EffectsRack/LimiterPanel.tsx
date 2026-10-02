@@ -9,9 +9,12 @@ import type { EffectTarget } from "@/state/projectStore";
 import type { LimiterParams } from "@/types/effects";
 import { ParamSlider } from "./ParamSlider";
 import { GainReductionMeter } from "./GainReductionMeter";
+import { useDraggableDb } from "./useDraggableDb";
 
 const METER_MIN_DB = -30;
 const METER_MAX_DB = 0;
+const CEILING_MIN = -3;
+const CEILING_MAX = 0;
 const HEIGHT = 130;
 const LOUDNESS_SMOOTHING = 0.95; // same constant as Analyzer.tsx, for a consistent "momentary-ish" reading
 
@@ -48,6 +51,8 @@ export function LimiterPanel({
   const loudnessTimeDataRef = useRef<Float32Array<ArrayBuffer> | null>(null);
   const smoothedMeanSquareRef = useRef(0);
   const [lufsApprox, setLufsApprox] = useState(-Infinity);
+
+  useDraggableDb(canvasRef, CEILING_MIN, CEILING_MAX, (v) => onChange({ ...params, ceilingDb: v }));
 
   useRafLoop(() => {
     const canvas = canvasRef.current;
@@ -127,7 +132,12 @@ export function LimiterPanel({
 
   return (
     <div className="space-y-2">
-      <canvas ref={canvasRef} className="block w-full rounded bg-ink" style={{ height: HEIGHT }} />
+      <canvas
+        ref={canvasRef}
+        className="block w-full cursor-ns-resize rounded bg-ink"
+        style={{ height: HEIGHT, touchAction: "none" }}
+        title="Arrastra para fijar el techo"
+      />
       <GainReductionMeter reductionRef={reductionRef} />
       {target === "master" && (
         <div className="flex items-center gap-2">
