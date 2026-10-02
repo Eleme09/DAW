@@ -40,7 +40,7 @@ export type EffectTarget = TrackId | BusId | "master";
 export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects";
 /** Which sub-tab BrowserPanel is showing - lifted out of that component so
  * a track/effect's "Ask AI" button can jump straight to the Assistant tab. */
-export type BrowserTab = "projects" | "audio" | "match" | "mix" | "generate" | "assistant";
+export type BrowserTab = "projects" | "audio" | "mix" | "assistant";
 
 interface ProjectState {
   project: Project;

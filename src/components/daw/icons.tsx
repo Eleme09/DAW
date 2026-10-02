@@ -28,15 +28,6 @@ export function WaveformIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-export function MatchIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="9" cy="12" r="6" />
-      <circle cx="15" cy="12" r="6" />
-    </svg>
-  );
-}
-
 export function MixIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
@@ -46,17 +37,6 @@ export function MixIcon(props: SVGProps<SVGSVGElement>) {
       <circle cx="12" cy="15" r="1.75" fill="currentColor" stroke="none" />
       <line x1="18" y1="4" x2="18" y2="20" />
       <circle cx="18" cy="7" r="1.75" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-export function BeatGridIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="3" y="3" width="8" height="8" rx="1.5" />
-      <rect x="13" y="3" width="8" height="8" rx="1.5" />
-      <rect x="3" y="13" width="8" height="8" rx="1.5" />
-      <rect x="13" y="13" width="8" height="8" rx="1.5" />
     </svg>
   );
 }

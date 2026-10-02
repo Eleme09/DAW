@@ -11,11 +11,12 @@ import { dbToGain } from "@/audio-engine/dbUtils";
 import { analyzePitch, type PitchAnalysis } from "@/audio-engine/pitch/applyPitchCorrection";
 import { analyzeVocalRecording } from "@/audio-engine/analysis/vocalAnalysis";
 import { buildVocalEngineerChain } from "@/audio-engine/analysis/vocalEngineerChain";
-import { VOCAL_CHARACTER_PRESETS } from "@/audio-engine/analysis/vocalStylePresets";
+import { VOCAL_CHARACTER_PRESETS, GENRE_STYLE_PRESETS } from "@/audio-engine/analysis/vocalStylePresets";
 import { getOverlappingTakes } from "@/lib/timeline/takes";
 import { NOTE_NAMES } from "@/types/pitch";
 import { EFFECT_LABELS, type EffectInstance } from "@/types/effects";
 import type { AudioClip } from "@/types/project";
+import type { GenreStyle, VocalCharacter } from "@/types/vocalStyle";
 import { Waveform } from "../Waveform";
 import { PitchCurveView } from "./PitchCurveView";
 import { AfinacionPanel } from "./AfinacionPanel";
@@ -24,7 +25,10 @@ import { FirstUseHint } from "../FirstUseHint";
 import { InputMeterRow } from "../InputMeterRow";
 import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
 import { useMonitoringLive } from "../useMonitoringLive";
+import { Picker } from "../ui/Picker";
 import { SparkleIcon, MicIcon, RecordIcon, PlayIcon, PauseIcon } from "../icons";
+
+type VocalStyleChoice = `character:${VocalCharacter}` | `genre:${GenreStyle}`;
 
 /** How long the chain must sit still before re-rendering the A/B preview -
  * long enough that a knob/slider drag (which fires onChange continuously,
@@ -151,6 +155,12 @@ export function VozPanel() {
   );
   const [compareMode, setCompareMode] = useState<"wet" | "dry">("wet");
   const [applyingAI, setApplyingAI] = useState(false);
+  // Which style "Mezclar con IA" applies - previously hardcoded to
+  // VOCAL_CHARACTER_PRESETS.natural with no way to pick anything else, the
+  // one real thing the now-removed VocalEngineerPanel (Biblioteca's
+  // separate, redundant "Mejorar con IA" entry point for an unplaced
+  // sample) offered that this screen's own button didn't.
+  const [styleChoice, setStyleChoice] = useState<VocalStyleChoice>("character:natural");
   const playerRef = useRef<PreviewPlayer | null>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
 
@@ -279,12 +289,16 @@ export function VozPanel() {
 
   useEffect(() => stopPreview, []);
 
+  const [styleKind, styleKey] = styleChoice.split(":") as ["character" | "genre", string];
+  const selectedStyle =
+    styleKind === "character" ? VOCAL_CHARACTER_PRESETS[styleKey as VocalCharacter] : GENRE_STYLE_PRESETS[styleKey as GenreStyle];
+
   async function mixWithAI() {
     if (!dryBuffer || !track) return;
     setApplyingAI(true);
     try {
       const analysis = analyzeVocalRecording(dryBuffer);
-      const chain = buildVocalEngineerChain(analysis, VOCAL_CHARACTER_PRESETS.natural);
+      const chain = buildVocalEngineerChain(analysis, selectedStyle);
       setEffectChain(track.id, chain);
     } finally {
       setApplyingAI(false);
@@ -460,9 +474,29 @@ export function VozPanel() {
         </div>
       )}
 
+      <div className="mx-3.5 mb-1.5">
+        <Picker
+          value={styleChoice}
+          options={[
+            ...Object.entries(VOCAL_CHARACTER_PRESETS).map(([id, preset]) => ({
+              value: `character:${id}` as VocalStyleChoice,
+              label: preset.label,
+              group: "Carácter",
+            })),
+            ...Object.entries(GENRE_STYLE_PRESETS).map(([id, preset]) => ({
+              value: `genre:${id}` as VocalStyleChoice,
+              label: preset.label,
+              group: "Inspirado en género",
+            })),
+          ]}
+          title="Estilo"
+          onChange={setStyleChoice}
+        />
+      </div>
       <button
         onClick={mixWithAI}
         disabled={!dryBuffer || applyingAI}
+        title={selectedStyle.description}
         className="mx-3.5 mb-2.5 flex h-13 items-center justify-center gap-2 rounded bg-bone font-display text-base font-bold text-ink hover:opacity-90 disabled:opacity-50"
       >
         <SparkleIcon className="h-4 w-4" />

@@ -12,7 +12,6 @@ import { useProjectStore, type BrowserTab } from "@/state/projectStore";
 import { VocalAnalysisPanel } from "./VocalAnalysisPanel";
 import { PitchStudioPanel } from "./PitchStudioPanel";
 import { DenoisePanel } from "./DenoisePanel";
-import { VocalEngineerPanel } from "./VocalEngineerPanel";
 import { MixAssistantPanel } from "./MixAssistantPanel";
 import { AiAssistantPanel } from "./AiAssistantPanel";
 import { WaveformIcon, MixIcon, SparkleIcon, FolderIcon, CloseIcon } from "./icons";
@@ -77,7 +76,6 @@ function AudioTab() {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [enhancingId, setEnhancingId] = useState<string | null>(null);
   const [pitchOpenId, setPitchOpenId] = useState<string | null>(null);
-  const [engineerOpenId, setEngineerOpenId] = useState<string | null>(null);
   const [denoiseOpenId, setDenoiseOpenId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -212,7 +210,7 @@ function AudioTab() {
                son los números que muestra después (reportado directo: "solo
                es letras y botones diciendo decibeles que no se sabe para
                qué son"). */}
-            <div className="mt-1 grid grid-cols-2 gap-1">
+            <div className="mt-1 grid grid-cols-3 gap-1">
               <button
                 onClick={() => analyzeSample(s)}
                 disabled={analyzingId === s.id}
@@ -220,13 +218,6 @@ function AudioTab() {
                 className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3 disabled:opacity-50"
               >
                 {analyzingId === s.id ? "Analizando…" : "Analizar calidad"}
-              </button>
-              <button
-                onClick={() => setEngineerOpenId((prev) => (prev === s.id ? null : s.id))}
-                title="Aplica una cadena de efectos de voz automática con IA"
-                className="rounded bg-surf-2 py-1 text-[11px] text-bone-2 hover:bg-surf-3"
-              >
-                Mejorar con IA
               </button>
               <button
                 onClick={() => setPitchOpenId((prev) => (prev === s.id ? null : s.id))}
@@ -250,7 +241,6 @@ function AudioTab() {
                 enhancing={enhancingId === s.id}
               />
             )}
-            {engineerOpenId === s.id && <VocalEngineerPanel sample={s} />}
             {pitchOpenId === s.id && (
               <PitchStudioPanel sample={s} onNewSample={() => listSampleAssets().then(setSamples)} />
             )}
