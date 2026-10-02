@@ -5,7 +5,12 @@ import { analyzeDynamics } from "./dynamicsAnalysis";
 import { computeAveragePowerSpectrum, VOCAL_BANDS } from "./spectralAnalysis";
 import { analyzeVocalChannel } from "./vocalAnalysis";
 import { detectGainStaging, detectMasking } from "./mixDiagnostics";
-import { buildGainStagingSuggestions, buildMaskingSuggestions } from "./mixSuggestions";
+import {
+  buildGainStagingSuggestions,
+  buildMaskingSuggestions,
+  buildMasterToneSuggestions,
+  buildPanSuggestions,
+} from "./mixSuggestions";
 import type { MixAnalysisResult, TrackBandProfile } from "@/types/mixAnalysis";
 import type { Project } from "@/types/project";
 
@@ -105,7 +110,12 @@ export async function analyzeMix(
     tracks: profiles,
     masking,
     gainStaging,
-    suggestions: [...buildMaskingSuggestions(masking), ...buildGainStagingSuggestions(gainStaging)],
+    suggestions: [
+      ...buildMaskingSuggestions(masking),
+      ...buildGainStagingSuggestions(gainStaging),
+      ...buildPanSuggestions(masking, project.tracks),
+      ...buildMasterToneSuggestions(mixRead),
+    ],
     limitations,
   };
 }

@@ -71,7 +71,35 @@ export interface GainTrimSuggestion extends MixSuggestionBase {
   deltaDb: number;
 }
 
-export type MixSuggestion = EqCutSuggestion | GainTrimSuggestion;
+/**
+ * A pan move, applied as track.pan = targetPan. Reuses the same
+ * MaskingFinding pairs as eqCut — panning doesn't remove the frequency
+ * overlap, it only separates the two sources in the stereo field, which is
+ * why this is offered alongside the EQ-cut suggestion for the same finding,
+ * not instead of it.
+ */
+export interface PanSuggestion extends MixSuggestionBase {
+  kind: "panSeparation";
+  targetPan: number;
+  /** The other track in the masking pair this suggestion addresses — for UI grouping. */
+  pairedWithTrackId: TrackId;
+}
+
+/**
+ * A single-band EQ cut for the master bus, ready to append to
+ * project.masterInserts. Never applied automatically. Only generated for a
+ * "high" severity read (see mixSuggestions.ts) — "medium" is already a
+ * borderline call, not solid enough to propose a specific frequency to cut.
+ */
+export interface MasterToneSuggestion extends MixSuggestionBase {
+  kind: "masterTone";
+  band: string;
+  freqHz: number;
+  severity: Severity;
+  effect: EffectInstance;
+}
+
+export type MixSuggestion = EqCutSuggestion | GainTrimSuggestion | PanSuggestion | MasterToneSuggestion;
 
 export interface MixAnalysisResult {
   /** Read of the actual summed/rendered mix, reusing Phase 4's categorical vocal-analysis logic. */

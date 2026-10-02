@@ -62,10 +62,17 @@ export function MixAssistantPanel() {
   }
 
   function applySuggestion(suggestion: MixSuggestion) {
+    if (suggestion.kind === "masterTone") {
+      setEffectChain("master", [...project.masterInserts, suggestion.effect]);
+      setAppliedIds((prev) => new Set(prev).add(suggestion.id));
+      return;
+    }
     const track = project.tracks.find((t) => t.id === suggestion.trackId);
     if (!track) return;
     if (suggestion.kind === "eqCut") {
       setEffectChain(track.id, [...track.inserts, suggestion.effect]);
+    } else if (suggestion.kind === "panSeparation") {
+      updateTrack(track.id, { pan: suggestion.targetPan });
     } else {
       updateTrack(track.id, { volumeDb: track.volumeDb + suggestion.deltaDb });
     }
@@ -345,7 +352,11 @@ export function MixAssistantPanel() {
                         ? "Aplicado"
                         : s.kind === "eqCut"
                           ? `Cortar ${Math.round(s.freqHz)}Hz en ${s.trackName}`
-                          : `Ajustar ${s.trackName} ${s.deltaDb > 0 ? "+" : ""}${s.deltaDb.toFixed(1)}dB`}
+                          : s.kind === "gainTrim"
+                            ? `Ajustar ${s.trackName} ${s.deltaDb > 0 ? "+" : ""}${s.deltaDb.toFixed(1)}dB`
+                            : s.kind === "panSeparation"
+                              ? `Panear ${s.trackName} a ${s.targetPan >= 0 ? "D" : "I"} ${Math.round(Math.abs(s.targetPan) * 100)}%`
+                              : `Cortar ${Math.round(s.freqHz)}Hz en el master`}
                     </button>
                   </li>
                 ))}

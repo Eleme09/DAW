@@ -24,7 +24,7 @@ const MAX_MASKING_FINDINGS = 8;
 /** How far a track's RMS has to sit from the session median before it's worth flagging. */
 const GAIN_STAGING_FLAG_DB = 6;
 
-function bandCenterHz(band: Band): number {
+export function bandCenterHz(band: Band): number {
   return Math.sqrt(band.minHz * band.maxHz);
 }
 
