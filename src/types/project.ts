@@ -35,61 +35,6 @@ export interface AudioClip {
   muted?: boolean;
 }
 
-export interface Note {
-  id: string;
-  /** MIDI pitch, 0-127 (60 = middle C). */
-  pitch: number;
-  /** Position within the clip, in seconds. */
-  startTime: number;
-  duration: number;
-  /** 0..1 */
-  velocity: number;
-}
-
-/** A programmed pattern on an instrument track - the MIDI counterpart to
- * AudioClip. Kept as a separate per-track array (`midiClips`) rather than
- * merged into `clips`, so every existing audio-only consumer (export,
- * bounce, mix analysis, the AI panels) keeps working against `clips`
- * unchanged instead of having to filter a mixed-kind array. */
-export interface MidiClip {
-  id: ClipId;
-  trackId: TrackId;
-  name: string;
-  startTime: number;
-  duration: number;
-  notes: Note[];
-  color: string;
-}
-
-export interface SynthInstrument {
-  type: "synth";
-  waveform: OscillatorType;
-  attack: number;
-  decay: number;
-  sustain: number;
-  release: number;
-  /** Lowpass cutoff in Hz - a single filter (per the brief's "filtro con
-   * curva"), fixed for the voice's whole lifetime at whatever value was
-   * current when the note started, same convention as the oscillator
-   * waveform itself (not live-automatable mid-note). */
-  filterCutoff: number;
-  /** Filter Q/resonance. */
-  filterResonance: number;
-}
-
-export interface SamplerInstrument {
-  type: "sampler";
-  sampleId: SampleId | null;
-  /** MIDI note the sample plays back at its original recorded pitch. */
-  rootNote: number;
-  attack: number;
-  decay: number;
-  sustain: number;
-  release: number;
-}
-
-export type Instrument = SynthInstrument | SamplerInstrument;
-
 export type AutomationParam = "volume" | "pan";
 
 export interface AutomationPoint {
@@ -136,7 +81,6 @@ export interface Send {
 export interface Track {
   id: TrackId;
   name: string;
-  type: "audio" | "instrument";
   color: string;
   volumeDb: number;
   pan: number; // -1 (L) .. 1 (R)
@@ -145,9 +89,6 @@ export interface Track {
   armed: boolean;
   monitorMode: MonitorMode;
   clips: AudioClip[];
-  /** Only used when type === "instrument". */
-  midiClips: MidiClip[];
-  instrument: Instrument | null;
   automation: TrackAutomation;
   order: number;
   /** Insert effect chain, applied in array order at the track's input point. */
@@ -253,11 +194,10 @@ export function nextTrackColor(existingCount: number): string {
   return TRACK_COLORS[existingCount % TRACK_COLORS.length];
 }
 
-export function createTrack(name: string, order: number, type: Track["type"] = "audio"): Track {
+export function createTrack(name: string, order: number): Track {
   return {
     id: crypto.randomUUID(),
     name,
-    type,
     color: nextTrackColor(order),
     volumeDb: 0,
     pan: 0,
@@ -266,8 +206,6 @@ export function createTrack(name: string, order: number, type: Track["type"] = "
     armed: false,
     monitorMode: "auto",
     clips: [],
-    midiClips: [],
-    instrument: type === "instrument" ? createDefaultInstrument() : null,
     automation: createDefaultAutomation(),
     order,
     inserts: [],
@@ -303,29 +241,4 @@ export function createDefaultAutomation(): TrackAutomation {
     volume: { enabled: false, points: [] },
     pan: { enabled: false, points: [] },
   };
-}
-
-export function createDefaultInstrument(): SynthInstrument {
-  return {
-    type: "synth",
-    waveform: "sawtooth",
-    attack: 0.005,
-    decay: 0.15,
-    sustain: 0.6,
-    release: 0.2,
-    filterCutoff: 20000, // fully open - doesn't change the unfiltered sound by default
-    filterResonance: 1,
-  };
-}
-
-export function createDefaultSamplerInstrument(): SamplerInstrument {
-  return { type: "sampler", sampleId: null, rootNote: 60, attack: 0.002, decay: 0.05, sustain: 1, release: 0.05 };
-}
-
-export function createMidiClip(trackId: TrackId, startTime: number, duration: number, name = "Pattern"): MidiClip {
-  return { id: crypto.randomUUID(), trackId, name, startTime, duration, notes: [], color: "#a78bfa" };
-}
-
-export function createNote(pitch: number, startTime: number, duration: number, velocity = 0.85): Note {
-  return { id: crypto.randomUUID(), pitch, startTime, duration, velocity };
 }

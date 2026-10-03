@@ -68,7 +68,7 @@ export function TransportBar() {
   );
   const [outputDeviceError, setOutputDeviceError] = useState<string | null>(null);
   const outputSelectionSupported = getAudioEngine().isOutputDeviceSelectionSupported();
-  const hasAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
+  const hasAudio = project.tracks.some((t) => t.clips.length > 0);
 
   // "Volver al inicio" toggles between 0 and wherever the playhead was
   // before the last press - one tap jumps to the start, a second tap (right

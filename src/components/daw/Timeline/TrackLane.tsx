@@ -4,7 +4,6 @@ import { useProjectStore } from "@/state/projectStore";
 import type { Track } from "@/types/project";
 import { TRACK_HEIGHT } from "./constants";
 import { ClipView } from "./ClipView";
-import { MidiClipView } from "./MidiClipView";
 import { GridLines } from "./GridLines";
 
 interface TrackLaneProps {
@@ -23,14 +22,14 @@ export function TrackLane({ track, width, selected }: TrackLaneProps) {
       }`}
     >
       <GridLines width={width} pixelsPerSecond={pixelsPerSecond} />
-      {track.type === "instrument"
-        ? track.midiClips.map((clip) => <MidiClipView key={clip.id} clip={clip} />)
-        : track.clips
-            // Inactive takes stay in the project data (switchable from the
-            // active take's picker) but don't render a second overlapping
-            // block on top of the active one.
-            .filter((clip) => !clip.muted)
-            .map((clip) => <ClipView key={clip.id} clip={clip} />)}
+      {track.clips
+        // Inactive takes stay in the project data (switchable from the
+        // active take's picker) but don't render a second overlapping
+        // block on top of the active one.
+        .filter((clip) => !clip.muted)
+        .map((clip) => (
+          <ClipView key={clip.id} clip={clip} />
+        ))}
     </div>
   );
 }

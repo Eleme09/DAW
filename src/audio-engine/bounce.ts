@@ -2,7 +2,7 @@
  * Offline project rendering: sums every track (clips, volume/pan/mute/solo,
  * insert chain, automation) plus the master insert chain and master volume
  * into a single stereo AudioBuffer via OfflineAudioContext. Shares the
- * EffectChain/Effect classes, synthVoice, and automation scheduling with the
+ * EffectChain/Effect classes and automation scheduling with the
  * live engine (generalized to BaseAudioContext/AudioParam specifically for
  * this) so a bounced mix always matches what was heard during playback — no
  * separate rendering path to drift out of sync.
@@ -12,9 +12,8 @@
  */
 import { dbToGain } from "./dbUtils";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
-import { scheduleVoice } from "./synthVoice";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
-import type { AudioClip, BusId, Instrument, MidiClip, Project } from "@/types/project";
+import type { AudioClip, BusId, Project } from "@/types/project";
 
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
 const PITCH_CORRECTION_WORKLET_URL = "/worklets/realtime-pitch-processor.js";
@@ -34,9 +33,6 @@ function projectDurationSec(project: Project): number {
   let end = 0;
   for (const track of project.tracks) {
     for (const clip of track.clips) {
-      end = Math.max(end, clip.startTime + clip.duration);
-    }
-    for (const clip of track.midiClips) {
       end = Math.max(end, clip.startTime + clip.duration);
     }
   }
@@ -153,15 +149,6 @@ export async function bounceProject(
 
     if (!audible) continue; // silent track contributes nothing to master — skip scheduling its sources
 
-    if (track.type === "instrument") {
-      if (track.instrument) {
-        for (const clip of track.midiClips) {
-          scheduleMidiClip(ctx, clip, track.instrument, input, getBuffer);
-        }
-      }
-      continue;
-    }
-
     for (const clip of track.clips) {
       if (clip.muted) continue; // an inactive take in a comp group - see PROGRESS.md "comping"
       const buffer = getBuffer(clip.sampleId);
@@ -190,19 +177,6 @@ function scheduleClip(
   applyFades(envelope.gain, clip);
 
   source.start(clip.startTime, clip.sourceOffset, clip.duration);
-}
-
-function scheduleMidiClip(
-  ctx: OfflineAudioContext,
-  clip: MidiClip,
-  instrument: Instrument,
-  destination: AudioNode,
-  getBuffer: (sampleId: string) => AudioBuffer | undefined
-): void {
-  for (const note of clip.notes) {
-    const when = clip.startTime + note.startTime;
-    scheduleVoice(ctx, instrument, note, destination, when, getBuffer);
-  }
 }
 
 function applyFades(gainParam: AudioParam, clip: AudioClip): void {

@@ -1197,9 +1197,14 @@ waveform and played back cleanly — zero console errors.
   real BS.1770-4 gated algorithm (`bs1770.ts`) instead, but is still not
   conformance-tested against official ITU/EBU reference vectors — see
   "Mastering Assistant" above.
-- No MIDI/instrument tracks — `Track.type` is `"audio"` only for now; the
-  type is already a union-of-one so adding `"midi"` later doesn't require
-  restructuring existing tracks.
+- No MIDI/instrument tracks — this existed for a while (synth/sampler
+  instruments, a piano roll, MIDI clips/notes) and was removed by explicit
+  request: the actual workflow is uploading an already-made beat as audio
+  and recording vocals over it, not building a beat inside the DAW.
+  `Track` is audio-only now, not a union-of-one kept open for a future
+  type - the whole engine (`synthVoice.ts`, `waveformShapes.ts`), store
+  actions, and UI (piano roll, instrument settings, MIDI clip view) were
+  deleted, not hidden.
 - No melody extraction from a full beat mix, no instrument recognition —
   see "Beat analysis" above for why these specifically weren't attempted.
 - No fully-solved tempo octave ambiguity or beat/downbeat tracking, no

@@ -47,7 +47,7 @@ export async function exportProjectToWav(project: Project): Promise<void> {
 export async function exportStemsToWav(project: Project): Promise<void> {
   await hydrateProjectSamples(collectProjectSampleIds(project));
   const engine = getAudioEngine();
-  const tracksWithAudio = project.tracks.filter((t) => t.clips.length > 0 || t.midiClips.length > 0);
+  const tracksWithAudio = project.tracks.filter((t) => t.clips.length > 0);
 
   for (const track of tracksWithAudio) {
     const soloProject: Project = {

@@ -39,7 +39,7 @@ export function MixAssistantPanel() {
   const setEffectChain = useProjectStore((s) => s.setEffectChain);
   const updateTrack = useProjectStore((s) => s.updateTrack);
 
-  const hasEnoughAudio = project.tracks.some((t) => t.clips.length > 0 || t.midiClips.length > 0);
+  const hasEnoughAudio = project.tracks.some((t) => t.clips.length > 0);
 
   async function runAnalysis() {
     setError(null);

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
-import type { Track } from "@/types/project";
 import { GRID_RESOLUTIONS, type GridResolution } from "@/lib/timing/grid";
 import { Picker } from "../ui/Picker";
 import { HEADER_WIDTH, MIN_TIMELINE_SECONDS, RULER_HEIGHT, TRACK_HEIGHT } from "./constants";
@@ -26,7 +25,6 @@ export function Timeline() {
   const removeEmptyTracks = useProjectStore((s) => s.removeEmptyTracks);
   const splitClipAtPlayhead = useProjectStore((s) => s.splitClipAtPlayhead);
   const duplicateClipAtPlayhead = useProjectStore((s) => s.duplicateClipAtPlayhead);
-  const addPatternAtPlayhead = useProjectStore((s) => s.addPatternAtPlayhead);
   const snapResolution = useProjectStore((s) => s.snapResolution);
   const setSnapResolution = useProjectStore((s) => s.setSnapResolution);
   const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
@@ -37,22 +35,22 @@ export function Timeline() {
   // event on touch screens was creating a pile of empty tracks with no
   // visible cause). Local to this component instance, not the store - the
   // store's addTrack() itself stays a plain, always-succeeds action so
-  // programmatic batch callers (Beat Generator, tests) are unaffected.
+  // programmatic batch callers (tests) are unaffected.
   const lastAddClickAt = useRef(0);
 
   usePinchZoom(scrollRef, pixelsPerSecond, setPixelsPerSecond);
 
-  // Visible feedback for "+ Nueva pista"/"+ Nuevo instrumento": a track
-  // appended off-screen (a session already scrolled down, or a tall list)
-  // otherwise gives zero indication anything happened - scroll it into view
-  // and flash its header briefly. Driven directly from the click, not an
-  // effect watching the tracks array, so it fires exactly once per add and
-  // never for removals/reorders.
-  function handleAddTrack(type?: Track["type"]) {
+  // Visible feedback for "+ Nueva pista": a track appended off-screen (a
+  // session already scrolled down, or a tall list) otherwise gives zero
+  // indication anything happened - scroll it into view and flash its
+  // header briefly. Driven directly from the click, not an effect watching
+  // the tracks array, so it fires exactly once per add and never for
+  // removals/reorders.
+  function handleAddTrack() {
     const now = Date.now();
     if (now - lastAddClickAt.current < 600) return;
     lastAddClickAt.current = now;
-    const track = addTrack(undefined, type);
+    const track = addTrack();
     const index = useProjectStore.getState().project.tracks.findIndex((t) => t.id === track.id);
     const el = scrollRef.current;
     if (el && index !== -1) {
@@ -84,9 +82,7 @@ export function Timeline() {
     }
   }, [currentTime, isPlaying, pixelsPerSecond]);
 
-  const selectedTrack = project.tracks.find((t) => t.id === selectedTrackId);
-  const canAddPattern = selectedTrack?.type === "instrument";
-  const emptyTrackCount = project.tracks.filter((t) => t.clips.length === 0 && t.midiClips.length === 0).length;
+  const emptyTrackCount = project.tracks.filter((t) => t.clips.length === 0).length;
 
   const clipEnd = project.tracks.reduce(
     (max, t) => Math.max(max, ...t.clips.map((c) => c.startTime + c.duration), 0),
@@ -111,7 +107,7 @@ export function Timeline() {
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
             <div>
               <p className="text-sm font-medium text-bone-2">Todavía no hay pistas</p>
-              <p className="text-xs text-bone-3">Empieza con una de estas opciones, o importa un sample desde la pestaña Biblioteca</p>
+              <p className="text-xs text-bone-3">Agrega una pista, o importa un sample desde la pestaña Biblioteca</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <button
@@ -119,13 +115,6 @@ export function Timeline() {
                 className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
               >
                 + Nueva pista
-              </button>
-              <button
-                onClick={() => handleAddTrack("instrument")}
-                title="Una pista con un instrumento synth/sampler, reproducible desde patrones programados"
-                className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
-              >
-                + Nuevo instrumento
               </button>
             </div>
           </div>
@@ -183,26 +172,17 @@ export function Timeline() {
 
       <div className="flex flex-wrap items-center gap-2 border-t border-line p-2">
         {project.tracks.length > 0 && (
-          <>
-            <button
-              onClick={() => handleAddTrack()}
-              className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
-            >
-              + Nueva pista
-            </button>
-            <button
-              onClick={() => handleAddTrack("instrument")}
-              title="Agrega una pista con un instrumento synth/sampler, reproducible desde patrones programados"
-              className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
-            >
-              + Nuevo instrumento
-            </button>
-          </>
+          <button
+            onClick={() => handleAddTrack()}
+            className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
+          >
+            + Nueva pista
+          </button>
         )}
         {emptyTrackCount >= 2 && (
           <button
             onClick={() => {
-              if (window.confirm(`Vas a eliminar ${emptyTrackCount} pistas vacías (sin audio ni MIDI). ¿Continuar?`)) {
+              if (window.confirm(`Vas a eliminar ${emptyTrackCount} pistas vacías (sin audio). ¿Continuar?`)) {
                 removeEmptyTracks();
               }
             }}
@@ -212,18 +192,6 @@ export function Timeline() {
             Eliminar {emptyTrackCount} pistas vacías
           </button>
         )}
-        <button
-          onClick={addPatternAtPlayhead}
-          disabled={!canAddPattern}
-          title={
-            canAddPattern
-              ? "Agrega un patrón de un compás a la pista de instrumento seleccionada en el playhead"
-              : "Selecciona primero una pista de instrumento"
-          }
-          className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3 disabled:opacity-30"
-        >
-          + Nuevo patrón
-        </button>
         <button
           onClick={splitClipAtPlayhead}
           title="Divide el clip de la pista seleccionada en el playhead (atajo: S)"

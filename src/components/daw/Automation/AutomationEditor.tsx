@@ -37,12 +37,7 @@ export function AutomationEditor() {
   const range = RANGES[param];
 
   const clipEnd = tracks.reduce(
-    (max, t) =>
-      Math.max(
-        max,
-        ...t.clips.map((c) => c.startTime + c.duration),
-        ...t.midiClips.map((c) => c.startTime + c.duration)
-      ),
+    (max, t) => Math.max(max, ...t.clips.map((c) => c.startTime + c.duration)),
     0
   );
   const duration = Math.max(MIN_TIMELINE_SECONDS, clipEnd + 15);

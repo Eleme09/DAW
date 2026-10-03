@@ -7,8 +7,6 @@ import { collectProjectSampleIds, hydrateProjectSamples } from "@/lib/audio/samp
 import {
   createEmptyProject,
   createDefaultAutomation,
-  createMidiClip,
-  createNote,
   createTrack,
   createBus,
   type AudioClip,
@@ -16,9 +14,6 @@ import {
   type AutomationPoint,
   type Bus,
   type BusId,
-  type Instrument,
-  type MidiClip,
-  type Note,
   type Project,
   type SampleAsset,
   type Send,
@@ -26,7 +21,7 @@ import {
   type TrackId,
 } from "@/types/project";
 import { createEffectInstance, type EffectInstance, type EffectType } from "@/types/effects";
-import { barSeconds, type GridResolution } from "@/lib/timing/grid";
+import type { GridResolution } from "@/lib/timing/grid";
 import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND } from "@/components/daw/Timeline/constants";
 
 /** A bus's id is also a valid EffectTarget - both TrackId and BusId are
@@ -63,7 +58,7 @@ interface ProjectState {
   setSnapResolution: (resolution: GridResolution) => void;
   /** Timeline zoom (pixels per second of timeline width) - the single
    * shared value every Timeline-family component (Ruler, TrackLane,
-   * ClipView, MidiClipView, LoopRegion, AutomationEditor) reads instead of
+   * ClipView, LoopRegion, AutomationEditor) reads instead of
    * a fixed constant, so the whole timeline always scales together. View
    * state, same category as snapResolution - not undoable, not persisted. */
   pixelsPerSecond: number;
@@ -79,9 +74,6 @@ interface ProjectState {
    * counterpart of selectedTrackId. */
   selectedBusId: BusId | null;
   selectBus: (busId: BusId | null) => void;
-  /** Which MIDI clip the piano roll bottom sheet is showing - null when closed. */
-  pianoRollClipId: string | null;
-  setPianoRollClipId: (clipId: string | null) => void;
   /** Which track's automation bottom sheet is showing - null when closed. */
   automationTrackId: TrackId | null;
   setAutomationTrackId: (trackId: TrackId | null) => void;
@@ -100,9 +92,9 @@ interface ProjectState {
   undo: () => void;
   redo: () => void;
 
-  addTrack: (name?: string, type?: Track["type"]) => Track;
+  addTrack: (name?: string) => Track;
   removeTrack: (trackId: TrackId) => void;
-  /** Removes every track with no audio/MIDI clips in it, in one undo step -
+  /** Removes every track with no clips in it, in one undo step -
    * the bulk cleanup for a session that accumulated empty tracks (e.g. from
    * repeated taps before the addTrack debounce existed). No-op if none are
    * empty. */
@@ -133,28 +125,6 @@ interface ProjectState {
   duplicateClipAtPlayhead: () => void;
   duplicateClip: (trackId: TrackId, clipId: string) => void;
   selectTrack: (trackId: TrackId | null) => void;
-
-  /** Adds an empty one-bar pattern to the selected instrument track at the
-   * playhead and opens it in the piano roll. No-op if the selected track
-   * isn't an instrument track. */
-  addPatternAtPlayhead: () => void;
-  updateMidiClip: (trackId: TrackId, clipId: string, patch: Partial<MidiClip>) => void;
-  removeMidiClip: (trackId: TrackId, clipId: string) => void;
-  /** Duplicates a MIDI pattern clip (with fresh note ids), placing the copy
-   * immediately after the original - the MIDI counterpart to duplicateClip. */
-  duplicateMidiClip: (trackId: TrackId, clipId: string) => void;
-  addNote: (trackId: TrackId, clipId: string, note: Omit<Note, "id">) => void;
-  updateNote: (trackId: TrackId, clipId: string, noteId: string, patch: Partial<Note>) => void;
-  removeNote: (trackId: TrackId, clipId: string, noteId: string) => void;
-  /** Full replace - used for switching synth/sampler, waveform, or the
-   * sampler's assigned sample/root note (all discrete, one-shot changes). */
-  setInstrument: (trackId: TrackId, instrument: Instrument) => void;
-  /** Merges into the current instrument's shared ADSR fields - used for
-   * slider drags, so it coalesces like other continuous edits. */
-  updateInstrumentEnvelope: (
-    trackId: TrackId,
-    patch: Partial<Pick<Instrument, "attack" | "decay" | "sustain" | "release">>
-  ) => void;
 
   setAutomationLaneEnabled: (trackId: TrackId, param: AutomationParam, enabled: boolean) => void;
   addAutomationPoint: (trackId: TrackId, param: AutomationParam, point: Omit<AutomationPoint, "id">) => void;
@@ -331,8 +301,6 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     setEffectsRackMode: (mode) => set({ effectsRackMode: mode }),
     selectedBusId: null,
     selectBus: (busId) => set({ selectedBusId: busId }),
-    pianoRollClipId: null,
-    setPianoRollClipId: (clipId) => set({ pianoRollClipId: clipId }),
     automationTrackId: null,
     setAutomationTrackId: (trackId) => set({ automationTrackId: trackId }),
     automationParam: "volume",
@@ -361,10 +329,9 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       lastPushWasCoalescible = false;
     },
 
-    addTrack: (name, type = "audio") => {
+    addTrack: (name) => {
       const project = get().project;
-      const defaultName = type === "instrument" ? "Instrumento" : "Pista";
-      const track = createTrack(name ?? `${defaultName} ${project.tracks.length + 1}`, project.tracks.length, type);
+      const track = createTrack(name ?? `Pista ${project.tracks.length + 1}`, project.tracks.length);
       setProject(touch({ ...project, tracks: [...project.tracks, track] }), {
         extra: { selectedTrackId: track.id },
       });
@@ -381,7 +348,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     removeEmptyTracks: () => {
       const project = get().project;
-      const isEmpty = (t: Track) => t.clips.length === 0 && t.midiClips.length === 0;
+      const isEmpty = (t: Track) => t.clips.length === 0;
       if (!project.tracks.some(isEmpty)) return;
       const remaining = project.tracks.filter((t) => !isEmpty(t));
       const selectedTrackId = get().selectedTrackId;
@@ -701,148 +668,6 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     selectTrack: (trackId) => set({ selectedTrackId: trackId }),
 
-    addPatternAtPlayhead: () => {
-      const { project, selectedTrackId, currentTime } = get();
-      const track = project.tracks.find((t) => t.id === selectedTrackId);
-      if (!track || track.type !== "instrument") return;
-      const clip = createMidiClip(track.id, currentTime, barSeconds(project.bpm, project.timeSignature));
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) => (t.id !== track.id ? t : { ...t, midiClips: [...t.midiClips, clip] })),
-        }),
-        { extra: { pianoRollClipId: clip.id } }
-      );
-    },
-
-    updateMidiClip: (trackId, clipId, patch) => {
-      const project = get().project;
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) =>
-            t.id !== trackId
-              ? t
-              : { ...t, midiClips: t.midiClips.map((c) => (c.id === clipId ? { ...c, ...patch } : c)) }
-          ),
-        }),
-        { coalesce: true }
-      );
-    },
-
-    removeMidiClip: (trackId, clipId) => {
-      const project = get().project;
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) =>
-            t.id !== trackId ? t : { ...t, midiClips: t.midiClips.filter((c) => c.id !== clipId) }
-          ),
-        })
-      );
-      if (get().pianoRollClipId === clipId) set({ pianoRollClipId: null });
-    },
-
-    duplicateMidiClip: (trackId, clipId) => {
-      const project = get().project;
-      const track = project.tracks.find((t) => t.id === trackId);
-      const clip = track?.midiClips.find((c) => c.id === clipId);
-      if (!clip) return;
-      const duplicate: MidiClip = {
-        ...clip,
-        id: crypto.randomUUID(),
-        startTime: clip.startTime + clip.duration,
-        notes: clip.notes.map((n) => ({ ...n, id: crypto.randomUUID() })),
-      };
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) => (t.id !== trackId ? t : { ...t, midiClips: [...t.midiClips, duplicate] })),
-        })
-      );
-    },
-
-    addNote: (trackId, clipId, note) => {
-      const project = get().project;
-      const newNote: Note = createNote(note.pitch, note.startTime, note.duration, note.velocity);
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) =>
-            t.id !== trackId
-              ? t
-              : {
-                  ...t,
-                  midiClips: t.midiClips.map((c) =>
-                    c.id !== clipId ? c : { ...c, notes: [...c.notes, newNote] }
-                  ),
-                }
-          ),
-        })
-      );
-    },
-
-    updateNote: (trackId, clipId, noteId, patch) => {
-      const project = get().project;
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) =>
-            t.id !== trackId
-              ? t
-              : {
-                  ...t,
-                  midiClips: t.midiClips.map((c) =>
-                    c.id !== clipId
-                      ? c
-                      : { ...c, notes: c.notes.map((n) => (n.id === noteId ? { ...n, ...patch } : n)) }
-                  ),
-                }
-          ),
-        }),
-        { coalesce: true }
-      );
-    },
-
-    removeNote: (trackId, clipId, noteId) => {
-      const project = get().project;
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) =>
-            t.id !== trackId
-              ? t
-              : {
-                  ...t,
-                  midiClips: t.midiClips.map((c) =>
-                    c.id !== clipId ? c : { ...c, notes: c.notes.filter((n) => n.id !== noteId) }
-                  ),
-                }
-          ),
-        })
-      );
-    },
-
-    setInstrument: (trackId, instrument) => {
-      const project = get().project;
-      setProject(
-        touch({ ...project, tracks: project.tracks.map((t) => (t.id === trackId ? { ...t, instrument } : t)) })
-      );
-    },
-
-    updateInstrumentEnvelope: (trackId, patch) => {
-      const project = get().project;
-      setProject(
-        touch({
-          ...project,
-          tracks: project.tracks.map((t) =>
-            t.id !== trackId || !t.instrument ? t : { ...t, instrument: { ...t.instrument, ...patch } }
-          ),
-        }),
-        { coalesce: true }
-      );
-    },
-
     setAutomationLaneEnabled: (trackId, param, enabled) => {
       const project = get().project;
       setProject(
@@ -1115,28 +940,24 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       // Opening a different project starts a fresh undo history - carrying
       // over the previous project's history would let undo cross documents.
       getAudioEngine().stop();
-      // Projects saved before masterVolumeDb/instrument tracks/the synth
-      // filter existed won't have those fields - default them so old
-      // projects don't load silently attenuated, or with tracks/instruments
-      // missing fields the rest of the app assumes are always present.
+      // Projects saved before masterVolumeDb existed won't have it - default
+      // it so old projects don't load silently attenuated. Instrument/MIDI
+      // tracks are a removed feature (no engine/UI left to play or edit
+      // them) - an old project that happens to have one drops it on load
+      // rather than loading an inert, uneditable track.
       const normalized: Project = {
         ...project,
         masterVolumeDb: project.masterVolumeDb ?? 0,
         buses: project.buses ?? [],
         lyrics: project.lyrics ?? "",
-        tracks: project.tracks.map((t) => ({
-          ...t,
-          type: t.type ?? "audio",
-          midiClips: t.midiClips ?? [],
-          instrument: t.instrument
-            ? t.instrument.type === "synth"
-              ? { ...t.instrument, filterCutoff: t.instrument.filterCutoff ?? 20000, filterResonance: t.instrument.filterResonance ?? 1 }
-              : t.instrument
-            : null,
-          automation: t.automation ?? createDefaultAutomation(),
-          monitorMode: t.monitorMode ?? "auto",
-          sends: t.sends ?? [],
-        })),
+        tracks: project.tracks
+          .filter((t) => (t as unknown as { type?: string }).type !== "instrument")
+          .map((t) => ({
+            ...t,
+            automation: t.automation ?? createDefaultAutomation(),
+            monitorMode: t.monitorMode ?? "auto",
+            sends: t.sends ?? [],
+          })),
       };
       set({
         project: normalized,

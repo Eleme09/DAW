@@ -8,7 +8,6 @@ import { BrowserPanel } from "./BrowserPanel";
 import { Timeline } from "./Timeline/Timeline";
 import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
-import { PianoRoll } from "./PianoRoll/PianoRoll";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { VozPanel } from "./VozPanel/VozPanel";
 import { MicIcon, FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
@@ -92,7 +91,6 @@ export function DawShell() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-ink text-bone">
       <TransportBar />
-      <PianoRoll />
       <AutomationEditor />
       <div className="flex flex-1 overflow-hidden">
         {/* Voz is a mobile-only dedicated screen, same reasoning as the
