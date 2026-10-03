@@ -144,12 +144,19 @@ export type PitchCorrectionScale = "major" | "naturalMinor" | "harmonicMinor" | 
  * effect, and apply to a recorded clip's playback, not just a live mic.
  * Backed by public/worklets/realtime-pitch-processor.js.
  *
- * Deliberately NOT implemented: formant/timbre preservation ("avoid the
- * chipmunk effect" on large corrections) - that needs spectral-envelope
- * separation (cepstral or LPC) reapplied after the shift, a materially
- * bigger DSP undertaking than the delay-line shifter this uses. Named here
- * rather than a silent no-op toggle - see PitchCorrectionEffect.ts. Applies
- * equally to both modes below (neither preserves formants).
+ * Formant preservation: implemented via causal real-time TD-PSOLA (see that
+ * worklet's header comment for the mechanism), replacing an earlier
+ * variable-rate delay-line shifter that moved the whole spectrum with
+ * pitch (the "chipmunk effect"). Measured directly, not assumed: an
+ * isolated formant-like partial stays close to its original frequency
+ * after a real correction, not the shifted one. This does NOT do explicit
+ * spectral-envelope separation (cepstral/LPC) - that would let formants be
+ * reshaped independently of pitch (e.g. a deliberate character change) and
+ * may hold up better on breathy/noisy/complex real voices than the clean
+ * synthetic signal this was measured against; it's a further refinement,
+ * not a prerequisite for "formants stay put," which TD-PSOLA already gives
+ * for free by never resampling the grain content. Applies to both modes
+ * below (fixed-semitone transpose benefits the same way as scale mode).
  */
 export type PitchCorrectionMode = "scale" | "fixed";
 

@@ -331,14 +331,21 @@ Pipeline, in order:
    keeps duration independent of pitch shift. Grains are Hann-windowed,
    overlap-added, and the accumulated window weight is used to normalize
    output level (prevents overlap-add gain pumping).
-   **Explicit simplification:** no formant preservation — grains aren't
-   separated from a spectral envelope, so larger shifts can sound
-   thinner/more artificial than a commercial pitch corrector. For this
-   project that's an acceptable trade: small corrective shifts (tightening
-   an otherwise in-tune take) sound fine, and an artificial character on
-   large/instant shifts is the actual aesthetic "Hard Tune"/"Modern Trap"
-   modes want, not a flaw to hide. Proper formant-preserving PSOLA is a
-   real future improvement, documented here rather than silently missing.
+   **Formant preservation:** this DOES preserve formants — measured
+   directly (see `psola.test.ts`'s isolated-partial test), not assumed.
+   Period-locked grains copied unresampled from the source is exactly the
+   mechanism that keeps a formant in place; an earlier version of this doc
+   claimed the opposite, which turned out to be untested/overstated (same
+   correction applied to `psola.ts`'s own header comment). Explicit
+   spectral-envelope separation (cepstral/LPC) remains a real, undone
+   refinement — it would let formants be reshaped *independently* of
+   pitch (a deliberate character/gender change), and may hold up better on
+   breathy/complex real voices than the clean synthetic test used here —
+   but it is not a prerequisite for "formants don't move when pitch does."
+   One real edge case the measurement did find: a partial that's an exact
+   integer harmonic of the detected pitch gets re-locked to the new
+   pitch's harmonic series instead of staying put — harmless for real
+   voices (formants aren't exact harmonics of F0) but worth naming.
 6. **`applyPitchCorrection.ts`** — ties the above together
    (`analyzePitch` for detection+key, `correctPitchChannel`/
    `correctPitchBuffer` for the full correct-and-resynthesize pass, run
@@ -977,22 +984,26 @@ first render quantum, with no such race.
   the *smoothed* target and lags behind what was actually just sung.
 
 **Real, honest limitations, not hidden:**
-- Total latency is roughly 30-50ms (mostly the 2048-sample analysis
-  window) — usable for "hear yourself land on pitch while singing," not
-  inaudible. Real hardware/software vocal processors have comparable
-  latency; this isn't unusual, but it's not zero either.
-- Occasional brief crossfade artifact at a delay rebase — not
-  synced to the signal's own period (unlike PSOLA), so it can land
-  anywhere in the waveform's cycle. Infrequent for realistic correction
-  amounts, not imperceptible.
-- **No formant preservation** — same as the offline PSOLA pipeline, and
-  still not implemented here despite being requested by the FASE 9
-  addenda. Real formant preservation needs spectral-envelope separation
-  (cepstral liftering or LPC) reapplied after the pitch shift; the
-  delay-line shifter this effect uses has no such stage, so a large
-  correction narrows/widens the voice's formants along with its pitch
-  (the "chipmunk"/"demon" effect on extreme corrections). No UI control
-  claims to do this — it's absent, not a no-op toggle.
+- Total latency is roughly 30-50ms (mostly the 2048-sample YIN analysis
+  window plus a fixed ~20ms PSOLA synthesis lookahead) — usable for "hear
+  yourself land on pitch while singing," not inaudible. Real hardware/
+  software vocal processors have comparable latency; this isn't unusual,
+  but it's not zero either.
+- **Formant preservation**: implemented, via a causal real-time TD-PSOLA
+  shifter (replaced an earlier variable-rate delay-line shifter that moved
+  the whole spectrum with pitch — the "chipmunk"/"demon" effect on large
+  corrections). Measured directly, not assumed: an isolated formant-like
+  partial stays close to its original frequency after a real correction,
+  not the shifted one (same mechanism and same measurement approach
+  validated for the offline `psola.ts` pipeline above — see its entry in
+  this doc). Epoch marking is a cheap causal local-peak search, not true
+  glottal-closure detection, so it's noisier on breathy/distorted/multi-
+  voice input than a lab-grade pitch tracker; there's no separate voiced/
+  unvoiced split, so sibilants and breaths ride the same grain machinery
+  as sung notes. Explicit spectral-envelope separation (cepstral/LPC)
+  remains undone — it would let formants be reshaped independently of
+  pitch (a deliberate character change), not required for pitch-shift-
+  without-chipmunk, which this already gives.
 - Pitch ratio is clamped to roughly 0.7x-1.4x (about ±6 semitones) —
   intentional: this project's corrections are meant to nudge toward a
   nearby scale tone, not perform arbitrary pitch transposition, and the
@@ -1163,7 +1174,10 @@ waveform and played back cleanly — zero console errors.
 - Real-time/live pitch correction now exists (see "Real-time pitch
   monitor" above) — a separate, causal reimplementation from the offline
   pipeline below, not a replacement for it.
-- No formant preservation in PSOLA — see `psola.ts` above.
+- Formant preservation in PSOLA (both offline and real-time) is now
+  measured-real, not absent — see `psola.ts`'s and the real-time worklet's
+  entries above. Explicit spectral-envelope separation (cepstral/LPC) for
+  reshaping formants *independently* of pitch is still not here.
 - Classic spectral subtraction noise reduction now exists (see "Spectral
   noise reduction (post-launch)" above) — removes noise sitting
   *underneath* a loud signal, which the envelope-follower Noise Gate

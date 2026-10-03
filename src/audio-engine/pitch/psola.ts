@@ -4,15 +4,24 @@ import type { CorrectionFrame } from "./correctionCurve";
 /**
  * TD-PSOLA-lite: time-domain pitch-synchronous overlap-add resynthesis.
  *
- * Deliberate simplification, stated plainly: this does **not** preserve
- * formants (no spectral-envelope separation, just period-locked grains) —
- * larger corrections can sound thinner/more "robotic" than a commercial
- * pitch corrector. For this project that's an acceptable trade for now:
- * small corrective shifts (tightening a mostly-in-tune take) sound fine,
- * and a slightly artificial character on large/instant shifts is exactly
- * the aesthetic the "Hard Tune"/"Modern Trap" modes want anyway. Proper
- * formant-preserving PSOLA is a documented future improvement, not a gap
- * pretending to be a feature — see AUDIO_ENGINE.md.
+ * Formant preservation: this DOES preserve formants, measured directly
+ * (see psola.test.ts's "keeps an isolated formant-like partial near its
+ * original frequency" test) rather than assumed either way — an earlier
+ * version of this comment claimed the opposite ("no spectral-envelope
+ * separation, just period-locked grains" ⇒ no preservation), which turned
+ * out to be an overstated, untested claim: period-locked grains copied
+ * *unresampled* from the source is exactly the mechanism that keeps
+ * formants in place (same principle verified for the real-time worklet's
+ * own TD-PSOLA rewrite, public/worklets/realtime-pitch-processor.js).
+ * Spectral-envelope separation (cepstral/LPC) is a different, additional
+ * technique for reshaping formants independently of pitch (e.g. a
+ * deliberate character/gender change) — not a prerequisite for "formants
+ * don't move when pitch does." One real caveat found while measuring this:
+ * a partial that's an *exact* integer harmonic of the detected pitch isn't
+ * preserved (it gets re-locked to the new pitch's harmonic series instead)
+ * — harmless for real voices, where formants are resonances independent
+ * of F0 and essentially never land on an exact harmonic, but worth naming
+ * since it's a real edge case this measurement actually found.
  *
  * Standard two-mark-sequence PSOLA: analysis marks track the input's own
  * detected period (so grains are extracted period-synchronously); synthesis

@@ -83,4 +83,62 @@ describe("psolaShift", () => {
     for (const v of output) peak = Math.max(peak, Math.abs(v));
     expect(peak).toBeLessThan(2); // generous bound - just guards against normalization bugs
   });
+
+  /**
+   * Direct measurement, not a restatement of the file header's own claim:
+   * this file's comment says PSOLA here does "not preserve formants (no
+   * spectral-envelope separation, just period-locked grains)". That framing
+   * turned out to be misleading when checked against the same measurement
+   * used to validate the realtime worklet's PSOLA rewrite (see
+   * public/worklets/realtime-pitch-processor.js's header and PROGRESS.md) —
+   * period-locked grains copied *unresampled* from the source is exactly
+   * what keeps formants in place; spectral-envelope separation (cepstral/
+   * LPC) is a separate, additional technique for reshaping formants
+   * independently of pitch (e.g. a deliberate gender/character change), not
+   * a prerequisite for "formants don't move when pitch does." This test
+   * settles it with a number instead of trusting either comment.
+   */
+  it("keeps an isolated formant-like partial near its original frequency, not the shifted one", () => {
+    const sampleRate = SAMPLE_RATE;
+    const f0 = 150;
+    const formantHz = 1430; // deliberately NOT an integer harmonic of f0 (1430/150=9.53) - real vocal formants are independent of pitch, unlike my first draft which accidentally used harmonic 10 exactly
+    const durationSec = 1.5;
+    const n = Math.floor(sampleRate * durationSec);
+    const input = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / sampleRate;
+      let s = 0;
+      for (let h = 1; h <= 16; h++) s += (0.3 / h) * Math.sin(2 * Math.PI * f0 * h * t);
+      s += 0.5 * Math.sin(2 * Math.PI * formantHz * t);
+      input[i] = s * 0.2;
+    }
+
+    const shiftRatio = Math.pow(2, 4 / 12); // +4 semitones, a realistic correction amount
+    const curve = constantCurve(f0, f0 * shiftRatio, durationSec);
+    const output = psolaShift(input, sampleRate, curve);
+
+    const dftMag = (samples: Float32Array, start: number, N: number, targetHz: number): number => {
+      const w = (2 * Math.PI * targetHz) / sampleRate;
+      let re = 0;
+      let im = 0;
+      for (let i = 0; i < N; i++) {
+        const window = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (N - 1));
+        const s = samples[start + i] * window;
+        re += s * Math.cos(w * i);
+        im += s * Math.sin(w * i);
+      }
+      return Math.sqrt(re * re + im * im);
+    };
+
+    const steadyStart = Math.floor(sampleRate * 0.5);
+    const N = 8192;
+    const magAtOriginalFormant = dftMag(output, steadyStart, N, formantHz);
+    const magAtShiftedFormant = dftMag(output, steadyStart, N, formantHz * shiftRatio);
+
+    // If formants moved with pitch (the old realtime shifter's bug), the
+    // energy would concentrate at the SHIFTED location instead. Real TD-
+    // PSOLA with period-locked, unresampled grains keeps it at the
+    // original location by a wide margin.
+    expect(magAtOriginalFormant).toBeGreaterThan(magAtShiftedFormant * 3);
+  });
 });
