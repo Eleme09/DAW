@@ -192,6 +192,21 @@ export class AudioEngine {
       // silently end up on "playback" latency (larger buffers, worse for
       // hearing yourself in time) if a browser's default ever changes.
       const ctx = new AudioContext({ latencyHint: "interactive" });
+      // iOS Safari suspends an AudioContext on its own mid-session (a
+      // notification, the screen locking, an interruption, or just its own
+      // power heuristics) - confirmed from a real device recording: the
+      // transport clock froze at 00:00.000 for the entire take while the
+      // timeline ruler kept visibly advancing. `ctx.currentTime` stops
+      // advancing while suspended (per spec), which freezes `getCurrentTime()`
+      // silently - and worse, ALL audio processing for this context,
+      // including the recorder worklet, stops too, so a real take can lose
+      // audio during the stall, not just the on-screen clock. `ensureContext()`
+      // only resumed a suspended context at acquisition time, never during an
+      // already-running session - this catches it for as long as the context
+      // exists, not just once at startup.
+      ctx.addEventListener("statechange", () => {
+        if (ctx.state !== "running") void ctx.resume();
+      });
       const master = ctx.createGain();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
@@ -938,6 +953,13 @@ export class AudioEngine {
   private startClock(tracks: Track[], loop: LoopRegion, bpm: number): void {
     const tick = () => {
       if (!this.playing) return;
+      // Redundant with the "statechange" listener in ensureContext() - a
+      // second, cheap check every frame in case that event doesn't fire for
+      // every transition on some WebKit versions (a known class of gap, not
+      // a hypothetical one). Catching this here, not just on statechange,
+      // is what actually bounds how long a real take can silently lose
+      // audio to a stalled context.
+      if (this.ctx && this.ctx.state !== "running") void this.ctx.resume();
       const t = this.getCurrentTime();
       if (loop.enabled && t >= loop.endTime) {
         this.seek(loop.startTime, tracks, loop, bpm);

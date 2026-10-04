@@ -11,7 +11,7 @@ import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset } from "@/lib/storage/sampleIndex";
 import type { AudioClip } from "@/types/project";
-import { BottomSheet } from "../BottomSheet";
+import { FloatingPanel } from "../FloatingPanel";
 import { Picker } from "../ui/Picker";
 import { ParamSlider } from "../EffectsRack/ParamSlider";
 
@@ -161,7 +161,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
   }
 
   return (
-    <BottomSheet open onClose={onClose} title={clip.name}>
+    <FloatingPanel open onClose={onClose} title={clip.name}>
       <div className="space-y-1">
         <label className="text-[11px] font-medium uppercase tracking-wide text-bone-3">Nombre</label>
         <input
@@ -304,6 +304,6 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
       >
         Eliminar clip
       </button>
-    </BottomSheet>
+    </FloatingPanel>
   );
 }
