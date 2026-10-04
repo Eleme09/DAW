@@ -77,6 +77,7 @@ function AudioTab() {
   const [enhancingId, setEnhancingId] = useState<string | null>(null);
   const [pitchOpenId, setPitchOpenId] = useState<string | null>(null);
   const [denoiseOpenId, setDenoiseOpenId] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const project = useProjectStore((s) => s.project);
@@ -93,22 +94,39 @@ function AudioTab() {
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     setImporting(true);
+    setImportError(null);
+    const failed: string[] = [];
     try {
       for (const file of Array.from(files)) {
-        const arrayBuffer = await file.arrayBuffer();
-        const id = crypto.randomUUID();
-        const buffer = await getAudioEngine().decodeAndCache(id, arrayBuffer);
-        await putSample(id, file.name, new Blob([arrayBuffer], { type: file.type }));
-        const asset: SampleAsset = {
-          id,
-          name: file.name,
-          durationSec: buffer.duration,
-          sampleRate: buffer.sampleRate,
-          channels: buffer.numberOfChannels,
-          createdAt: new Date().toISOString(),
-        };
-        await addSampleAsset(asset);
-        setSamples(await listSampleAssets());
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const id = crypto.randomUUID();
+          const buffer = await getAudioEngine().decodeAndCache(id, arrayBuffer);
+          await putSample(id, file.name, new Blob([arrayBuffer], { type: file.type }));
+          const asset: SampleAsset = {
+            id,
+            name: file.name,
+            durationSec: buffer.duration,
+            sampleRate: buffer.sampleRate,
+            channels: buffer.numberOfChannels,
+            createdAt: new Date().toISOString(),
+          };
+          await addSampleAsset(asset);
+          setSamples(await listSampleAssets());
+        } catch {
+          // One bad file (wrong/unsupported format, corrupted data) doesn't
+          // abort the rest of the batch - but it must never fail silently
+          // either, which is what happened before this: decodeAudioData
+          // rejecting a file threw past this function with no UI feedback
+          // at all, reading as "nothing happened" / "doesn't accept this
+          // format" to whoever just tried to import something.
+          failed.push(file.name);
+        }
+      }
+      if (failed.length > 0) {
+        setImportError(
+          `No se pudo importar: ${failed.join(", ")} — el navegador no pudo decodificar este archivo como audio (formato no soportado o archivo dañado).`
+        );
       }
     } finally {
       setImporting(false);
@@ -190,6 +208,7 @@ function AudioTab() {
           hidden
           onChange={(e) => handleFiles(e.target.files)}
         />
+        {importError && <p className="mt-1.5 text-[11px] text-red-400">{importError}</p>}
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-2 text-xs">
         {samples.length === 0 && (
