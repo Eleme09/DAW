@@ -117,6 +117,9 @@ interface ProjectState {
   addClip: (clip: AudioClip) => void;
   updateClip: (trackId: TrackId, clipId: string, patch: Partial<AudioClip>) => void;
   removeClip: (trackId: TrackId, clipId: string) => void;
+  /** Moves a clip to a different track, keeping its timeline position - the
+   * clip leaves the source track's `clips` array and joins the target's. */
+  moveClipToTrack: (trackId: TrackId, clipId: string, targetTrackId: TrackId) => void;
   /** Makes one take in a group the active (audible) one, muting its siblings. */
   selectTake: (trackId: TrackId, takeGroupId: string, activeClipId: string) => void;
   splitClipAtPlayhead: () => void;
@@ -557,6 +560,32 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
             return { ...t, clips };
           }),
         })
+      );
+    },
+
+    moveClipToTrack: (trackId, clipId, targetTrackId) => {
+      if (trackId === targetTrackId) return;
+      const project = get().project;
+      const sourceTrack = project.tracks.find((t) => t.id === trackId);
+      const clip = sourceTrack?.clips.find((c) => c.id === clipId);
+      const targetTrack = project.tracks.find((t) => t.id === targetTrackId);
+      if (!clip || !targetTrack) return;
+      // A take group only means something among clips recorded on the same
+      // track region - carrying it across tracks would compare this clip
+      // against an unrelated track's takes, so it's dropped on the move,
+      // same as how removeClip above only ever promotes a sibling within
+      // one track's own clips array.
+      const moved = { ...clip, trackId: targetTrackId, color: targetTrack.color, takeGroupId: undefined };
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) => {
+            if (t.id === trackId) return { ...t, clips: t.clips.filter((c) => c.id !== clipId) };
+            if (t.id === targetTrackId) return { ...t, clips: [...t.clips, moved] };
+            return t;
+          }),
+        }),
+        { extra: { selectedTrackId: targetTrackId } }
       );
     },
 

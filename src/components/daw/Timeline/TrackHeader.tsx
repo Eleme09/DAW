@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
-import type { Track } from "@/types/project";
+import { TRACK_COLORS, type Track } from "@/types/project";
 import { InputMeterRow } from "../InputMeterRow";
 import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
 import { useMonitoringLive } from "../useMonitoringLive";
 import { Knob } from "../ui/Knob";
 import { BottomSheet } from "../BottomSheet";
-import { AutomationIcon, SparkleIcon, MoreIcon, MicIcon, RecordIcon } from "../icons";
+import { AutomationIcon, SparkleIcon, MoreIcon, MicIcon, RecordIcon, ChevronDownIcon } from "../icons";
 import { HEADER_WIDTH, TRACK_HEIGHT } from "./constants";
 
 interface TrackHeaderProps {
@@ -34,6 +34,8 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
   const { monitoringLive, likelyHeadphones, isRecording } = useMonitoringLive(track.armed, track.monitorMode);
   const isLiveInput = track.armed && isRecording;
   const [moreOpen, setMoreOpen] = useState(false);
+  const moveTrack = useProjectStore((s) => s.moveTrack);
+  const trackCount = useProjectStore((s) => s.project.tracks.length);
 
   return (
     <div
@@ -199,6 +201,40 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
             <SparkleIcon className="h-4 w-4" />
             Preguntar a la IA
           </button>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => moveTrack(track.id, -1)}
+            disabled={track.order <= 0}
+            title="Subir pista"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-surf-2 text-xs font-medium text-bone-2 disabled:opacity-30"
+          >
+            <ChevronDownIcon className="h-4 w-4 rotate-180" />
+            Subir
+          </button>
+          <button
+            onClick={() => moveTrack(track.id, 1)}
+            disabled={track.order >= trackCount - 1}
+            title="Bajar pista"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-surf-2 text-xs font-medium text-bone-2 disabled:opacity-30"
+          >
+            <ChevronDownIcon className="h-4 w-4" />
+            Bajar
+          </button>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium uppercase tracking-wide text-bone-3">Color</label>
+          <div className="flex gap-2">
+            {TRACK_COLORS.map((color) => (
+              <button
+                key={color}
+                onClick={() => updateTrack(track.id, { color })}
+                title={color}
+                style={{ background: color }}
+                className={`h-11 flex-1 rounded ${track.color === color ? "ring-2 ring-inset ring-bone" : ""}`}
+              />
+            ))}
+          </div>
         </div>
         <button
           onClick={() => {

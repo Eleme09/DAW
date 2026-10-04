@@ -181,7 +181,7 @@ export function createEmptyProject(name = "Sin título"): Project {
 // Paleta de señal "Cabina" (estudio-ui.html, FASE 10B): seis colores fijos,
 // desaturados y fílmicos - no ocho tonos saturados de app genérica. El color
 // de una pista viaja a su cabecera, forma de onda, chips y fila de mezclador.
-const TRACK_COLORS = [
+export const TRACK_COLORS = [
   "#e8c15c",
   "#c97064",
   "#7fa8c9",

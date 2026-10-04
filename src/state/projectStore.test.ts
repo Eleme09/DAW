@@ -271,6 +271,43 @@ describe("comping (overlapping re-recorded takes)", () => {
     expect(clips[0].muted).toBe(false); // promoted, not left silent
   });
 
+  it("moveClipToTrack relocates the clip, drops its take group, and adopts the target track's color", () => {
+    const { addTrack, addClip, moveClipToTrack } = useProjectStore.getState();
+    const source = addTrack("Vocal");
+    const target = addTrack("Doble");
+    addClip(makeClip({ id: "take-1", trackId: source.id, startTime: 0, duration: 5, color: "#aaa" }));
+    addClip(makeClip({ id: "take-2", trackId: source.id, startTime: 0, duration: 5, color: "#aaa" }));
+
+    moveClipToTrack(source.id, "take-2", target.id);
+
+    const tracks = useProjectStore.getState().project.tracks;
+    const sourceClips = tracks.find((t) => t.id === source.id)!.clips;
+    const targetClips = tracks.find((t) => t.id === target.id)!.clips;
+    expect(sourceClips).toHaveLength(1);
+    expect(sourceClips[0].id).toBe("take-1");
+    expect(targetClips).toHaveLength(1);
+    expect(targetClips[0].id).toBe("take-2");
+    expect(targetClips[0].trackId).toBe(target.id);
+    expect(targetClips[0].color).toBe(target.color);
+    expect(targetClips[0].takeGroupId).toBeUndefined();
+  });
+
+  it("moveClipToTrack is a no-op moving to the same track or an unknown clip/track", () => {
+    const { addTrack, addClip, moveClipToTrack } = useProjectStore.getState();
+    const track = addTrack("Vocal");
+    addClip(makeClip({ id: "clip-1", trackId: track.id, startTime: 0, duration: 5 }));
+
+    moveClipToTrack(track.id, "clip-1", track.id);
+    expect(useProjectStore.getState().project.tracks[0].clips).toHaveLength(1);
+
+    moveClipToTrack(track.id, "not-a-real-id", track.id);
+    expect(useProjectStore.getState().project.tracks[0].clips).toHaveLength(1);
+
+    moveClipToTrack(track.id, "clip-1", "not-a-real-track");
+    const tracks = useProjectStore.getState().project.tracks;
+    expect(tracks.find((t) => t.id === track.id)?.clips).toHaveLength(1);
+  });
+
   it("splitClipAtPlayhead cuts every take in a comp stack at once, and selectTake then picks per-fragment", () => {
     const { addTrack, addClip, seek, selectTrack, splitClipAtPlayhead, selectTake } = useProjectStore.getState();
     const track = addTrack("Vocal");

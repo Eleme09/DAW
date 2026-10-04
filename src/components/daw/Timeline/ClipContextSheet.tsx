@@ -1,8 +1,15 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { computePeakDb } from "@/audio-engine/loudness";
+import { transposeBuffer, MAX_TRANSPOSE_SEMITONES } from "@/audio-engine/pitch/transpose";
+import { reduceNoiseBuffer } from "@/audio-engine/analysis/spectralNoiseReduction";
+import { encodeWav } from "@/audio-engine/wavEncoder";
+import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
+import { putSample } from "@/lib/storage/sampleStore";
+import { addSampleAsset } from "@/lib/storage/sampleIndex";
 import type { AudioClip } from "@/types/project";
 import { BottomSheet } from "../BottomSheet";
 import { Picker } from "../ui/Picker";
@@ -11,6 +18,7 @@ import { ParamSlider } from "../EffectsRack/ParamSlider";
 const MIN_GAIN_DB = -24;
 const MAX_GAIN_DB = 12;
 const NORMALIZE_HEADROOM_DB = -0.5; // leaves a hair of room, doesn't ride the ceiling exactly
+const DENOISE_STRENGTH = 0.6; // same default DenoisePanel.tsx uses for a sample before it's on a track
 
 interface ClipContextSheetProps {
   clip: AudioClip;
@@ -34,6 +42,20 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
   const MIN_CLIP_SEC = 0.05;
   const splitClipAtPlayhead = useProjectStore((s) => s.splitClipAtPlayhead);
   const trackClips = useProjectStore((s) => s.project.tracks.find((t) => t.id === clip.trackId)?.clips);
+  // Select the raw tracks array (stable reference between unrelated
+  // re-renders) and filter it in useMemo, not inside the selector itself -
+  // `.filter()` inside a Zustand selector allocates a new array on every
+  // single store read, which useSyncExternalStore sees as "always changed"
+  // and re-renders forever (crashed with "Maximum update depth exceeded",
+  // confirmed via Playwright: the sheet never actually displayed its
+  // content, it threw before paint).
+  const tracks = useProjectStore((s) => s.project.tracks);
+  const otherTracks = useMemo(() => tracks.filter((t) => t.id !== clip.trackId), [tracks, clip.trackId]);
+  const moveClipToTrack = useProjectStore((s) => s.moveClipToTrack);
+
+  const [semitones, setSemitones] = useState(0);
+  const [transposing, setTransposing] = useState(false);
+  const [denoising, setDenoising] = useState(false);
 
   const clipEnd = clip.startTime + clip.duration;
   const takes = clip.takeGroupId
@@ -75,6 +97,67 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
   function handleSplit() {
     splitClipAtPlayhead();
     onClose();
+  }
+
+  /**
+   * Renders just this clip's own audible region (not the whole source
+   * sample it was cut from) through `process`, saves the result as a new
+   * sample, and repoints THIS clip at it - an in-place edit, not a new
+   * track/clip the way DenoisePanel.tsx does it for a browser sample that
+   * isn't on the timeline yet. `sourceOffset` resets to 0 and `duration`
+   * is left untouched: both transpose and denoise change content, not
+   * length, so the clip keeps occupying exactly the timeline span it did
+   * before.
+   */
+  async function renderClipRegion(suffix: string, process: (channels: Float32Array[], sampleRate: number) => Float32Array[]) {
+    const buffer = getAudioEngine().getBuffer(clip.sampleId) ?? (await ensureSampleLoaded(clip.sampleId));
+    if (!buffer) return;
+    const startSample = Math.round(clip.sourceOffset * buffer.sampleRate);
+    const endSample = Math.min(buffer.length, Math.round((clip.sourceOffset + clip.duration) * buffer.sampleRate));
+    if (endSample <= startSample) return;
+
+    const channels: Float32Array[] = [];
+    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+      channels.push(buffer.getChannelData(ch).slice(startSample, endSample));
+    }
+    const processed = process(channels, buffer.sampleRate);
+    const blob = encodeWav(processed, buffer.sampleRate);
+
+    const newSampleId = crypto.randomUUID();
+    await getAudioEngine().decodeAndCache(newSampleId, await blob.arrayBuffer());
+    const name = `${clip.name} ${suffix}`;
+    await putSample(newSampleId, name, blob);
+    await addSampleAsset({
+      id: newSampleId,
+      name,
+      durationSec: clip.duration,
+      sampleRate: buffer.sampleRate,
+      channels: buffer.numberOfChannels,
+      createdAt: new Date().toISOString(),
+    });
+    updateClip(clip.trackId, clip.id, { sampleId: newSampleId, sourceOffset: 0 });
+  }
+
+  async function handleTranspose() {
+    if (semitones === 0) return;
+    setTransposing(true);
+    try {
+      await renderClipRegion(
+        semitones > 0 ? `+${semitones}` : `${semitones}`,
+        (channels, sampleRate) => transposeBuffer(channels, sampleRate, semitones)
+      );
+    } finally {
+      setTransposing(false);
+    }
+  }
+
+  async function handleDenoise() {
+    setDenoising(true);
+    try {
+      await renderClipRegion("(sin ruido)", (channels) => reduceNoiseBuffer(channels, { strength: DENOISE_STRENGTH }));
+    } finally {
+      setDenoising(false);
+    }
   }
 
   return (
@@ -154,6 +237,66 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
           Dividir aquí
         </button>
       </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[11px] font-medium uppercase tracking-wide text-bone-3">
+          Transponer ({semitones > 0 ? "+" : ""}
+          {semitones} semitonos)
+        </label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSemitones((s) => Math.max(-MAX_TRANSPOSE_SEMITONES, s - 1))}
+            disabled={semitones <= -MAX_TRANSPOSE_SEMITONES}
+            className="h-11 w-11 shrink-0 rounded bg-surf-2 text-lg font-bold text-bone disabled:opacity-30"
+          >
+            −
+          </button>
+          <div className="flex h-11 flex-1 items-center justify-center rounded bg-surf text-sm text-bone">
+            {semitones > 0 ? "+" : ""}
+            {semitones}
+          </div>
+          <button
+            onClick={() => setSemitones((s) => Math.min(MAX_TRANSPOSE_SEMITONES, s + 1))}
+            disabled={semitones >= MAX_TRANSPOSE_SEMITONES}
+            className="h-11 w-11 shrink-0 rounded bg-surf-2 text-lg font-bold text-bone disabled:opacity-30"
+          >
+            +
+          </button>
+        </div>
+        <button
+          onClick={handleTranspose}
+          disabled={semitones === 0 || transposing}
+          title="Transpone el audio real de este clip - no un efecto en vivo, renderiza una versión nueva"
+          className="min-h-11 w-full rounded bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
+        >
+          {transposing ? "Transponiendo…" : "Aplicar transposición"}
+        </button>
+      </div>
+
+      <button
+        onClick={handleDenoise}
+        disabled={denoising}
+        title="Sustracción espectral clásica sobre el audio real de este clip - renderiza una versión nueva, no toca la toma original"
+        className="min-h-11 w-full rounded bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
+      >
+        {denoising ? "Quitando ruido…" : "Quitar ruido"}
+      </button>
+
+      {otherTracks.length > 0 && (
+        <div className="space-y-1">
+          <label className="text-[11px] font-medium uppercase tracking-wide text-bone-3">Mover a otra pista</label>
+          <Picker
+            value=""
+            placeholder="Elige la pista destino"
+            options={otherTracks.map((t) => ({ value: t.id, label: t.name }))}
+            title="Mover este clip a otra pista"
+            onChange={(targetTrackId) => {
+              moveClipToTrack(clip.trackId, clip.id, targetTrackId);
+              onClose();
+            }}
+          />
+        </div>
+      )}
 
       <button
         onClick={handleDelete}
