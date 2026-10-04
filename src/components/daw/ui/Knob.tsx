@@ -38,17 +38,6 @@ function polarPoint(cx: number, cy: number, r: number, angleDeg: number): { x: n
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-/** SVG arc path from `startAngle` to `endAngle` (degrees, 0 = up, clockwise),
- * always sweeping clockwise through the shorter or longer way as implied by
- * the angle difference - built for a fixed -135..+135 knob range, not a
- * general-purpose arbitrary-arc helper. */
-function describeArc(cx: number, cy: number, r: number, startAngle: number, endAngle: number): string {
-  if (endAngle <= startAngle) return "";
-  const start = polarPoint(cx, cy, r, startAngle);
-  const end = polarPoint(cx, cy, r, endAngle);
-  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
-}
 
 /** Rotary knob: vertical drag to change value (long throw by default - the
  * spec's "fine drag via long travel", not a modifier key), double-click/tap
@@ -140,23 +129,20 @@ export function Knob({
         className="relative flex cursor-ns-resize items-center justify-center active:cursor-grabbing"
         style={{ width: hitSize, height: hitSize, touchAction: "none" }}
       >
+        {/* Cuerpo sólido color hueso con una línea indicadora oscura, no un
+           anillo de progreso delgado - confirmado contra captura real de la
+           perilla de pan del Mixer de BandLab (recortada y mirada de cerca):
+           la perilla es un círculo relleno, el valor se lee por el ángulo
+           de la línea, no por un arco de progreso aparte. */}
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <path
-            d={describeArc(cx, cy, r, START_ANGLE, START_ANGLE + SWEEP_DEGREES)}
-            fill="none"
-            stroke="#34343a"
-            strokeWidth={3}
-            strokeLinecap="round"
-          />
-          <path d={describeArc(cx, cy, r, START_ANGLE, angle)} fill="none" stroke="#f2ede4" strokeWidth={3} strokeLinecap="round" />
-          <circle cx={cx} cy={cy} r={r - 6} fill="#111112" />
+          <circle cx={cx} cy={cy} r={r} fill="#f2ede4" />
           <line
-            x1={cx}
-            y1={cy}
-            x2={polarPoint(cx, cy, r - 4, angle).x}
-            y2={polarPoint(cx, cy, r - 4, angle).y}
-            stroke="#f2ede4"
-            strokeWidth={2}
+            x1={polarPoint(cx, cy, r * 0.3, angle).x}
+            y1={polarPoint(cx, cy, r * 0.3, angle).y}
+            x2={polarPoint(cx, cy, r * 0.82, angle).x}
+            y2={polarPoint(cx, cy, r * 0.82, angle).y}
+            stroke="#111112"
+            strokeWidth={Math.max(1.5, size * 0.05)}
             strokeLinecap="round"
           />
         </svg>

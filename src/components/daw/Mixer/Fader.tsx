@@ -113,15 +113,14 @@ export function Fader({
           style={{ width: trackLength, height: 44, touchAction: "none" }}
           className="relative flex shrink-0 cursor-ew-resize select-none items-center rounded active:cursor-grabbing"
         >
-          <div className="pointer-events-none absolute inset-y-3.5 left-0 right-0 rounded bg-surf" />
-          <div className="pointer-events-none absolute inset-y-3 w-px bg-bone-3" style={{ left: `${zeroPct}%` }} />
+          {/* Línea delgada uniforme + perilla circular, no una barra de
+             progreso rellena con un pulgar rectangular - confirmado contra
+             captura real del fader horizontal del Mixer de BandLab. */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-white/30" />
+          <div className="pointer-events-none absolute top-1/2 h-2 w-px -translate-y-1/2 bg-white/40" style={{ left: `${zeroPct}%` }} />
           <div
-            className="pointer-events-none absolute inset-y-3 left-0 rounded-sm bg-bone/25"
-            style={{ width: `${pct}%` }}
-          />
-          <div
-            className="pointer-events-none absolute inset-y-1.5 w-2.5 rounded-sm bg-bone shadow"
-            style={{ left: `calc(${pct}% - 5px)` }}
+            className="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white shadow"
+            style={{ left: `calc(${pct}% - 8px)` }}
           />
         </div>
         {showScale && (
@@ -155,18 +154,14 @@ export function Fader({
         style={{ height: trackLength, width: 44, touchAction: "none" }}
         className="relative flex shrink-0 cursor-ns-resize select-none flex-col items-center rounded active:cursor-grabbing"
       >
-        <div className="pointer-events-none absolute inset-x-3.5 bottom-0 top-0 rounded bg-surf" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 left-1/2 w-px -translate-x-1/2 bg-white/30" />
         <div
-          className="pointer-events-none absolute inset-x-3 h-px bg-bone-3"
+          className="pointer-events-none absolute left-1/2 h-px w-2 -translate-x-1/2 bg-white/40"
           style={{ bottom: `${zeroPct}%` }}
         />
         <div
-          className="pointer-events-none absolute inset-x-3 bottom-0 rounded-sm bg-bone/25"
-          style={{ height: `${pct}%` }}
-        />
-        <div
-          className="pointer-events-none absolute inset-x-1.5 h-2.5 rounded-sm bg-bone shadow"
-          style={{ bottom: `calc(${pct}% - 5px)` }}
+          className="pointer-events-none absolute left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-white shadow"
+          style={{ bottom: `calc(${pct}% - 8px)` }}
         />
       </div>
       {showScale && (
