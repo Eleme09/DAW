@@ -16,10 +16,16 @@ export function TrackLane({ track, width, selected }: TrackLaneProps) {
   const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   return (
     <div
-      style={{ width, height: TRACK_HEIGHT }}
-      className={`relative shrink-0 border-b border-line ${
-        selected ? "bg-surf/60" : "bg-ink"
-      }`}
+      style={{
+        width,
+        height: TRACK_HEIGHT,
+        // Toda la fila teñida con el color de la pista (no solo un borde de
+        // 3px) - así se ve de verdad el carril de BandLab, confirmado contra
+        // captura real de su app: el color de pista cubre la fila entera a
+        // baja opacidad, no solo acenta un borde.
+        background: selected ? `${track.color}26` : `${track.color}14`,
+      }}
+      className="relative shrink-0 border-b border-line"
     >
       <GridLines width={width} pixelsPerSecond={pixelsPerSecond} />
       {track.clips

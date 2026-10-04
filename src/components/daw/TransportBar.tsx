@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { exportProjectToWav, exportStemsToWav } from "@/lib/audio/exportProject";
 import { getAudioEngine, type MonitorInputConstraints } from "@/audio-engine/AudioEngine";
-import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RecordIcon, RewindIcon, CloseIcon, FolderIcon } from "./icons";
+import { UndoIcon, RedoIcon, MoreIcon, PlayIcon, PauseIcon, StopIcon, RewindIcon, CloseIcon, FolderIcon } from "./icons";
 import { BottomSheet } from "./BottomSheet";
 import { Picker } from "./ui/Picker";
 import { Knob } from "./ui/Knob";
@@ -264,17 +264,21 @@ export function TransportBar() {
         <button
           onClick={() => (isRecording ? stopRecording() : startRecording())}
           disabled={isCountingIn}
-          className={`flex h-11 w-11 items-center justify-center rounded font-mono text-lg tabular-nums ${
+          // Círculo rojo sólido, no un ícono dentro de un cuadrado redondeado
+          // - así se ve el botón de grabar real de BandLab (confirmado
+          // contra captura de su app): un foco visual obvio, sin depender de
+          // reconocer un ícono pequeño para saber qué hace.
+          className={`flex h-12 w-12 items-center justify-center rounded-full font-mono text-base font-bold tabular-nums ${
             isRecording
               ? "animate-pulse bg-rec text-bone"
               : isCountingIn
                 ? "bg-rec/70 text-bone"
-                : "bg-surf-2 text-rec hover:bg-surf-3 active:bg-surf-3"
+                : "bg-rec text-bone hover:opacity-90 active:opacity-90"
           }`}
           aria-label={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás" : "Grabar"}
           title={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás…" : "Graba sobre la pista armada"}
         >
-          {isCountingIn ? countInBeats : <RecordIcon className="h-4 w-4" />}
+          {isCountingIn ? countInBeats : isRecording ? <StopIcon className="h-4 w-4" /> : null}
         </button>
         {(isRecording || isCountingIn) && (
           <button

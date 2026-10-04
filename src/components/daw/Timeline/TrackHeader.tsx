@@ -40,14 +40,19 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
   return (
     <div
       onClick={() => selectTrack(track.id)}
-      style={{ width: HEADER_WIDTH, height: TRACK_HEIGHT }}
-      className={`sticky left-0 z-10 relative flex shrink-0 flex-col justify-center gap-1 border-b border-r border-line bg-ink p-1 pl-2.5 ${
+      style={{
+        width: HEADER_WIDTH,
+        height: TRACK_HEIGHT,
+        // Cabecera teñida con el mismo color y la misma opacidad que su
+        // carril (TrackLane.tsx) - una sola banda de color continua por
+        // fila, como en BandLab real (confirmado contra captura de su app),
+        // no un borde de 3px aislado de la cabecera.
+        background: selected ? `${track.color}26` : `${track.color}14`,
+      }}
+      className={`sticky left-0 z-10 relative flex shrink-0 flex-col justify-center gap-1 border-b border-r border-line p-1 pl-2.5 ${
         selected ? "ring-1 ring-inset ring-bone" : ""
       } ${isLiveInput ? "ring-1 ring-inset ring-rec" : ""} ${flash ? "animate-pulse ring-2 ring-inset ring-bone" : ""}`}
     >
-      {/* Color de pista: barra de 3px en el canto, no fondo teñido entero
-         (estudio-ui.html .thead::before) - identifica la pista sin abaratar
-         la interfaz con color plano, como hace BandLab. */}
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: track.color }} />
       {/* Una sola fila (nombre + Armar/Monitor/Más), no dos filas separadas
          como antes - la densidad de BandLab. Solo 3 botones (no 5) porque el
@@ -141,7 +146,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
         <div className="flex gap-2">
           <button
             onClick={() => updateTrack(track.id, { muted: !track.muted })}
-            className={`min-h-11 flex-1 rounded text-sm font-bold ${
+            className={`min-h-11 flex-1 rounded-full text-sm font-bold ${
               track.muted ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
             }`}
           >
@@ -149,7 +154,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
           </button>
           <button
             onClick={() => updateTrack(track.id, { solo: !track.solo })}
-            className={`min-h-11 flex-1 rounded text-sm font-bold ${
+            className={`min-h-11 flex-1 rounded-full text-sm font-bold ${
               track.solo ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
             }`}
           >
@@ -182,7 +187,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
               setAutomationTrackId(track.id);
               setMoreOpen(false);
             }}
-            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded text-xs font-medium ${
+            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-xs font-medium ${
               hasAutomation ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
             }`}
           >
@@ -196,7 +201,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
               setMobileView("browser");
               setMoreOpen(false);
             }}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-surf-2 text-xs font-medium text-bone-2"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-surf-2 text-xs font-medium text-bone-2"
           >
             <SparkleIcon className="h-4 w-4" />
             Preguntar a la IA
@@ -207,7 +212,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
             onClick={() => moveTrack(track.id, -1)}
             disabled={track.order <= 0}
             title="Subir pista"
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-surf-2 text-xs font-medium text-bone-2 disabled:opacity-30"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-surf-2 text-xs font-medium text-bone-2 disabled:opacity-30"
           >
             <ChevronDownIcon className="h-4 w-4 rotate-180" />
             Subir
@@ -216,7 +221,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
             onClick={() => moveTrack(track.id, 1)}
             disabled={track.order >= trackCount - 1}
             title="Bajar pista"
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded bg-surf-2 text-xs font-medium text-bone-2 disabled:opacity-30"
+            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-surf-2 text-xs font-medium text-bone-2 disabled:opacity-30"
           >
             <ChevronDownIcon className="h-4 w-4" />
             Bajar
@@ -231,7 +236,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
                 onClick={() => updateTrack(track.id, { color })}
                 title={color}
                 style={{ background: color }}
-                className={`h-11 flex-1 rounded ${track.color === color ? "ring-2 ring-inset ring-bone" : ""}`}
+                className={`h-11 flex-1 rounded-full ${track.color === color ? "ring-2 ring-inset ring-bone" : ""}`}
               />
             ))}
           </div>
@@ -242,7 +247,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
             setMoreOpen(false);
           }}
           disabled={isLiveInput}
-          className="flex min-h-11 w-full items-center justify-center rounded bg-red-950 text-xs font-medium text-red-400 disabled:opacity-30"
+          className="flex min-h-11 w-full items-center justify-center rounded-full bg-red-950 text-xs font-medium text-red-400 disabled:opacity-30"
         >
           Eliminar pista
         </button>

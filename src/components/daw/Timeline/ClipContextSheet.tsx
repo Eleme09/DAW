@@ -215,7 +215,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
 
       <button
         onClick={normalize}
-        className="min-h-11 w-full rounded bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3"
+        className="min-h-11 w-full rounded-full bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3"
         title="Sube la ganancia del clip hasta que su pico real llegue a -0.5dB, calculado del audio real de este fragmento"
       >
         Normalizar
@@ -224,7 +224,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={handleDuplicate}
-          className="min-h-11 rounded bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3"
+          className="min-h-11 rounded-full bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3"
         >
           Duplicar
         </button>
@@ -232,7 +232,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
           onClick={handleSplit}
           disabled={!canSplitHere}
           title={canSplitHere ? "Divide este clip en la posición del cabezal" : "Mueve el cabezal dentro de este clip para dividirlo"}
-          className="min-h-11 rounded bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-30"
+          className="min-h-11 rounded-full bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-30"
         >
           Dividir aquí
         </button>
@@ -247,18 +247,18 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
           <button
             onClick={() => setSemitones((s) => Math.max(-MAX_TRANSPOSE_SEMITONES, s - 1))}
             disabled={semitones <= -MAX_TRANSPOSE_SEMITONES}
-            className="h-11 w-11 shrink-0 rounded bg-surf-2 text-lg font-bold text-bone disabled:opacity-30"
+            className="h-11 w-11 shrink-0 rounded-full bg-surf-2 text-lg font-bold text-bone disabled:opacity-30"
           >
             −
           </button>
-          <div className="flex h-11 flex-1 items-center justify-center rounded bg-surf text-sm text-bone">
+          <div className="flex h-11 flex-1 items-center justify-center rounded-full bg-surf text-sm text-bone">
             {semitones > 0 ? "+" : ""}
             {semitones}
           </div>
           <button
             onClick={() => setSemitones((s) => Math.min(MAX_TRANSPOSE_SEMITONES, s + 1))}
             disabled={semitones >= MAX_TRANSPOSE_SEMITONES}
-            className="h-11 w-11 shrink-0 rounded bg-surf-2 text-lg font-bold text-bone disabled:opacity-30"
+            className="h-11 w-11 shrink-0 rounded-full bg-surf-2 text-lg font-bold text-bone disabled:opacity-30"
           >
             +
           </button>
@@ -267,7 +267,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
           onClick={handleTranspose}
           disabled={semitones === 0 || transposing}
           title="Transpone el audio real de este clip - no un efecto en vivo, renderiza una versión nueva"
-          className="min-h-11 w-full rounded bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
+          className="min-h-11 w-full rounded-full bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
         >
           {transposing ? "Transponiendo…" : "Aplicar transposición"}
         </button>
@@ -277,7 +277,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
         onClick={handleDenoise}
         disabled={denoising}
         title="Sustracción espectral clásica sobre el audio real de este clip - renderiza una versión nueva, no toca la toma original"
-        className="min-h-11 w-full rounded bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
+        className="min-h-11 w-full rounded-full bg-surf-2 px-2 text-sm font-medium text-bone hover:bg-surf-3 disabled:opacity-40"
       >
         {denoising ? "Quitando ruido…" : "Quitar ruido"}
       </button>
@@ -300,7 +300,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
 
       <button
         onClick={handleDelete}
-        className="min-h-11 w-full rounded bg-rec/20 px-2 text-sm font-semibold text-rec hover:bg-rec/30"
+        className="min-h-11 w-full rounded-full bg-rec/20 px-2 text-sm font-semibold text-rec hover:bg-rec/30"
       >
         Eliminar clip
       </button>

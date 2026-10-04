@@ -178,16 +178,20 @@ export function createEmptyProject(name = "Sin título"): Project {
   };
 }
 
-// Paleta de señal "Cabina" (estudio-ui.html, FASE 10B): seis colores fijos,
-// desaturados y fílmicos - no ocho tonos saturados de app genérica. El color
-// de una pista viaja a su cabecera, forma de onda, chips y fila de mezclador.
+// Paleta de señal saturada, no la "Cabina" desaturada/fílmica de FASE 10B -
+// el usuario pidió explícitamente copiar la interfaz real de BandLab, no
+// solo sus funciones ("me refiero a todo. Interfaz, cómo interactúa, como
+// todo"). Verificado contra capturas reales de la app (no supuesto): cada
+// pista en BandLab tiene un color saturado que tiñe TODA su fila (cabecera +
+// carril, no solo un borde), no un tono apagado tipo "cine". Seis colores
+// fijos, igual que antes - lo que cambió es la saturación, no la cantidad.
 export const TRACK_COLORS = [
-  "#e8c15c",
-  "#c97064",
-  "#7fa8c9",
-  "#b294c4",
-  "#8fb89a",
-  "#6e6e74",
+  "#e8423f",
+  "#2bbf9e",
+  "#e8b13f",
+  "#9b6fe0",
+  "#3f8fe8",
+  "#e0638f",
 ];
 
 export function nextTrackColor(existingCount: number): string {
