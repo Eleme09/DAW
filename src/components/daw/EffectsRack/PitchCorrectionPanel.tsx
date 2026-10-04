@@ -250,10 +250,9 @@ export function PitchCorrectionPanel({ target, effectId, params, onChange }: Pit
           </div>
           <p className="text-[9px] text-bone-3">
             Desplazamiento constante en semitonos - no sigue ninguna escala ni corrige afinación, siempre suma los
-            mismos semitonos suenes lo que suenes. Limitado a ±6 semitonos: el desplazador de esta cadena
-            (línea de retardo con deriva continua) satura a partir de ahí, así que pedir más no cambiaría nada
-            adicional. Sin preservación de formantes: transposiciones grandes suenan más finas/graves de forma
-            audible (&quot;chipmunk&quot;), no solo más agudas/graves de tono. Ver AUDIO_ENGINE.md.
+            mismos semitonos suenes lo que suenes. Limitado a ±6 semitonos: el motor TD-PSOLA de este worklet
+            (preserva formantes, mismo principio que un corrector de tono comercial) empieza a desalinearse más
+            allá de ese rango, así que pedir más no sonaría limpio. Ver AUDIO_ENGINE.md.
           </p>
         </>
       ) : (

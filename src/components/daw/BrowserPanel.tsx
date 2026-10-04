@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
 import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset, listSampleAssets } from "@/lib/storage/sampleIndex";
-import { deleteProject, listProjects } from "@/lib/storage/projectStore";
 import { analyzeVocalRecording } from "@/audio-engine/analysis/vocalAnalysis";
 import { buildPhoneMicEnhanceChain } from "@/audio-engine/analysis/autoChain";
 import { useProjectStore, type BrowserTab } from "@/state/projectStore";
@@ -14,7 +13,7 @@ import { PitchStudioPanel } from "./PitchStudioPanel";
 import { DenoisePanel } from "./DenoisePanel";
 import { MixAssistantPanel } from "./MixAssistantPanel";
 import { AiAssistantPanel } from "./AiAssistantPanel";
-import { WaveformIcon, MixIcon, SparkleIcon, FolderIcon, CloseIcon } from "./icons";
+import { WaveformIcon, MixIcon, SparkleIcon } from "./icons";
 import type { AudioClip, SampleAsset } from "@/types/project";
 import type { VocalAnalysisResult } from "@/types/analysis";
 
@@ -23,14 +22,13 @@ type TabDef = { id: BrowserTab; label: string; hint: string; Icon: ComponentType
 // Every "beat" surface (Generar beat, Ajustar voz - vocal-to-beat matching,
 // and the per-sample Beat analyzer button below) is hidden per explicit
 // request - not deleted, not reachable from any tab/button, but the
-// components/store fields/routes still exist for later. Only 4 tabs left,
-// so "Más"/a second row is gone too - no more crowding to bury anything
-// behind.
+// components/store fields/routes still exist for later. "Proyectos" moved
+// out entirely (not hidden) - it's ProjectHomeScreen.tsx now, the picker
+// shown before the editor even opens, not a tab buried inside it.
 const CORE_TABS: TabDef[] = [
   { id: "audio", label: "Muestras", hint: "Importa audio y usa herramientas por muestra", Icon: WaveformIcon },
   { id: "assistant", label: "Asistente IA", hint: "Pide cambios en lenguaje natural", Icon: SparkleIcon },
   { id: "mix", label: "Mezcla IA", hint: "Balance de mezcla asistido por IA en todas las pistas", Icon: MixIcon },
-  { id: "projects", label: "Proyectos", hint: "Abre o guarda un proyecto", Icon: FolderIcon },
 ];
 
 function TabButton({ id, label, hint, Icon, active, onClick }: TabDef & { active: boolean; onClick: () => void }) {
@@ -56,7 +54,7 @@ export function BrowserPanel() {
 
   return (
     <div className="flex h-full w-full shrink-0 flex-col border-r border-line bg-ink md:w-64">
-      <div className="grid grid-cols-4 border-b border-line">
+      <div className="grid grid-cols-3 border-b border-line">
         {CORE_TABS.map((t) => (
           <TabButton key={t.id} {...t} active={tab === t.id} onClick={() => setTab(t.id)} />
         ))}
@@ -64,7 +62,6 @@ export function BrowserPanel() {
       {tab === "audio" && <AudioTab />}
       {tab === "mix" && <MixAssistantPanel />}
       {tab === "assistant" && <AiAssistantPanel />}
-      {tab === "projects" && <ProjectsTab />}
     </div>
   );
 }
@@ -273,108 +270,3 @@ function AudioTab() {
   );
 }
 
-function ProjectsTab() {
-  const [entries, setEntries] = useState<Array<{ id: string; name: string; updatedAt: string }>>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const openProjectById = useProjectStore((s) => s.openProjectById);
-  const persist = useProjectStore((s) => s.persist);
-  const newProject = useProjectStore((s) => s.newProject);
-  const currentId = useProjectStore((s) => s.project.id);
-
-  const refresh = useCallback(async () => {
-    try {
-      setEntries(await listProjects());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudieron cargar los proyectos");
-    } finally {
-      setLoaded(true);
-    }
-  }, []);
-
-  // Initial load is inlined (rather than calling `refresh` from the effect)
-  // so the effect body is a plain fetch-and-set, not a call into a function
-  // with its own try/catch/finally control flow.
-  useEffect(() => {
-    listProjects()
-      .then(setEntries)
-      .catch((err) => setError(err instanceof Error ? err.message : "No se pudieron cargar los proyectos"))
-      .finally(() => setLoaded(true));
-  }, []);
-
-  async function openProject(id: string) {
-    setError(null);
-    try {
-      await openProjectById(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo abrir el proyecto");
-    }
-  }
-
-  async function handleDelete(id: string) {
-    setError(null);
-    try {
-      await deleteProject(id);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo eliminar el proyecto");
-    }
-  }
-
-  return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex gap-2 p-2">
-        <button
-          onClick={() => {
-            newProject();
-            refresh();
-          }}
-          className="flex-1 rounded bg-surf-2 px-2 py-1.5 text-xs font-semibold text-bone hover:bg-surf-3"
-        >
-          Nuevo
-        </button>
-        <button
-          onClick={async () => {
-            setError(null);
-            try {
-              await persist();
-              await refresh();
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "No se pudo guardar el proyecto");
-            }
-          }}
-          className="flex-1 rounded bg-bone px-2 py-1.5 text-xs font-semibold text-ink hover:opacity-90"
-        >
-          Guardar
-        </button>
-      </div>
-      {error && <p className="px-2 pb-2 text-[11px] text-red-400">{error}</p>}
-      <div className="flex-1 overflow-y-auto px-2 pb-2 text-xs">
-        {loaded && entries.length === 0 && (
-          <p className="mt-4 text-center text-bone-3">Todavía no hay proyectos guardados.</p>
-        )}
-        {entries.map((e) => (
-          <div
-            key={e.id}
-            className={`mb-1 flex items-center justify-between rounded px-2 py-2 ${
-              e.id === currentId ? "bg-surf-2" : "bg-surf"
-            }`}
-          >
-            <button onClick={() => openProject(e.id)} className="min-w-0 flex-1 truncate text-left">
-              <div className="truncate font-medium text-bone">{e.name}</div>
-              <div className="text-bone-2">{new Date(e.updatedAt).toLocaleString()}</div>
-            </button>
-            <button
-              onClick={() => handleDelete(e.id)}
-              className="ml-2 shrink-0 text-bone-2 hover:text-red-400"
-              title="Eliminar proyecto"
-              aria-label="Eliminar proyecto"
-            >
-              <CloseIcon className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

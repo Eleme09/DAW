@@ -51,8 +51,7 @@ export function TransportBar() {
   const redo = useProjectStore((s) => s.redo);
   const canUndo = useProjectStore((s) => s.past.length > 0);
   const canRedo = useProjectStore((s) => s.future.length > 0);
-  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
-  const setMobileView = useProjectStore((s) => s.setMobileView);
+  const closeProject = useProjectStore((s) => s.closeProject);
 
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingStems, setIsExportingStems] = useState(false);
@@ -150,15 +149,13 @@ export function TransportBar() {
     }
   }
 
-  // "Salir del proyecto" existed only as a buried side-effect of opening
-  // Biblioteca -> Proyectos -> Nuevo/otro proyecto - there was no direct way
-  // to leave the one you're in. This saves first (so nothing is lost) and
-  // then surfaces that same list, on both desktop and mobile.
+  // Saves first (so nothing is lost), then returns to the project picker
+  // (ProjectHomeScreen) - the real "leave this project" action, not a jump
+  // to a tab buried inside the still-open editor.
   async function handleExitProject() {
     setMoreOpen(false);
     await persist();
-    setBrowserTab("projects");
-    setMobileView("browser");
+    closeProject();
   }
 
   const bpmField = (

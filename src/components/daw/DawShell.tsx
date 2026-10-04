@@ -10,6 +10,7 @@ import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { VozPanel } from "./VozPanel/VozPanel";
+import { ProjectHomeScreen } from "./ProjectHomeScreen";
 import { MicIcon, FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
 import type { ComponentType } from "react";
 
@@ -29,18 +30,13 @@ const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ class
 ];
 
 export function DawShell() {
+  const projectOpen = useProjectStore((s) => s.projectOpen);
   const tracks = useProjectStore((s) => s.project.tracks);
   const buses = useProjectStore((s) => s.project.buses);
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
   const masterVolumeDb = useProjectStore((s) => s.project.masterVolumeDb);
   const mobileView = useProjectStore((s) => s.mobileView);
   const setMobileView = useProjectStore((s) => s.setMobileView);
-
-  // Resume the last session automatically - the store otherwise always
-  // starts from a blank project, which would defeat autosave/recovery.
-  useEffect(() => {
-    useProjectStore.getState().recoverLastProject();
-  }, []);
 
   // Keep the audio graph in sync with track state even before the user hits
   // play, so mixer meters/pan/volume are live immediately.
@@ -85,6 +81,11 @@ export function DawShell() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // The project picker gate - BandLab always lands you here first, never
+  // straight into a Studio. All hooks above still run unconditionally every
+  // render (Rules of Hooks); only the JSX branches here.
+  if (!projectOpen) return <ProjectHomeScreen />;
 
   // Live pitch monitor uses its own mic stream independent of the transport/
   // recording lifecycle - make sure it's actually released on unmount.

@@ -35,9 +35,18 @@ export type EffectTarget = TrackId | BusId | "master";
 export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects";
 /** Which sub-tab BrowserPanel is showing - lifted out of that component so
  * a track/effect's "Ask AI" button can jump straight to the Assistant tab. */
-export type BrowserTab = "projects" | "audio" | "mix" | "assistant";
+export type BrowserTab = "audio" | "mix" | "assistant";
 
 interface ProjectState {
+  /** Whether the editor (Sesión/Mezcla/FX/...) is showing, vs the project
+   * picker home screen - the gate BandLab itself has (you always land on
+   * your library, you choose/tap a project to enter its Studio) that this
+   * app was missing entirely: it used to silently auto-open the most
+   * recent project on every launch instead, so there was never a real
+   * "choose a project" moment. False until the user explicitly opens or
+   * creates one. */
+  projectOpen: boolean;
+  closeProject: () => void;
   project: Project;
   /** Undo/redo history of `project` snapshots. Continuous edits (dragging a
    * fader, typing a name) coalesce into one entry — see `setProject`. */
@@ -280,6 +289,16 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
   }
 
   return {
+    projectOpen: false,
+    closeProject: () => {
+      // Same reasoning loadProject()/newProject() already have for
+      // cancelRecording()/engine.stop() - leaving a project without
+      // stopping a live take or the transport would strand both running
+      // underneath the now-hidden editor.
+      get().cancelRecording();
+      getAudioEngine().stop();
+      set({ projectOpen: false, isPlaying: false });
+    },
     project: createEmptyProject(),
     past: [],
     future: [],
@@ -990,6 +1009,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       };
       set({
         project: normalized,
+        projectOpen: true,
         currentTime: 0,
         isPlaying: false,
         selectedTrackId: null,
@@ -1004,6 +1024,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       getAudioEngine().stop();
       set({
         project: createEmptyProject(),
+        projectOpen: true,
         currentTime: 0,
         isPlaying: false,
         selectedTrackId: null,
