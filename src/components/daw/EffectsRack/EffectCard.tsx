@@ -162,7 +162,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
             e.stopPropagation();
             toggleEffectBypass(target, effect.id);
           }}
-          className={`flex h-11 min-w-11 shrink-0 items-center justify-center rounded px-2 text-[10px] font-bold ${
+          className={`flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full px-2 text-[10px] font-bold ${
             effect.bypassed ? "bg-surf-3 text-bone-2" : "bg-bone text-ink"
           }`}
           title="Bypass"
@@ -207,7 +207,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
                   </button>
                 </>
               )}
-              <div className="ml-2 flex shrink-0 overflow-hidden rounded border border-line">
+              <div className="ml-2 flex shrink-0 overflow-hidden rounded-full border border-line">
                 <button
                   onClick={() => selectSlot("A")}
                   title="Comparar A"
@@ -225,7 +225,7 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
               </div>
               <button
                 onClick={() => toggleEffectBypass(target, effect.id)}
-                className={`ml-2 flex h-10 min-w-10 shrink-0 items-center justify-center rounded px-2 text-[10px] font-bold ${
+                className={`ml-2 flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full px-2 text-[10px] font-bold ${
                   effect.bypassed ? "bg-surf-3 text-bone-2" : "bg-bone text-ink"
                 }`}
                 title={bypassTitle}

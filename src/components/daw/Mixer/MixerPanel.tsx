@@ -470,19 +470,24 @@ function MobileChannelRow({
   analyser,
   liveAnalyser,
 }: MobileChannelRowProps) {
+  // Tira de canal a todo color (no una tarjeta oscura con un puntito de
+  // color) - confirmado contra captura real del Mixer de BandLab: cada
+  // canal es un bloque sólido del color de la pista de punta a punta, con
+  // nombre+FX+M+S en una fila y el fader ocupando el ancho completo debajo,
+  // no una fila aparte de medidor/controles en gris genérico.
   return (
     <div
       onClick={onSelect}
-      className={`rounded border p-2 ${selected ? "border-bone bg-surf" : "border-line bg-surf"}`}
+      style={{ background: track.color }}
+      className={`space-y-1.5 rounded-xl p-2.5 ${selected ? "ring-2 ring-bone" : ""}`}
     >
-      <div className="mb-1.5 flex items-center gap-1.5">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: track.color }} title="Color de la pista" />
+      <div className="flex items-center gap-1.5">
         <input
           value={track.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
           onClick={(e) => e.stopPropagation()}
           title="Renombrar canal"
-          className="min-w-0 flex-1 truncate bg-transparent text-[12px] font-medium text-bone outline-none"
+          className="min-w-0 flex-1 truncate bg-transparent text-[13px] font-semibold text-white outline-none"
         />
         <button
           onClick={(e) => {
@@ -490,16 +495,40 @@ function MobileChannelRow({
             onOpenFx();
           }}
           title="Abrir cadena de inserts de este canal"
-          className="flex h-11 shrink-0 items-center gap-1 rounded bg-surf-2 px-2 text-[10px] font-medium text-bone-2 hover:text-bone"
+          className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-black/25 px-2.5 text-[10px] font-semibold text-white hover:bg-black/35"
         >
           <WaveformIcon className="h-3 w-3" />
-          FX{track.inserts.length > 0 ? ` (${track.inserts.length})` : ""}
+          FX{track.inserts.length > 0 ? ` ${track.inserts.length}` : ""}
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdate({ muted: !track.muted });
+          }}
+          title={track.muted ? "Quitar silencio" : "Silenciar"}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+            track.muted ? "bg-white text-ink" : "bg-black/25 text-white hover:bg-black/35"
+          }`}
+        >
+          M
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdate({ solo: !track.solo });
+          }}
+          title={track.solo ? "Quitar solo" : "Solo"}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+            track.solo ? "bg-white text-ink" : "bg-black/25 text-white hover:bg-black/35"
+          }`}
+        >
+          S
         </button>
       </div>
 
       <div className="flex items-center gap-2">
-        <Fader orientation="horizontal" valueDb={track.volumeDb} onChange={(db) => onUpdate({ volumeDb: db })} length={130} label={track.name} />
-        <span className="w-12 shrink-0 font-mono text-[10px] tabular-nums text-bone-2">{track.volumeDb.toFixed(1)}dB</span>
+        <Fader orientation="horizontal" valueDb={track.volumeDb} onChange={(db) => onUpdate({ volumeDb: db })} length={150} label={track.name} />
+        <span className="w-12 shrink-0 font-mono text-[10px] tabular-nums text-white/80">{track.volumeDb.toFixed(1)}dB</span>
         <Knob
           value={track.pan}
           min={-1}
@@ -511,35 +540,11 @@ function MobileChannelRow({
           onChange={(pan) => onUpdate({ pan })}
         />
       </div>
-      <div className="mt-1 h-1.5 w-full">
+      <div className="h-1.5 w-full">
         <MeterBar analyser={analyser} vertical={false} />
       </div>
 
-      <div className="mt-1.5 flex items-center gap-1">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onUpdate({ muted: !track.muted });
-          }}
-          title={track.muted ? "Quitar silencio" : "Silenciar"}
-          className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-            track.muted ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
-          }`}
-        >
-          M
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onUpdate({ solo: !track.solo });
-          }}
-          title={track.solo ? "Quitar solo" : "Solo"}
-          className={`flex h-11 w-11 items-center justify-center rounded text-[11px] font-bold ${
-            track.solo ? "bg-bone text-ink" : "bg-surf-2 text-bone-2 hover:text-bone"
-          }`}
-        >
-          S
-        </button>
+      <div className="flex items-center gap-1">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -547,8 +552,8 @@ function MobileChannelRow({
           }}
           disabled={isRecording}
           title="Armar para grabar"
-          className={`flex h-11 w-11 items-center justify-center rounded disabled:opacity-30 ${
-            track.armed ? "bg-rec text-bone" : "bg-surf-2 text-bone-2 hover:text-bone"
+          className={`flex h-11 w-11 items-center justify-center rounded-full disabled:opacity-30 ${
+            track.armed ? "bg-rec text-white" : "bg-black/25 text-white hover:bg-black/35"
           }`}
         >
           <RecordIcon className="h-3.5 w-3.5" />
@@ -563,7 +568,7 @@ function MobileChannelRow({
               ? `${MONITOR_LABEL[track.monitorMode]} — escuchando tu micrófono ahora mismo`
               : MONITOR_LABEL[track.monitorMode]
           }
-          className={`relative flex h-11 w-11 items-center justify-center rounded ${MONITOR_CLASS[track.monitorMode]}`}
+          className={`relative flex h-11 w-11 items-center justify-center rounded-full ${MONITOR_CLASS[track.monitorMode]}`}
         >
           <MicIcon className="h-4 w-4" />
           {monitoringLive && <span className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-live" />}
@@ -575,7 +580,7 @@ function MobileChannelRow({
         )}
       </div>
 
-      <div className="mt-1.5">
+      <div className="pt-0.5">
         <SendSlots track={track} />
       </div>
     </div>

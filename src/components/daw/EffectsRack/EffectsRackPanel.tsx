@@ -38,14 +38,16 @@ export function EffectsRackPanel() {
         <span className="truncate text-bone">{label}</span>
       </div>
 
-      <div className="flex border-b border-line text-xs font-medium">
+      {/* Píldora segmentada, no pestañas de subrayado - el mismo control de
+         3 íconos que aparece idéntico en cada pantalla real de BandLab
+         (Estudio, Mezcla, Vocals, Splitter, Looper, todas confirmadas
+         contra captura real). */}
+      <div className="flex gap-1 border-b border-line p-1.5 text-xs font-medium">
         <button
           onClick={() => setMode("track")}
           title="Efectos solo en la pista seleccionada"
-          className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
-            mode === "track"
-              ? "border-bone bg-surf text-bone"
-              : "border-transparent text-bone-3 hover:text-bone-2"
+          className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 ${
+            mode === "track" ? "bg-bone text-ink" : "text-bone-3 hover:text-bone-2"
           }`}
         >
           <WaveformIcon className="h-3.5 w-3.5" />
@@ -55,10 +57,8 @@ export function EffectsRackPanel() {
           <button
             onClick={() => setMode("bus")}
             title="Efectos en el bus seleccionado, compartidos por las pistas que le envían señal"
-            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
-              mode === "bus"
-                ? "border-bone bg-surf text-bone"
-                : "border-transparent text-bone-3 hover:text-bone-2"
+            className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 ${
+              mode === "bus" ? "bg-bone text-ink" : "text-bone-3 hover:text-bone-2"
             }`}
           >
             <BusIcon className="h-3.5 w-3.5" />
@@ -68,10 +68,8 @@ export function EffectsRackPanel() {
         <button
           onClick={() => setMode("master")}
           title="Efectos en el bus master, aplicados a toda la mezcla"
-          className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2 ${
-            mode === "master"
-              ? "border-bone bg-surf text-bone"
-              : "border-transparent text-bone-3 hover:text-bone-2"
+          className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 ${
+            mode === "master" ? "bg-bone text-ink" : "text-bone-3 hover:text-bone-2"
           }`}
         >
           <BusIcon className="h-3.5 w-3.5" />
@@ -105,7 +103,7 @@ export function EffectsRackPanel() {
           <div className="relative border-t border-line p-2">
             <button
               onClick={() => setShowAddMenu((v) => !v)}
-              className="min-h-11 w-full rounded bg-bone px-2 text-xs font-semibold text-ink hover:opacity-90"
+              className="min-h-11 w-full rounded-full bg-bone px-2 text-xs font-semibold text-ink hover:opacity-90"
             >
               + Nuevo efecto
             </button>

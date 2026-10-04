@@ -120,22 +120,27 @@ export function DawShell() {
         <MixerPanel />
       </div>
 
+      {/* Solo íconos, sin etiqueta de texto debajo - confirmado contra
+         capturas reales de BandLab (la barra superior del estudio y la
+         barra inferior de su app, ninguna de las dos lleva texto bajo cada
+         ícono). El estado activo es una píldora clara detrás del ícono,
+         como su control segmentado (Audio/Edición/Ajustes), no un borde
+         superior con mayúsculas tipo tab bar genérico de librería. */}
       <nav
-        className="flex shrink-0 border-t border-line bg-ink md:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="flex shrink-0 items-center justify-around bg-ink px-2 py-2 md:hidden"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
       >
         {MOBILE_VIEWS.map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setMobileView(id)}
-            className={`flex flex-1 flex-col items-center gap-0.5 border-t-2 py-2 text-[11px] font-medium uppercase tracking-wide transition-colors ${
-              mobileView === id
-                ? "border-bone text-bone"
-                : "border-transparent text-bone-3 hover:text-bone-2"
+            title={label}
+            aria-label={label}
+            className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
+              mobileView === id ? "bg-bone text-ink" : "text-bone-3 hover:text-bone-2"
             }`}
           >
             <Icon className="h-5 w-5" />
-            {label}
           </button>
         ))}
       </nav>
