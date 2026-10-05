@@ -59,7 +59,13 @@ export function loadAutoPitchHelpers(): WorkletHelpers {
 }
 
 /** Renders `input` (mono) through a fresh processor with `params`. */
-export function renderAutoPitch(input: Float32Array, params: Partial<AutoPitchWorkletParams>, sampleRate = 44100): RenderResult {
+export function renderAutoPitch(
+  input: Float32Array,
+  params: Partial<AutoPitchWorkletParams>,
+  sampleRate = 44100,
+  /** Test hook: called after every 128-sample block with the live processor and the block's left output. */
+  inspect?: (node: Record<string, unknown>, startSample: number, outL: Float32Array) => void
+): RenderResult {
   const { Processor } = load(sampleRate);
   const node = new Processor();
   const parameters: Record<string, Float32Array> = {};
@@ -77,6 +83,7 @@ export function renderAutoPitch(input: Float32Array, params: Partial<AutoPitchWo
     const outL = new Float32Array(block);
     const outR = new Float32Array(block);
     node.process([[inBlock]], [[outL, outR]], parameters);
+    inspect?.(node as unknown as Record<string, unknown>, start, outL);
     left.set(outL.subarray(0, len), start);
     right.set(outR.subarray(0, len), start);
   }

@@ -76,7 +76,6 @@ export function MobileStudio() {
   const closeProject = useProjectStore((s) => s.closeProject);
   const armTrack = useProjectStore((s) => s.armTrack);
   const updateTrack = useProjectStore((s) => s.updateTrack);
-  const addEffect = useProjectStore((s) => s.addEffect);
   const setAutoPitch = useProjectStore((s) => s.setAutoPitch);
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
   const returnToStart = useReturnToStart();
@@ -111,11 +110,11 @@ export function MobileStudio() {
     }
   }
 
+  /** The track editor's tuning button: the same AutoPitch panel as the pill. */
   function openTuning() {
     if (!selectedTrack) return;
-    if (!selectedTrack.inserts.some((e) => e.type === "pitchCorrection")) addEffect(selectedTrack.id, "pitchCorrection");
-    setEffectsRackMode("track");
-    setMobileView("effects");
+    if (!selectedTrack.autoPitch) setAutoPitch(selectedTrack.id, {});
+    setMobileView("autopitch");
   }
 
   async function saveNow() {

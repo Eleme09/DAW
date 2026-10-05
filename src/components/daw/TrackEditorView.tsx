@@ -13,7 +13,7 @@ import { formatTime } from "./TransportBar";
  * BandLab's Voice/Audio track editor - what the mic button opens (user's
  * recording "v1"): the selected track alone, big, with the fixed centre
  * playhead; a header with the track name, Takes and close; and the voice
- * tools under it (Retune, Voice Cleaner). Recording here works the same as
+ * tools under it (AutoPitch, Voice Cleaner). Recording here works the same as
  * in the main view - the new take grows in a pale tint as it comes in.
  */
 export function TrackEditorView({ onTuning }: { onTuning: () => void }) {
@@ -94,7 +94,7 @@ export function TrackEditorView({ onTuning }: { onTuning: () => void }) {
 
       <div className="flex shrink-0 items-center gap-2 overflow-x-auto px-3 py-2">
         <button onClick={onTuning} className={chip}>
-          <TuneIcon className="h-4 w-4" /> Retune
+          <TuneIcon className="h-4 w-4" /> AutoPitch
         </button>
         <button onClick={() => void cleanVoice()} disabled={cleaning} className={chip}>
           <DenoiseIcon className="h-4 w-4" /> {cleaning ? "Limpiando…" : "Limpiador de voz"}

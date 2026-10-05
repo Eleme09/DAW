@@ -193,6 +193,15 @@ function runBiquad(f, x) {
   return y;
 }
 
+/** Half-width, in output samples, of the grain for an epoch whose period is
+ * `per`: one input period each side (scaled by the formant factor), at least
+ * 0.7 of the output hop so neighbours overlap, never more than the latency
+ * budget `hMax` allows. */
+function grainHalfWidth(per, ratio, f, hMax) {
+  const hop = Math.max(8, per / ratio);
+  return Math.min(Math.max(per / f, 0.7 * hop), hMax);
+}
+
 function polyBlep(t, dt) {
   if (t < dt) {
     t /= dt;
@@ -320,7 +329,11 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.ola = [];
     this.nextMark = new Float64Array(STREAMS);
     this.streamOn = new Uint8Array(STREAMS);
-    for (let s = 0; s < STREAMS; s++) this.ola.push(new Float32Array(OLA));
+    this.olaW = []; // per stream: sum of the grain windows written to each slot
+    for (let s = 0; s < STREAMS; s++) {
+      this.ola.push(new Float32Array(OLA));
+      this.olaW.push(new Float32Array(OLA));
+    }
     this.configureLatency(0);
 
     // voicing crossfade (lead: dry <-> tuned; voices: gate)
@@ -368,6 +381,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.chorusR = new Float32Array(4096);
     this.chorusPos = 0;
     this.chorusPhase = 0;
+    this.depositCalls = 0; // work counter (tests assert it stays bounded)
     this.panL = new Float32Array(MAX_VOICES);
     this.panR = new Float32Array(MAX_VOICES);
     this.vDetune = new Float32Array(MAX_VOICES);
@@ -386,6 +400,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       this.delay[s] = s === 0 ? leadD : voiceD;
       this.hMax[s] = Math.floor(this.delay[s] / 2) - 2;
       this.ola[s].fill(0);
+      this.olaW[s].fill(0);
       this.nextMark[s] = this.n + this.hMax[s];
     }
   }
@@ -648,16 +663,21 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     }
   }
 
-  /** Latest stored epoch nearest to `u` whose grain (half length `hIn`) is
-   * already fully in the input history. */
-  findEpoch(u, now, hIn) {
+  /** The stored epoch nearest to `u` whose grain is already fully in the
+   * input history. A grain's half-width depends on that epoch's own period
+   * (`grainHalfWidth`), so availability is checked per epoch - an epoch that
+   * is too recent for its grain is skipped for the previous one, never
+   * cut short (a cut-short grain used to be amplified by hop/width and blew
+   * the output up on real voices). */
+  findEpoch(u, now, ratio, f, hMax) {
     const count = Math.min(this.epochCount, 512);
     let bestK = -1;
     let bestDist = Infinity;
     for (let i = 1; i <= count; i++) {
       const k = (this.epochCount - i) & 511;
       const e = this.epochPos[k];
-      if (e + hIn > now) continue;
+      const per = this.epochPer[k];
+      if (e + grainHalfWidth(per, ratio, f, hMax) * f > now) continue;
       const dist = Math.abs(e - u);
       if (dist < bestDist) {
         bestDist = dist;
@@ -690,38 +710,33 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
   }
 
   deposit(s, now) {
+    this.depositCalls++;
     let mark = this.nextMark[s];
-    let ratio = this.streamRatio(s, mark - this.delay[s]);
-    let f = clamp(this.streamFormant(s, ratio), 0.5, 2.5);
-    const hOutEst = Math.min(Math.max(this.period / f, (0.7 * this.period) / ratio), this.hMax[s]);
-    const k = this.findEpoch(mark - this.delay[s], now, hOutEst * f);
+    const ratio = this.streamRatio(s, mark - this.delay[s]);
+    const f = clamp(this.streamFormant(s, ratio), 0.5, 2.5);
+    const k = this.findEpoch(mark - this.delay[s], now, ratio, f, this.hMax[s]);
     if (k < 0) {
       this.nextMark[s] = mark + Math.max(8, this.period / ratio);
       return;
     }
     const e = this.epochPos[k];
-    ratio = this.streamRatio(s, e);
-    f = clamp(this.streamFormant(s, ratio), 0.5, 2.5);
     // With no shift to apply, lock the mark onto the epoch: the output is
     // then the input delayed by exactly D, in phase with the dry path the
     // consonants use. (While shifting, marks must drift against epochs -
     // that drift IS the pitch change - so the lock only engages at 1:1.)
-    if (Math.abs(ratio - 1) < 0.0006 && s === 0) mark = e + this.delay[s];
     const per = this.epochPer[k];
+    // (only when that epoch is the one expected here: a stale fallback epoch
+    // would drag the mark into the past and the scheduler would then spend
+    // its whole time catching up)
+    if (Math.abs(ratio - 1) < 0.0006 && s === 0 && Math.abs(e - (mark - this.delay[s])) < 0.5 * per) mark = e + this.delay[s];
     const hop = Math.max(8, per / ratio);
     this.nextMark[s] = mark + hop;
-    let hOut = Math.max(per / f, 0.7 * hop);
-    hOut = Math.min(hOut, this.hMax[s]);
-    let hIn = hOut * f;
-    if (e + hIn > now) {
-      hIn = now - e;
-      hOut = hIn / f;
-    }
+    const hOut = grainHalfWidth(per, ratio, f, this.hMax[s]);
     if (hOut < 4) return;
-    const gain = hop / hOut;
     const delaySamples = s === 0 ? 0 : (this.vDelay[s - 1] * this.sr) / 1000;
     const center = mark + delaySamples;
     const buf = this.ola[s];
+    const wbuf = this.olaW[s];
     // never write behind the read position (that slot would replay one
     // buffer-length later)
     const j0 = Math.max(now, Math.ceil(center - hOut));
@@ -737,7 +752,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       const frac = pos - i0;
       const a = this.ring[i0 & RING_MASK];
       const b = this.ring[(i0 + 1) & RING_MASK];
-      buf[j & OLA_MASK] += (a + (b - a) * frac) * w * gain;
+      buf[j & OLA_MASK] += (a + (b - a) * frac) * w;
+      wbuf[j & OLA_MASK] += w;
     }
   }
 
@@ -847,6 +863,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       const on = p[`v${s - 1}Active`] >= 0.5 && p[`v${s - 1}Gain`] > 0.0001 ? 1 : 0;
       if (on && !this.streamOn[s]) {
         this.ola[s].fill(0);
+        this.olaW[s].fill(0);
         this.nextMark[s] = this.n + this.hMax[s];
       }
       this.streamOn[s] = on;
@@ -916,8 +933,13 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       // schedule grains
       for (let s = 0; s < STREAMS; s++) {
         if (!this.streamOn[s]) continue;
+        // One grain per hop in steady state; two when a hop behind. Further
+        // behind (epochs stopped arriving, a numeric hiccup) is not caught
+        // up grain by grain - that burned 8 syntheses per sample - but
+        // re-synchronised in one step.
         let guard = 0;
-        while (this.nextMark[s] - this.hMax[s] <= n && guard++ < 8) this.deposit(s, n);
+        while (this.nextMark[s] - this.hMax[s] <= n && guard++ < 2) this.deposit(s, n);
+        if (this.nextMark[s] - this.hMax[s] <= n) this.nextMark[s] = n + this.hMax[s];
       }
 
       // voicing crossfades
@@ -927,19 +949,31 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
 
       // lead: tuned grains while voiced, the exactly-aligned dry signal otherwise
       const leadBuf = this.ola[0];
+      const leadW = this.olaW[0];
       const idx = n & OLA_MASK;
-      const tuned = leadBuf[idx];
+      // Weighted average of the grains overlapping this sample (divided by
+      // the REAL sum of their windows): the level is right whatever the
+      // spacing, and can never exceed the input's own peak. Where grains
+      // cover the sample thinly the original (aligned) voice fills in -
+      // a gap becomes unprocessed audio, not a dropout.
+      const wsum = leadW[idx];
+      const tuned = wsum > 1e-4 ? leadBuf[idx] / (wsum > 0.35 ? wsum : 0.35) : 0;
+      const cover = wsum >= 0.5 ? 1 : wsum * 2;
       leadBuf[idx] = 0;
+      leadW[idx] = 0;
       const dry = n - leadDelay >= 0 ? this.ring[(n - leadDelay) & RING_MASK] : 0;
-      const lead = (dry + (tuned - dry) * this.voicedGain) * p.leadGain;
+      const lead = (dry + (tuned - dry) * this.voicedGain * cover) * p.leadGain;
 
       let L = lead * center;
       let R = lead * center;
       for (let s = 1; s < STREAMS; s++) {
         if (!this.streamOn[s]) continue;
         const buf = this.ola[s];
-        const y = buf[idx] * this.voiceGate;
+        const wb = this.olaW[s];
+        const ws = wb[idx];
+        const y = ws > 1e-4 ? (buf[idx] / (ws > 0.35 ? ws : 0.35)) * this.voiceGate * (ws >= 0.5 ? 1 : ws * 2) : 0;
         buf[idx] = 0;
+        wb[idx] = 0;
         L += y * panL[s - 1];
         R += y * panR[s - 1];
       }
@@ -1030,16 +1064,40 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
 
       L *= p.outGain;
       R *= p.outGain;
-      if (!(L === L) || !(R === R) || L > 50 || L < -50 || R > 50 || R < -50) {
-        // never let a numeric fault reach the speakers
+      if (!(L === L) || !(R === R) || L > 8 || L < -8 || R > 8 || R < -8) {
+        // A numeric fault must never reach the speakers, and must not leave
+        // the engine dead afterwards: wipe every buffer and start over.
         L = 0;
         R = 0;
-        this.resetFilters();
+        this.hardReset();
       }
       outL[i] = L;
       if (outR) outR[i] = R;
     }
     return true;
+  }
+
+  /** Back to a clean state (after a numeric fault): no stale grains, marks,
+   * epochs or filter memory survive. */
+  hardReset() {
+    this.resetFilters();
+    for (let s = 0; s < STREAMS; s++) {
+      this.ola[s].fill(0);
+      this.olaW[s].fill(0);
+      this.nextMark[s] = this.n + this.hMax[s];
+    }
+    this.chorusL.fill(0);
+    this.chorusR.fill(0);
+    this.epochCount = 0;
+    this.lastEpoch = this.n;
+    this.period = this.sr / 200;
+    this.correction = 0;
+    this.histC0 = this.histC1 = 0;
+    this.targetNote = null;
+    this.prev1 = this.prev2 = null;
+    this.avgA = null;
+    this.voicedGain = 0;
+    this.voiceGate = 0;
   }
 
   resetFilters() {

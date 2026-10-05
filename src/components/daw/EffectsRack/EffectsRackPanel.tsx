@@ -7,7 +7,11 @@ import { EffectCard } from "./EffectCard";
 import { Analyzer } from "./Analyzer";
 import { WaveformIcon, BusIcon } from "../icons";
 
-const EFFECT_TYPES = Object.keys(EFFECT_LABELS) as EffectType[];
+// "Afinación" (pitchCorrection) is no longer offered: AutoPitch is the one
+// tuner. Old projects' tuner inserts are converted to AutoPitch on load
+// (state/projectStore.ts); only the constant-transpose mode, which AutoPitch
+// has no equivalent for, keeps its insert and still opens here.
+const EFFECT_TYPES = (Object.keys(EFFECT_LABELS) as EffectType[]).filter((t) => t !== "pitchCorrection");
 
 export function EffectsRackPanel() {
   const mode = useProjectStore((s) => s.effectsRackMode);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderAutoPitch, loadAutoPitchHelpers } from "./workletHarness";
+import { phoneVoice } from "./testVoice";
 import { resolveAutoPitch, AUTOPITCH_LATENCY_SEC } from "./resolveAutoPitch";
 import { detectPitchYin } from "../pitch/pitchDetection";
 import { magnitudeSpectrum } from "../analysis/fft";
@@ -262,5 +263,61 @@ describe("resolveAutoPitch Level knob", () => {
     expect(resolveAutoPitch(settings({ algorithm: "formant" })).worklet.formantFollow).toBe(0);
     expect(resolveAutoPitch(settings({ algorithm: "original" })).worklet.formantFollow).toBe(1);
     expect(resolveAutoPitch(settings({ algorithm: "lowLatency" })).worklet.lowLatency).toBe(1);
+  });
+});
+
+describe("AutoPitch on a phone-recorded voice (regression)", () => {
+  const voice = phoneVoice(6);
+  let inPeak = 0;
+  for (const v of voice) inPeak = Math.max(inPeak, Math.abs(v));
+
+  it.each([0, 0.1, 0.25, 0.5, 1])("Level %s: same loudness as the input, never louder than its peak", (level) => {
+    const { worklet } = resolveAutoPitch(settings({ presetId: "classic", level }));
+    const out = renderAutoPitch(voice, worklet);
+    let peak = 0;
+    for (let i = 0; i < out.left.length; i++) peak = Math.max(peak, Math.abs(out.left[i]), Math.abs(out.right[i]));
+    expect(peak).toBeLessThan(inPeak * 1.3);
+    const from = Math.floor(0.3 * SR);
+    const outRms = Math.sqrt((rms(out.left, from) ** 2 + rms(out.right, from) ** 2) / 2) / Math.SQRT1_2;
+    const db = 20 * Math.log10(outRms / rms(voice, from));
+    expect(db).toBeGreaterThan(-4);
+    expect(db).toBeLessThan(3);
+  });
+
+  it.each([0, 1])("Level %s: the voice never drops out while the input is loud", (level) => {
+    const { worklet } = resolveAutoPitch(settings({ presetId: "classic", level }));
+    const out = renderAutoPitch(voice, worklet);
+    const win = Math.floor(0.1 * SR);
+    let dead = 0;
+    let loud = 0;
+    for (let a = Math.floor(0.3 * SR); a + win < voice.length; a += win) {
+      const ri = rms(voice, a, a + win);
+      if (ri < 0.04) continue;
+      loud++;
+      const ro = Math.sqrt((rms(out.left, a, a + win) ** 2 + rms(out.right, a, a + win) ** 2) / 2) / Math.SQRT1_2;
+      if (ro < ri * 0.25) dead++;
+    }
+    expect(loud).toBeGreaterThan(10);
+    expect(dead).toBeLessThanOrEqual(Math.ceil(loud * 0.05));
+  });
+
+  it.each(["classic", "duet", "bigHarmony", "robot"] as const)("%s: the synthesis work stays bounded (no catch-up loops)", (presetId) => {
+    const { worklet } = resolveAutoPitch(settings({ presetId, level: 0 }));
+    let calls = 0;
+    renderAutoPitch(voice, worklet, SR, (node) => {
+      calls = node.depositCalls as number;
+    });
+    // At most ~one grain per pitch period per voice: <= 1000/s x 5 streams.
+    expect(calls / 6).toBeLessThan(5000);
+  });
+
+  it("recovers by itself after garbage input (NaN/huge) instead of staying silent", () => {
+    const bad = voice.slice();
+    for (let i = Math.floor(1.5 * SR); i < Math.floor(1.5 * SR) + 200; i++) bad[i] = i % 2 ? NaN : 1e6;
+    const { worklet } = resolveAutoPitch(settings({ presetId: "classic", level: 1 }));
+    const out = renderAutoPitch(bad, worklet);
+    for (const v of out.left) expect(Number.isFinite(v)).toBe(true);
+    const a = Math.floor(3.5 * SR);
+    expect(rms(out.left, a, voice.length)).toBeGreaterThan(rms(voice, a, voice.length) * 0.2);
   });
 });

@@ -2,7 +2,7 @@
 
 import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { useProjectStore } from "@/state/projectStore";
-import { MicIcon, KnobIcon, TuneIcon, ScissorsIcon, HeadphonesIcon } from "../icons";
+import { MicIcon, KnobIcon, ScissorsIcon, HeadphonesIcon } from "../icons";
 
 const MONITOR_NEXT = { off: "auto", auto: "on", on: "off" } as const;
 
@@ -30,22 +30,12 @@ export function ContextBar() {
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const splitClipAtPlayhead = useProjectStore((s) => s.splitClipAtPlayhead);
   const updateTrack = useProjectStore((s) => s.updateTrack);
-  const addEffect = useProjectStore((s) => s.addEffect);
 
   const selectedTrack = project.tracks.find((t) => t.id === selectedTrackId);
   const disabled = !selectedTrack;
 
   function openEffects() {
     if (!selectedTrackId) return;
-    setEffectsRackMode("track");
-    setMobileView("effects");
-  }
-
-  function openTuning() {
-    if (!selectedTrackId || !selectedTrack) return;
-    if (!selectedTrack.inserts.some((e) => e.type === "pitchCorrection")) {
-      addEffect(selectedTrackId, "pitchCorrection");
-    }
     setEffectsRackMode("track");
     setMobileView("effects");
   }
@@ -83,14 +73,6 @@ export function ContextBar() {
         className="flex h-11 items-center gap-1.5 rounded border border-line2 px-2.5 text-[11px] font-semibold text-bone-2 hover:text-bone disabled:opacity-30"
       >
         <KnobIcon className="h-3.5 w-3.5" /> Efectos
-      </button>
-      <button
-        onClick={openTuning}
-        disabled={disabled}
-        title={selectedTrack ? `Afinación de "${selectedTrack.name}"` : "Selecciona una pista primero"}
-        className="flex h-11 items-center gap-1.5 rounded border border-line2 px-2.5 text-[11px] font-semibold text-bone-2 hover:text-bone disabled:opacity-30"
-      >
-        <TuneIcon className="h-3.5 w-3.5" /> Afinar
       </button>
       <div className="flex-1" />
       <button

@@ -24,6 +24,7 @@ import {
 } from "@/types/project";
 import { createEffectInstance, type EffectInstance, type EffectType } from "@/types/effects";
 import { createAutoPitchSettings, type AutoPitchSettings } from "@/types/autoPitch";
+import { migrateLegacyTuner } from "@/lib/migrations/legacyTuner";
 import type { GridResolution } from "@/lib/timing/grid";
 import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND } from "@/components/daw/Timeline/constants";
 
@@ -1113,12 +1114,14 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         metronomeVolume: project.metronomeVolume ?? 1,
         tracks: project.tracks
           .filter((t) => (t as unknown as { type?: string }).type !== "instrument")
-          .map((t) => ({
-            ...t,
-            automation: t.automation ?? createDefaultAutomation(),
-            monitorMode: t.monitorMode ?? "auto",
-            sends: t.sends ?? [],
-          })),
+          .map((t) =>
+            migrateLegacyTuner({
+              ...t,
+              automation: t.automation ?? createDefaultAutomation(),
+              monitorMode: t.monitorMode ?? "auto",
+              sends: t.sends ?? [],
+            })
+          ),
       };
       getAudioEngine().setMetronomeVolume(normalized.metronomeVolume);
       set({
