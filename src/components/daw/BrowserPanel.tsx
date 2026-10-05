@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
-import { putSample } from "@/lib/storage/sampleStore";
-import { addSampleAsset, listSampleAssets } from "@/lib/storage/sampleIndex";
+import { listSampleAssets } from "@/lib/storage/sampleIndex";
+import { IMPORT_ACCEPT, importAudioFile } from "@/lib/audio/importFile";
 import { analyzeVocalRecording } from "@/audio-engine/analysis/vocalAnalysis";
 import { buildPhoneMicEnhanceChain } from "@/audio-engine/analysis/autoChain";
 import { useProjectStore, type BrowserTab } from "@/state/projectStore";
@@ -96,19 +95,7 @@ function AudioTab() {
     try {
       for (const file of Array.from(files)) {
         try {
-          const arrayBuffer = await file.arrayBuffer();
-          const id = crypto.randomUUID();
-          const buffer = await getAudioEngine().decodeAndCache(id, arrayBuffer);
-          await putSample(id, file.name, new Blob([arrayBuffer], { type: file.type }));
-          const asset: SampleAsset = {
-            id,
-            name: file.name,
-            durationSec: buffer.duration,
-            sampleRate: buffer.sampleRate,
-            channels: buffer.numberOfChannels,
-            createdAt: new Date().toISOString(),
-          };
-          await addSampleAsset(asset);
+          await importAudioFile(file);
           setSamples(await listSampleAssets());
         } catch {
           // One bad file (wrong/unsupported format, corrupted data) doesn't
@@ -200,7 +187,7 @@ function AudioTab() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="audio/*"
+          accept={IMPORT_ACCEPT}
           multiple
           hidden
           onChange={(e) => handleFiles(e.target.files)}

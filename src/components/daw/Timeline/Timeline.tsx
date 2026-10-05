@@ -15,7 +15,15 @@ import { ZoomControl } from "./ZoomControl";
 import { usePinchZoom } from "./usePinchZoom";
 import { ScissorsIcon, DuplicateIcon } from "../icons";
 
-export function Timeline() {
+interface TimelineProps {
+  /** Phone Studio layout: no bottom toolbar or context bar here - those live in
+   * MobileStudio's own track-panel row and transport, BandLab-style. */
+  compact?: boolean;
+  /** Where "+ Nueva pista" goes in compact mode (MobileStudio's Add Track sheet). */
+  onAddTrack?: () => void;
+}
+
+export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   const project = useProjectStore((s) => s.project);
   const currentTime = useProjectStore((s) => s.currentTime);
   const isPlaying = useProjectStore((s) => s.isPlaying);
@@ -107,12 +115,12 @@ export function Timeline() {
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
             <div>
               <p className="text-sm font-medium text-bone-2">Todavía no hay pistas</p>
-              <p className="text-xs text-bone-3">Agrega una pista, o importa un sample desde la pestaña Biblioteca</p>
+              <p className="text-xs text-bone-3">Agrega una pista para grabar tu voz, o importa tu beat (audio o video)</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               <button
-                onClick={() => handleAddTrack()}
-                className="rounded bg-surf-2 min-h-11 px-3 py-1.5 text-xs font-medium text-bone hover:bg-surf-3"
+                onClick={() => (onAddTrack ? onAddTrack() : handleAddTrack())}
+                className="min-h-11 rounded-full bg-bone px-5 py-1.5 text-sm font-semibold text-ink hover:opacity-90"
               >
                 + Nueva pista
               </button>
@@ -168,8 +176,9 @@ export function Timeline() {
         </div>
       </div>
 
-      {project.tracks.length > 0 && <ContextBar />}
+      {!compact && project.tracks.length > 0 && <ContextBar />}
 
+      {!compact && (
       <div className="flex flex-wrap items-center gap-2 border-t border-line p-2">
         {project.tracks.length > 0 && (
           <button
@@ -219,6 +228,7 @@ export function Timeline() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -314,10 +314,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     pixelsPerSecond: DEFAULT_PIXELS_PER_SECOND,
     setPixelsPerSecond: (value) =>
       set({ pixelsPerSecond: Math.min(MAX_PIXELS_PER_SECOND, Math.max(MIN_PIXELS_PER_SECOND, value)) }),
-    // "voz" (not "timeline") is the default landing view - per the master
-    // direction, the dedicated vocal-take screen is meant to be the
-    // product itself, not one more panel a user has to navigate to find.
-    mobileView: "voz",
+    // On the phone Studio this is no longer a tab: "timeline" = nothing open
+    // over the Studio; "voz"/"effects" = the selected track's bottom panel;
+    // "mixer" = Mix View; "browser" = sample library (see MobileStudio.tsx).
+    mobileView: "timeline",
     setMobileView: (view) => set({ mobileView: view }),
     effectsRackMode: "track",
     setEffectsRackMode: (mode) => set({ effectsRackMode: mode }),

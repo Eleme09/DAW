@@ -935,3 +935,22 @@ El usuario cortó la excusa de frente: "¿y que pasa que no lo haces?" cuando di
 - **Verificado en navegador con micrófono falso real**: crear 2 pistas, ir a Mezcla y a Efectos - la franja de pistas se mantiene visible en ambas, tocar una pista lleva de vuelta a Sesión con esa pista seleccionada. Cero errores de página.
 - `tsc`/`eslint`/`vitest` (283 tests)/`next build` de producción limpios.
 - **Lo que sigue, sin fingir que ya está**: el resto de la lista que pidió el usuario sigue abierto - masterización con presets nombrados, cada efecto comparado uno a uno, automatizaciones, extraer audio de video. El hallazgo histórico más grande de esta pasada (Timeline siempre presente) ya se aplicó; el resto necesita el mismo proceso real, no inventado, repetido función por función.
+
+## Reestructura paso 1 — Studio móvil de una sola pantalla (BANDLAB_REFERENCE.md §12.1)
+
+Basado en la investigación documentada en `BANDLAB_REFERENCE.md` (centro de ayuda oficial de BandLab vía su API pública), no en capturas sueltas.
+
+- [x] **Se eliminó la barra de 5 pestañas** (Voz/Biblioteca/Sesión/Mezcla/FX) en móvil. `MobileStudio.tsx` (nuevo): una sola pantalla donde la línea de tiempo siempre está.
+  - Arriba: salir (guarda y vuelve a "Tus proyectos"), **+** (Nueva pista), nombre + tiempo, engranaje (Ajustes).
+  - Abajo de la línea de tiempo: fila de la pista seleccionada (Voz · Fx · Afinar · armar · monitor). Voz/Fx abren un panel debajo de la línea de tiempo, sin taparla.
+  - Transporte abajo, como BandLab: Mezcla · deshacer · inicio · **GRABAR** (botón rojo grande) · reproducir · rehacer · metrónomo (se vuelve "cancelar" mientras graba).
+  - Mezcla y Mis muestras abren encima con botón de cerrar.
+- [x] **`AddTrackSheet.tsx`** (nuevo): Voz/Audio (pista armada), Importar archivo (audio **o video**; se usa su audio), Mis muestras. Sin batería/sampler/looper a propósito.
+- [x] **`StudioSettingsSheet.tsx`** (nuevo): nombre, BPM, compás, loop, click, ajuste de rejilla, micrófono/entrada/salida, exportar mezcla y stems, guardar, salir.
+- [x] **`importFile.ts`** (nuevo): importación compartida audio/video; la usan Add Track y la Biblioteca.
+- [x] `DawShell.tsx` elige layout por `matchMedia` (móvil → `MobileStudio`, escritorio → layout de 3 paneles + mixer). `MiniTrackStrip.tsx` borrado (ya no tiene sentido: la línea de tiempo siempre está).
+- [x] **Bug encontrado y arreglado en esta pasada**: la cabecera de pista es sticky y su tinte era translúcido → al hacer scroll horizontal los clips se veían a través de los botones. Ahora el tinte va sobre fondo opaco.
+- **Verificado en navegador (390×844, micrófono falso)**: crear proyecto, nueva pista de voz, importar WAV y video WebM (crea pista con clip), Fx abre bajo la línea de tiempo, Mezcla abre/cierra, Ajustes abre, grabar (el reloj avanza 2.28s → 3.80s), detener, salir a "Tus proyectos". Escritorio sin errores. Cero errores de página.
+- **Sin verificar, dicho claro**: importar **MP4/MOV** no se pudo probar aquí — el Chromium de pruebas no trae decodificador AAC (`canPlayType` devuelve vacío), así que falla en este entorno y muestra el mensaje de error correcto. Safari de iPhone sí decodifica AAC, pero no lo he probado en un iPhone real.
+- `tsc`/`eslint`/`vitest` (283 tests)/`next build` limpios.
+- **Sigue (pasos 2–8 de BANDLAB_REFERENCE.md §12)**: barra de acciones de región (Eliminar/Copiar/Pegar/Dividir/Loop/⋯ con deslizador + ✓), Mix View + masterización con presets, panel AutoPitch, automatización estilo BandLab, cycle + tomas.

@@ -47,7 +47,11 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
         // carril (TrackLane.tsx) - una sola banda de color continua por
         // fila, como en BandLab real (confirmado contra captura de su app),
         // no un borde de 3px aislado de la cabecera.
-        background: selected ? `${track.color}26` : `${track.color}14`,
+        // El tinte va sobre un fondo opaco: la cabecera es sticky y los
+        // clips pasan por debajo al hacer scroll horizontal - con el tinte
+        // translúcido solo, se veían a través de los botones.
+        backgroundColor: "var(--color-ink)",
+        backgroundImage: `linear-gradient(${selected ? `${track.color}26` : `${track.color}14`}, ${selected ? `${track.color}26` : `${track.color}14`})`,
       }}
       className={`sticky left-0 z-10 relative flex shrink-0 flex-col justify-center gap-1 border-b border-r border-line p-1 pl-2.5 ${
         selected ? "ring-1 ring-inset ring-bone" : ""

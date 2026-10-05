@@ -1,34 +1,33 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
-import { useProjectStore, type MobileView } from "@/state/projectStore";
+import { useProjectStore } from "@/state/projectStore";
 import { TransportBar } from "./TransportBar";
 import { BrowserPanel } from "./BrowserPanel";
 import { Timeline } from "./Timeline/Timeline";
 import { MixerPanel } from "./Mixer/MixerPanel";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { AutomationEditor } from "./Automation/AutomationEditor";
-import { VozPanel } from "./VozPanel/VozPanel";
 import { ProjectHomeScreen } from "./ProjectHomeScreen";
-import { MiniTrackStrip } from "./MiniTrackStrip";
-import { MicIcon, FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
-import type { ComponentType } from "react";
+import { MobileStudio } from "./MobileStudio";
 
-// Below the `md` breakpoint the desktop's three-pane row (Browser/Timeline/
-// EffectsRack) plus the docked Mixer can't coexist on screen at once, so on
-// mobile exactly one of the four becomes a full-width view, switched via the
-// tab bar at the bottom. At `md` and up every pane renders simultaneously
-// exactly as before and this state is unused. Lives in the store (not local
-// state) so other panels (e.g. the Mixer's per-channel FX button) can jump
-// to a different tab.
-const MOBILE_VIEWS: { id: MobileView; label: string; Icon: ComponentType<{ className?: string }> }[] = [
-  { id: "voz", label: "Voz", Icon: MicIcon },
-  { id: "browser", label: "Biblioteca", Icon: FolderIcon },
-  { id: "timeline", label: "Sesión", Icon: TimelineIcon },
-  { id: "mixer", label: "Mezcla", Icon: MixIcon },
-  { id: "effects", label: "FX", Icon: KnobIcon },
-];
+const DESKTOP_QUERY = "(min-width: 768px)";
+
+/** Phone and desktop get different Studio layouts (BandLab's mobile Studio is
+ * one screen with the timeline always present - see MobileStudio), so this
+ * picks one instead of hiding duplicate DOM with CSS. DawShell is client-only
+ * (ssr: false), so reading matchMedia in the initializer is safe. */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(DESKTOP_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_QUERY);
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isDesktop;
+}
 
 export function DawShell() {
   const projectOpen = useProjectStore((s) => s.projectOpen);
@@ -36,8 +35,7 @@ export function DawShell() {
   const buses = useProjectStore((s) => s.project.buses);
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
   const masterVolumeDb = useProjectStore((s) => s.project.masterVolumeDb);
-  const mobileView = useProjectStore((s) => s.mobileView);
-  const setMobileView = useProjectStore((s) => s.setMobileView);
+  const isDesktop = useIsDesktop();
 
   // Keep the audio graph in sync with track state even before the user hits
   // play, so mixer meters/pan/volume are live immediately.
@@ -88,65 +86,20 @@ export function DawShell() {
   // render (Rules of Hooks); only the JSX branches here.
   if (!projectOpen) return <ProjectHomeScreen />;
 
-  // Live pitch monitor uses its own mic stream independent of the transport/
-  // recording lifecycle - make sure it's actually released on unmount.
+  if (!isDesktop) return <MobileStudio />;
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-ink text-bone">
       <TransportBar />
-      <MiniTrackStrip />
       <AutomationEditor />
       <div className="flex flex-1 overflow-hidden">
-        {/* Voz is a mobile-only dedicated screen, same reasoning as the
-           mobile Mixer tab below - on desktop, Sesión + FX + Biblioteca are
-           already all visible together, which covers the same ground. */}
-        <div className={`${mobileView === "voz" ? "flex" : "hidden"} w-full flex-1 flex-col overflow-hidden md:hidden`}>
-          <VozPanel />
-        </div>
-        <div className={`${mobileView === "browser" ? "block" : "hidden"} w-full md:contents`}>
-          <BrowserPanel />
-        </div>
-        <div className={`${mobileView === "timeline" ? "flex" : "hidden"} min-w-0 flex-1 md:contents`}>
-          <Timeline />
-        </div>
-        {/* On mobile the Mixer is a full-height dedicated tab, not the
-           compact desktop dock below - otherwise the three panes above stay
-           empty-but-flex-1 (still claiming their share of height even with
-           nothing visible in them) and squeeze the mixer into a sliver. */}
-        <div className={`${mobileView === "mixer" ? "flex" : "hidden"} w-full flex-1 flex-col overflow-hidden md:hidden`}>
-          <MixerPanel />
-        </div>
-        <div className={`${mobileView === "effects" ? "block" : "hidden"} w-full md:contents`}>
-          <EffectsRackPanel />
-        </div>
+        <BrowserPanel />
+        <Timeline />
+        <EffectsRackPanel />
       </div>
-      <div className="hidden shrink-0 md:block">
+      <div className="shrink-0">
         <MixerPanel />
       </div>
-
-      {/* Solo íconos, sin etiqueta de texto debajo - confirmado contra
-         capturas reales de BandLab (la barra superior del estudio y la
-         barra inferior de su app, ninguna de las dos lleva texto bajo cada
-         ícono). El estado activo es una píldora clara detrás del ícono,
-         como su control segmentado (Audio/Edición/Ajustes), no un borde
-         superior con mayúsculas tipo tab bar genérico de librería. */}
-      <nav
-        className="flex shrink-0 items-center justify-around bg-ink px-2 py-2 md:hidden"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
-      >
-        {MOBILE_VIEWS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setMobileView(id)}
-            title={label}
-            aria-label={label}
-            className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
-              mobileView === id ? "bg-bone text-ink" : "text-bone-3 hover:text-bone-2"
-            }`}
-          >
-            <Icon className="h-5 w-5" />
-          </button>
-        ))}
-      </nav>
     </div>
   );
 }

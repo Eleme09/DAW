@@ -301,3 +301,48 @@ export function TuneIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function GearIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.5v2.2M12 19.3v2.2M4.7 4.7l1.6 1.6M17.7 17.7l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.7 19.3l1.6-1.6M17.7 6.3l1.6-1.6" />
+      <circle cx="12" cy="12" r="6.5" />
+    </svg>
+  );
+}
+
+export function BackIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M15 5l-7 7 7 7" />
+    </svg>
+  );
+}
+
+export function PlusIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+export function MetronomeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9 3h6l4 18H5L9 3z" />
+      <line x1="12" y1="16" x2="17" y2="7" />
+    </svg>
+  );
+}
+
+export function UploadFileIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 16V4M7 9l5-5 5 5" />
+      <path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
+    </svg>
+  );
+}
