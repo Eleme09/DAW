@@ -357,6 +357,30 @@ whole pipeline on a detuned tone and confirms the output, re-analyzed,
 actually lands near the target pitch. That's a meaningfully stronger bar
 than "it doesn't throw."
 
+## AutoPitch (BandLab tema 4)
+
+`public/worklets/autopitch-processor.js` + `src/audio-engine/autopitch/`.
+A per-track stage between the track input and its Fx chain (AudioEngine
+`syncAutoPitch`, bounce.ts), built only while the track's `autoPitch` is
+enabled. Mono in, stereo out. `resolveAutoPitch.ts` turns the preset +
+Level + key + advanced settings into the worklet's AudioParams (pure,
+tested); `AutoPitchEffect.ts` owns the node and a convolution reverb.
+
+Design (see the worklet header for detail): YIN on a decimated, short frame
+with an energy gate, voicing hysteresis and octave-jump confirmation; target
+note with tolerance (instant when the voice lands near the new note, else
+decided on a ~60 ms average); correction with separate within-note speed and
+note-transition times, Auto-Tune-style Humanize and Flex-Tune, applied as a
+correction amount (never a dry/wet blend); real-time TD-PSOLA with tracked
+epochs and a CONSTANT latency (26 ms, 14 ms low-latency) so the dry path used
+for unvoiced sounds is sample-aligned; up to 4 harmony voices (diatonic or
+fixed intervals, own formant factor, pan, detune, Haas delay), a 16-band
+vocoder, wah, crusher, drive, filters, compressor and chorus.
+
+Playback/export start an AutoPitch track's clips `latencySec` early to keep
+it on the beat. `autopitch.test.ts` runs the REAL worklet file in Node
+(`workletHarness.ts`) and measures pitch, latency, harmonies and loudness.
+
 ## Beat analysis (Phase 6)
 
 `src/audio-engine/beat/` and `src/types/beat.ts`. Same offline,

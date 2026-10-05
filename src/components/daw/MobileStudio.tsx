@@ -11,13 +11,18 @@ import { TrackEditorView } from "./TrackEditorView";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { ClipEditPanel } from "./ClipEditPanel";
 import { AddTrackSheet } from "./AddTrackSheet";
-import { StudioSettingsSheet } from "./StudioSettingsSheet";
+import { StudioSettingsPage } from "./StudioSettingsPage";
+import { LyricsPage } from "./LyricsPage";
+import { AutoPitchPanel } from "./AutoPitch/AutoPitchPanel";
+import { AutoPitchPresetIcon } from "./AutoPitch/AutoPitchIcons";
+import { RULER_HEIGHT } from "./Timeline/constants";
 import { useReturnToStart } from "./TransportBar";
 import { MONITOR_NEXT } from "./monitorLabels";
 import {
   BackIcon,
-  GearIcon,
   CloseIcon,
+  FeatherIcon,
+  HexSettingsIcon,
   MixIcon,
   UndoIcon,
   RedoIcon,
@@ -28,7 +33,6 @@ import {
   MicIcon,
   WaveformIcon,
   CloudUploadIcon,
-  TuneIcon,
   RecordIcon,
   HeadphonesIcon,
 } from "./icons";
@@ -73,11 +77,13 @@ export function MobileStudio() {
   const armTrack = useProjectStore((s) => s.armTrack);
   const updateTrack = useProjectStore((s) => s.updateTrack);
   const addEffect = useProjectStore((s) => s.addEffect);
+  const setAutoPitch = useProjectStore((s) => s.setAutoPitch);
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
   const returnToStart = useReturnToStart();
 
   const [addTrackOpen, setAddTrackOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // BandLab's three top tabs: Studio (waveform), lyrics/notes (quill), settings.
+  const [tab, setTab] = useState<"studio" | "lyrics" | "settings">("studio");
   const [savedFlash, setSavedFlash] = useState(false);
 
   const selectedTrack = tracks.find((t) => t.id === selectedTrackId) ?? null;
@@ -91,6 +97,18 @@ export function MobileStudio() {
   function togglePanel(view: "voz" | "effects") {
     if (view === "effects") setEffectsRackMode("track");
     setMobileView(mobileView === view ? "timeline" : view);
+  }
+
+  /** AutoPitch pill: closed -> opens the panel (first time on a track it
+   * starts with Classic on, like BandLab); open -> turns AutoPitch on/off. */
+  function autoPitchPill() {
+    if (!selectedTrack) return;
+    if (mobileView !== "autopitch") {
+      if (!selectedTrack.autoPitch) setAutoPitch(selectedTrack.id, {});
+      setMobileView("autopitch");
+    } else {
+      setAutoPitch(selectedTrack.id, { enabled: !selectedTrack.autoPitch?.enabled });
+    }
   }
 
   function openTuning() {
@@ -123,12 +141,24 @@ export function MobileStudio() {
           <BackIcon className="h-5 w-5" />
         </button>
         <div className="flex items-center rounded-full bg-surf-2 p-1">
-          <span className="flex h-9 w-14 items-center justify-center rounded-full bg-bone text-ink" title={projectName}>
-            <WaveformIcon className="h-5 w-5" />
-          </span>
-          <button onClick={() => setSettingsOpen(true)} aria-label="Ajustes del proyecto" title="Ajustes: tempo, metrónomo, micrófono, exportar" className="flex h-9 w-14 items-center justify-center rounded-full text-bone-2">
-            <GearIcon className="h-5 w-5" />
-          </button>
+          {(
+            [
+              ["studio", WaveformIcon, "Estudio"],
+              ["lyrics", FeatherIcon, "Letra y notas"],
+              ["settings", HexSettingsIcon, "Ajustes"],
+            ] as const
+          ).map(([id, Icon, label]) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              aria-label={label}
+              aria-pressed={tab === id}
+              title={id === "studio" ? projectName : label}
+              className={`flex h-9 w-14 items-center justify-center rounded-full ${tab === id ? "bg-bone text-ink" : "text-bone-2"}`}
+            >
+              <Icon className="h-5 w-5" />
+            </button>
+          ))}
         </div>
         <button onClick={() => void saveNow()} disabled={busy} aria-label="Guardar" title="Guardar proyecto" className={`${roundBtn} relative`}>
           <CloudUploadIcon className="h-6 w-6" />
@@ -136,11 +166,31 @@ export function MobileStudio() {
         </button>
       </div>
 
-      {/* Studio: la línea de tiempo siempre está; el panel de pista abre debajo, Mezcla/Muestras encima */}
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1">
-          <Timeline compact onAddTrack={() => setAddTrackOpen(true)} />
+      {tab === "settings" && <StudioSettingsPage />}
+
+      {tab === "lyrics" && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex shrink-0" style={{ height: RULER_HEIGHT + 8 }}>
+            <Timeline compact rulerOnly />
+          </div>
+          <LyricsPage />
         </div>
+      )}
+
+      {/* Studio: la línea de tiempo siempre está; el panel de pista abre debajo, Mezcla/Muestras encima */}
+      <div className={`relative min-h-0 flex-1 flex-col ${tab === "studio" ? "flex" : "hidden"}`}>
+        {mobileView === "autopitch" ? (
+          <>
+            <div className="flex shrink-0" style={{ height: RULER_HEIGHT + 8 }}>
+              <Timeline compact rulerOnly />
+            </div>
+            <AutoPitchPanel />
+          </>
+        ) : (
+          <div className="flex min-h-0 flex-1">
+            <Timeline compact onAddTrack={() => setAddTrackOpen(true)} />
+          </div>
+        )}
 
         {panelOpen && (
           <div className="flex h-[46%] shrink-0 flex-col border-t border-line-2 bg-ink">
@@ -186,12 +236,12 @@ export function MobileStudio() {
 
       {recordingError && <p className="shrink-0 bg-rec/15 px-3 py-1.5 text-xs text-red-300">Micrófono: {recordingError}</p>}
 
-      {clipEditMode ? (
+      {clipEditMode && tab === "studio" ? (
         <ClipEditPanel />
       ) : (
         <>
       {/* Fila de la pista seleccionada, como BandLab: [voz · +Fx · AutoPitch] … armar · monitor */}
-      <div className="flex h-14 shrink-0 items-center gap-2 px-2">
+      <div className={`h-14 shrink-0 items-center gap-2 px-2 ${tab === "studio" ? "flex" : "hidden"}`}>
         <div className="flex h-11 items-center rounded-full bg-surf-2 px-1">
           <button onClick={() => togglePanel("voz")} disabled={!selectedTrack} aria-label="Voz" title="Voz: grabación y entrada de la pista" className={seg(mobileView === "voz")}>
             <MicIcon className="h-5 w-5" />
@@ -201,8 +251,18 @@ export function MobileStudio() {
               +<span className="italic">Fx</span>
             </span>
           </button>
-          <button onClick={openTuning} disabled={!selectedTrack} title="AutoPitch: afinación de la voz" className={seg(false)}>
-            <TuneIcon className="h-4 w-4" /> <span className="text-sm font-medium">AutoPitch</span>
+          <button
+            onClick={autoPitchPill}
+            disabled={!selectedTrack}
+            aria-label="AutoPitch"
+            title={mobileView === "autopitch" ? "Encender/apagar AutoPitch" : "AutoPitch: afinación y efectos de voz"}
+            className={`relative ${seg(mobileView === "autopitch")}`}
+          >
+            {selectedTrack?.autoPitch?.enabled && (
+              <span className="absolute -top-1.5 left-1.5 rounded-full border border-bone bg-ink px-1.5 text-[10px] font-semibold leading-4 text-bone">On</span>
+            )}
+            <AutoPitchPresetIcon presetId={selectedTrack?.autoPitch?.presetId ?? "classic"} className="h-5 w-5" />
+            <span className="text-sm font-medium">AutoPitch</span>
           </button>
         </div>
         <div className="flex-1" />
@@ -277,7 +337,6 @@ export function MobileStudio() {
 
       <AutomationEditor />
       <AddTrackSheet open={addTrackOpen} onClose={() => setAddTrackOpen(false)} />
-      <StudioSettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

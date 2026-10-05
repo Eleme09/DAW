@@ -477,3 +477,25 @@ export function ChevronUpIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/** BandLab's "lyrics/notes" tab glyph: a quill. */
+export function FeatherIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M20 4c-6 0-11 3.5-12.5 10.5L6.5 20" />
+      <path d="M20 4c0 6-3.5 10.5-10 11.5" />
+      <path d="M9 12.5h5.5M11 9.5h6" />
+      <path d="M4 20h4" />
+    </svg>
+  );
+}
+
+/** BandLab's settings tab glyph: a hexagon around a ring. */
+export function HexSettingsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}

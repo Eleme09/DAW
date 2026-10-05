@@ -1,4 +1,5 @@
 import type { EffectInstance } from "./effects";
+import type { AutoPitchSettings } from "./autoPitch";
 
 export type TrackId = string;
 export type ClipId = string;
@@ -100,6 +101,10 @@ export interface Track {
   /** Up to 2 auxiliary sends (PROMPT_MAESTRO FASE 3) - UI caps it there,
    * the array itself isn't hard-limited by the type. */
   sends: Send[];
+  /** BandLab AutoPitch (types/autoPitch.ts) - processed before the Fx chain,
+   * live and on playback; the recording itself stays dry. Absent until the
+   * track's AutoPitch is first opened. */
+  autoPitch?: AutoPitchSettings;
 }
 
 /** A return/group channel: tracks send to it (via Track.sends) and/or it
@@ -131,6 +136,12 @@ export interface Marker {
   time: number;
 }
 
+export interface ProjectKey {
+  /** Pitch class 0=Do .. 11=Si. */
+  tonic: number;
+  scale: "major" | "minor";
+}
+
 export interface Project {
   id: ProjectId;
   name: string;
@@ -148,6 +159,13 @@ export interface Project {
   /** Free-form lyrics for the song, shown large on VozPanel while
    * recording (a real teleprompter guide, not just a place to jot notes). */
   lyrics: string;
+  /** Project key (Settings → "Clave del proyecto"); a track's AutoPitch
+   * starts from it. */
+  key: ProjectKey;
+  /** Count-in before recording, in bars (0 = off). */
+  countInBars: number;
+  /** Metronome click level, 0..1. */
+  metronomeVolume: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -177,6 +195,9 @@ export function createEmptyProject(name = "Sin título"): Project {
     masterInserts: [],
     masterVolumeDb: 0,
     lyrics: "",
+    key: { tonic: 0, scale: "major" },
+    countInBars: 1,
+    metronomeVolume: 1,
     createdAt: now,
     updatedAt: now,
   };

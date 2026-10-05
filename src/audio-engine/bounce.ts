@@ -12,6 +12,7 @@
  */
 import { dbToGain } from "./dbUtils";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
+import { AutoPitchEffect, AUTOPITCH_WORKLET_URL } from "./autopitch/AutoPitchEffect";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
 import type { AudioClip, BusId, Project } from "@/types/project";
 
@@ -63,6 +64,9 @@ export async function bounceProject(
   }
   if (projectUsesEffect(project, "pitchCorrection")) {
     await ctx.audioWorklet.addModule(PITCH_CORRECTION_WORKLET_URL);
+  }
+  if (project.tracks.some((t) => t.autoPitch?.enabled)) {
+    await ctx.audioWorklet.addModule(AUTOPITCH_WORKLET_URL);
   }
   const deps: EffectChainDeps = {
     isNoiseGateWorkletLoaded: () => true,
@@ -118,7 +122,17 @@ export async function bounceProject(
     const pan = ctx.createStereoPanner();
     const muteGain = ctx.createGain();
 
-    input.connect(effectChain.inputNode);
+    // Same AutoPitch stage as the live engine, between input and Fx chain.
+    let latency = 0;
+    if (track.autoPitch?.enabled) {
+      const stage = new AutoPitchEffect(ctx);
+      stage.setSettings(track.autoPitch);
+      input.connect(stage.input);
+      stage.output.connect(effectChain.inputNode);
+      latency = stage.latencySec;
+    } else {
+      input.connect(effectChain.inputNode);
+    }
     effectChain.outputNode.connect(volume);
     volume.connect(pan);
     pan.connect(muteGain);
@@ -153,11 +167,28 @@ export async function bounceProject(
       if (clip.muted) continue; // an inactive take in a comp group - see PROGRESS.md "comping"
       const buffer = getBuffer(clip.sampleId);
       if (!buffer) continue;
-      scheduleClip(ctx, clip, input, buffer);
+      scheduleClip(ctx, shiftEarlier(clip, latency), input, buffer);
     }
   }
 
   return ctx.startRendering();
+}
+
+/** The clip started `sec` earlier (AutoPitch latency compensation), trimming
+ * whatever would fall before time 0. */
+function shiftEarlier(clip: AudioClip, sec: number): AudioClip {
+  if (sec <= 0) return clip;
+  const start = clip.startTime - sec;
+  if (start >= 0) return { ...clip, startTime: start };
+  if (clip.loopLengthSec) return clip; // a loop's start can't be trimmed without moving its loop points
+  const cut = -start;
+  return {
+    ...clip,
+    startTime: 0,
+    sourceOffset: clip.sourceOffset + cut,
+    duration: Math.max(0, clip.duration - cut),
+    fadeInSec: Math.max(0, clip.fadeInSec - cut),
+  };
 }
 
 function scheduleClip(

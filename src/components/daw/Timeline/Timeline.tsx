@@ -29,9 +29,12 @@ interface TimelineProps {
   /** Track editor view (BandLab's Voice/Audio editor): only this track,
    * one tall row filling the height, no name column. */
   focusTrackId?: string;
+  /** Just the ruler (time + bars + cycle), no tracks - what BandLab keeps on
+   * top of the AutoPitch panel and the lyrics page. */
+  rulerOnly?: boolean;
 }
 
-export function Timeline({ compact = false, onAddTrack, focusTrackId }: TimelineProps = {}) {
+export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly = false }: TimelineProps = {}) {
   const project = useProjectStore((s) => s.project);
   const currentTime = useProjectStore((s) => s.currentTime);
   const isPlaying = useProjectStore((s) => s.isPlaying);
@@ -60,9 +63,9 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId }: Timeline
   const actionTrackId = useProjectStore((s) => s.selectedClip?.trackId ?? s.selectedTrackId);
   const expectedScrollLeft = useRef<number | null>(null);
   const origin = compact ? Math.max(HEADER_WIDTH * 0.75, Math.round(viewWidth / 2)) : HEADER_WIDTH;
-  const headerWidth = focusTrackId ? 0 : compact ? (scrolledAway ? COLLAPSED_HEADER_WIDTH : origin) : HEADER_WIDTH;
+  const headerWidth = focusTrackId ? 0 : rulerOnly ? COLLAPSED_HEADER_WIDTH : compact ? (scrolledAway ? COLLAPSED_HEADER_WIDTH : origin) : HEADER_WIDTH;
   const rowHeight = focusTrackId ? Math.max(TRACK_HEIGHT, viewHeight - RULER_HEIGHT - 8) : TRACK_HEIGHT;
-  const tracks = focusTrackId ? project.tracks.filter((t) => t.id === focusTrackId) : project.tracks;
+  const tracks = rulerOnly ? [] : focusTrackId ? project.tracks.filter((t) => t.id === focusTrackId) : project.tracks;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -178,7 +181,7 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId }: Timeline
 
   return (
     <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
-      {compact && actionRowIndex !== -1 && (
+      {compact && !rulerOnly && actionRowIndex !== -1 && (
         <RegionActionBar
           rowTop={RULER_HEIGHT + actionRowIndex * rowHeight - scrollTop}
           rowHeight={rowHeight}
@@ -197,7 +200,7 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId }: Timeline
         // (axis lock, fling, no iOS rubber-band dragging the sticky ruler).
         style={compact ? { touchAction: "none", overscrollBehavior: "none" } : { touchAction: "pan-x pan-y" }}
       >
-        {project.tracks.length === 0 && (
+        {project.tracks.length === 0 && !rulerOnly && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
             <div>
               <p className="text-sm font-medium text-bone-2">Todavía no hay pistas</p>
@@ -259,7 +262,7 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId }: Timeline
             </div>
           ))}
 
-          {compact && !focusTrackId && project.tracks.length > 0 && onAddTrack && (
+          {compact && !focusTrackId && !rulerOnly && project.tracks.length > 0 && onAddTrack && (
             <div className="sticky left-0 z-10 p-1.5" style={{ width: headerWidth }}>
               <button
                 onClick={onAddTrack}
@@ -272,7 +275,7 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId }: Timeline
             </div>
           )}
 
-          {project.tracks.length > 0 && (
+          {project.tracks.length > 0 && !rulerOnly && (
             <div
               className="pointer-events-none absolute"
               style={{ left: origin, top: tracksHeight, width: contentWidth, height: 2000 }}

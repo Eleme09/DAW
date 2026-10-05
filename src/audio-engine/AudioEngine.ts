@@ -1,5 +1,6 @@
 import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
+import { AutoPitchEffect, AUTOPITCH_WORKLET_URL } from "./autopitch/AutoPitchEffect";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { isTrackMonitoredLive } from "./monitoring";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
@@ -28,6 +29,8 @@ interface TrackGraph {
    * own meter reads), so a send always matches what that channel is
    * actually contributing right now, not some earlier stage of its chain. */
   sendGains: Map<BusId, GainNode>;
+  /** BandLab AutoPitch, between `input` and the Fx chain while enabled. */
+  autoPitch: AutoPitchEffect | null;
 }
 
 /** A bus has no signal source of its own (no clips) - same
@@ -139,6 +142,7 @@ export class AudioEngine {
   private bypassTickRafId: number | null = null;
 
   private metronomeEnabled = false;
+  private metronomeVolume = 1;
   private metronomeTimer: ReturnType<typeof setInterval> | null = null;
   private nextClickTime = 0;
   private nextClickBeat = 0;
@@ -149,6 +153,11 @@ export class AudioEngine {
 
   private pitchCorrectionWorkletPromise: Promise<void> | null = null;
   private pitchCorrectionWorkletLoaded = false;
+  private autoPitchWorkletPromise: Promise<void> | null = null;
+  private autoPitchWorkletLoaded = false;
+  /** Last synced tracks, so AutoPitch stages can be built once their
+   * worklet module finishes loading. */
+  private lastSyncedTracks: Track[] = [];
 
   private monitor: MonitorSession | null = null;
   private monitorPending: Promise<StartRecordingResult> | null = null;
@@ -312,6 +321,50 @@ export class AudioEngine {
     return this.noiseGateWorkletPromise;
   }
 
+  private ensureAutoPitchWorklet(): Promise<void> {
+    if (this.autoPitchWorkletLoaded) return Promise.resolve();
+    if (!this.autoPitchWorkletPromise) {
+      const ctx = this.ensureContext();
+      this.autoPitchWorkletPromise = ctx.audioWorklet.addModule(AUTOPITCH_WORKLET_URL).then(() => {
+        this.autoPitchWorkletLoaded = true;
+        for (const track of this.lastSyncedTracks) {
+          const graph = this.tracks.get(track.id);
+          if (graph) this.syncAutoPitch(track, graph);
+        }
+      });
+    }
+    return this.autoPitchWorkletPromise;
+  }
+
+  /** Builds, updates or removes a track's AutoPitch stage. Only an ENABLED
+   * AutoPitch costs a worklet; turning it off takes it out of the graph. */
+  private syncAutoPitch(track: Track, graph: TrackGraph): void {
+    const settings = track.autoPitch;
+    const want = !!settings?.enabled;
+    if (want && !this.autoPitchWorkletLoaded) {
+      void this.ensureAutoPitchWorklet();
+      return; // re-synced once the module is in
+    }
+    if (want && settings) {
+      if (!graph.autoPitch) {
+        const ctx = this.ensureContext();
+        const stage = new AutoPitchEffect(ctx);
+        stage.setSettings(settings);
+        graph.input.disconnect();
+        graph.input.connect(stage.input);
+        stage.output.connect(graph.effectChain.inputNode);
+        graph.autoPitch = stage;
+      } else {
+        graph.autoPitch.setSettings(settings);
+      }
+    } else if (graph.autoPitch) {
+      graph.input.disconnect();
+      graph.input.connect(graph.effectChain.inputNode);
+      graph.autoPitch.dispose();
+      graph.autoPitch = null;
+    }
+  }
+
   private ensurePitchCorrectionWorklet(): Promise<void> {
     if (this.pitchCorrectionWorkletLoaded) return Promise.resolve();
     if (!this.pitchCorrectionWorkletPromise) {
@@ -375,6 +428,7 @@ export class AudioEngine {
   syncTracks(tracks: Track[], buses?: Bus[]): void {
     const ctx = this.ensureContext();
     const master = this.master!;
+    this.lastSyncedTracks = tracks;
 
     // Buses first - a track's sends (below) connect INTO a bus's input, so
     // the bus graphs must already exist before any track tries to tap one.
@@ -387,6 +441,7 @@ export class AudioEngine {
         this.disconnectMonitorFromTrack(id);
         for (const sendGain of graph.sendGains.values()) sendGain.disconnect();
         graph.input.disconnect();
+        graph.autoPitch?.dispose();
         graph.effectChain.dispose();
         this.tracks.delete(id);
       }
@@ -410,9 +465,10 @@ export class AudioEngine {
         pan.connect(muteGain);
         muteGain.connect(analyser);
         analyser.connect(master);
-        graph = { input, effectChain, volume, pan, muteGain, analyser, sendGains: new Map() };
+        graph = { input, effectChain, volume, pan, muteGain, analyser, sendGains: new Map(), autoPitch: null };
         this.tracks.set(track.id, graph);
       }
+      this.syncAutoPitch(track, graph);
       graph.effectChain.setInserts(track.inserts);
       graph.volume.gain.value = dbToGain(track.volumeDb);
       graph.pan.pan.value = track.pan;
@@ -846,8 +902,11 @@ export class AudioEngine {
     for (const track of tracks) {
       const graph = this.tracks.get(track.id);
       if (!graph) continue;
+      // AutoPitch delays its track by a fixed few ms; starting that track's
+      // clips the same amount early keeps the tuned voice on the beat.
+      const latency = graph.autoPitch?.latencySec ?? 0;
       for (const clip of track.clips) {
-        this.scheduleClip(clip, graph, fromTime, ctxStartTime);
+        this.scheduleClip(clip, graph, fromTime + latency, ctxStartTime);
       }
     }
   }
@@ -1012,12 +1071,17 @@ export class AudioEngine {
     }, METRONOME_INTERVAL_MS);
   }
 
+  setMetronomeVolume(volume: number): void {
+    this.metronomeVolume = Math.min(1, Math.max(0, volume));
+  }
+
   private playClick(time: number, accent: boolean): void {
     if (!this.ctx || !this.master) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.frequency.value = accent ? 1500 : 1000;
-    gain.gain.setValueAtTime(accent ? 0.35 : 0.2, time);
+    if (this.metronomeVolume <= 0.001) return;
+    gain.gain.setValueAtTime((accent ? 0.35 : 0.2) * this.metronomeVolume, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
     osc.connect(gain);
     gain.connect(this.master);

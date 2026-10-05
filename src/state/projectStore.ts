@@ -16,12 +16,14 @@ import {
   type Bus,
   type BusId,
   type Project,
+  type ProjectKey,
   type SampleAsset,
   type Send,
   type Track,
   type TrackId,
 } from "@/types/project";
 import { createEffectInstance, type EffectInstance, type EffectType } from "@/types/effects";
+import { createAutoPitchSettings, type AutoPitchSettings } from "@/types/autoPitch";
 import type { GridResolution } from "@/lib/timing/grid";
 import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND } from "@/components/daw/Timeline/constants";
 
@@ -35,7 +37,7 @@ export type EffectTarget = TrackId | BusId | "master";
  * where every pane renders simultaneously. */
 export type ClipEditMode = "shift" | "gain" | "transpose" | "stretch" | "fade" | "loop" | "harmonize";
 
-export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects";
+export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects" | "autopitch";
 /** Which sub-tab BrowserPanel is showing - lifted out of that component so
  * a track/effect's "Ask AI" button can jump straight to the Assistant tab. */
 export type BrowserTab = "audio" | "mix" | "assistant";
@@ -194,6 +196,12 @@ interface ProjectState {
 
   renameProject: (name: string) => void;
   setLyrics: (lyrics: string) => void;
+  setProjectKey: (key: ProjectKey) => void;
+  setCountInBars: (bars: number) => void;
+  setMetronomeVolume: (volume: number) => void;
+  /** Creates the track's AutoPitch (from the project key) on first use.
+   * Knob/slider moves coalesce into one undo step. */
+  setAutoPitch: (trackId: TrackId, patch: Partial<AutoPitchSettings>) => void;
   loadProject: (project: Project) => void;
   /** Loads a saved project by id from disk and hydrates its samples into
    * the audio engine cache. Returns false if the project no longer exists
@@ -225,7 +233,6 @@ const HISTORY_LIMIT = 200;
 const AUTOSAVE_DEBOUNCE_MS = 1200;
 
 /** Beats of audible count-in (click track) played before recording starts. */
-const COUNT_IN_BEATS = 4;
 
 export const useProjectStore = create<ProjectState>((set, get, api) => {
   let unsubscribeTime: (() => void) | null = null;
@@ -939,8 +946,9 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         setProject(project, { extra: { selectedTrackId: armedTrack.id } });
       }
 
-      set({ recordingError: null, isCountingIn: true, countInBeats: COUNT_IN_BEATS });
-      const completedCountIn = await getAudioEngine().playCountIn(project.bpm, COUNT_IN_BEATS, (remaining) =>
+      const countInBeats = Math.max(0, Math.round(project.countInBars ?? 1)) * project.timeSignature[0];
+      set({ recordingError: null, isCountingIn: countInBeats > 0, countInBeats: countInBeats > 0 ? countInBeats : null });
+      const completedCountIn = await getAudioEngine().playCountIn(project.bpm, countInBeats, (remaining) =>
         set({ countInBeats: remaining })
       );
       set({ isCountingIn: false, countInBeats: null });
@@ -1055,6 +1063,28 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     renameProject: (name) => setProject(touch({ ...get().project, name }), { coalesce: true }),
     setLyrics: (lyrics) => setProject(touch({ ...get().project, lyrics }), { coalesce: true }),
+    setProjectKey: (key) => setProject(touch({ ...get().project, key })),
+    setCountInBars: (bars) => setProject(touch({ ...get().project, countInBars: bars })),
+    setMetronomeVolume: (volume) => {
+      setProject(touch({ ...get().project, metronomeVolume: volume }), { coalesce: true });
+      getAudioEngine().setMetronomeVolume(volume);
+    },
+    setAutoPitch: (trackId, patch) => {
+      const project = get().project;
+      const coalesce = Object.keys(patch).every((k) => k === "level" || k === "harmonyMix");
+      setProject(
+        touch({
+          ...project,
+          tracks: project.tracks.map((t) => {
+            if (t.id !== trackId) return t;
+            const base = t.autoPitch ?? createAutoPitchSettings(project.key.tonic, project.key.scale);
+            return { ...t, autoPitch: { ...base, ...patch } };
+          }),
+        }),
+        { coalesce }
+      );
+      getAudioEngine().syncTracks(get().project.tracks, get().project.buses);
+    },
     loadProject: (project) => {
       // Switching documents mid-take would otherwise leave a genuinely
       // broken state: the old project's tracks (armed track included) are
@@ -1078,6 +1108,9 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         masterVolumeDb: project.masterVolumeDb ?? 0,
         buses: project.buses ?? [],
         lyrics: project.lyrics ?? "",
+        key: project.key ?? { tonic: 0, scale: "major" },
+        countInBars: project.countInBars ?? 1,
+        metronomeVolume: project.metronomeVolume ?? 1,
         tracks: project.tracks
           .filter((t) => (t as unknown as { type?: string }).type !== "instrument")
           .map((t) => ({
@@ -1087,6 +1120,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
             sends: t.sends ?? [],
           })),
       };
+      getAudioEngine().setMetronomeVolume(normalized.metronomeVolume);
       set({
         project: normalized,
         projectOpen: true,

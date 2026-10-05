@@ -2,7 +2,7 @@
 
 Cómo se trabaja: el usuario manda videos/capturas de BandLab sobre UN tema → se copia distribución + funciones → se prueba en Chromium (390×844) → commit + push a `claude/personal-ai-daw-s9v97w` → se actualiza este archivo → el usuario hace `/clear` y manda el siguiente tema.
 
-Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BANDLAB_REFERENCE.md` (§13 clips, §14 grabar).
+Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BANDLAB_REFERENCE.md` (§13 clips, §14 grabar, §15 AutoPitch, §16 letra y ajustes).
 
 | # | Tema | Estado | Commit |
 |---|------|--------|--------|
@@ -10,13 +10,16 @@ Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BA
 | 1 | Clips: seleccionar, barra de acciones, menú ⋯, panel inferior, Armonizar | Hecho | d94f9eb |
 | 2 | Grabar + desplazamiento: eje bloqueado con inercia, toma en vivo, ciclo y tomas, editor de pista | Hecho | 09fcf9d |
 | 3 | Efectos (+Fx): librería de presets, agregar efecto, perillas | Pendiente — esperar videos |  |
-| 4 | AutoPitch: panel, tonalidad, categorías, armonías | Pendiente |  |
+| 4 | AutoPitch: panel, tonalidad, categorías, armonías (24 presets) + pestañas Letra y Ajustes | Hecho | (este commit) |
 | 5 | Masterización: Universal/Fire/Clarity/Tape, intensidad, EQ | Pendiente |  |
 | 6 | Automatización | Pendiente |  |
-| 7 | Ajustes: tempo, metrónomo, latencia, importar/exportar | Pendiente |  |
+| 7 | Ajustes: tempo, metrónomo, latencia, importar/exportar | Parcial: pestaña Ajustes hecha en el tema 4 (tempo, compás, clave, contar, volumen de metrónomo, entrada, exportar); falta prueba de latencia |  |
 | 8 | Biblioteca de proyectos | Pendiente |  |
 
 ## Pendientes conocidos de fases hechas
+
+- Tema 4: los presets premium no se pudieron escuchar en BandLab; su sonido sale de la descripción oficial de cada uno (FAQ de AutoPitch), no de una comparación de audio. Sin probar en un iPhone real: consumo de CPU (medido en Node: 7–16 % de un núcleo por pista según preset) y latencia al monitorear.
+- Tema 4: un paso de semitono cantado ~30 cents desafinado tarda ~75–100 ms en cambiar de nota (a cambio de no "parpadear" con vibrato); cantado a ≤25 cents de la nota cambia al instante.
 
 - Tema 1: selección múltiple con pulsación larga, arrastrar el ícono de loop, Fusionar.
 - Tema 1: no se puede escuchar el resultado de transponer/estirar/armonizar (solo medido con pruebas); procesar 20 s tarda 1–2.5 s.
