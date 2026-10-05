@@ -954,3 +954,16 @@ Basado en la investigación documentada en `BANDLAB_REFERENCE.md` (centro de ayu
 - **Sin verificar, dicho claro**: importar **MP4/MOV** no se pudo probar aquí — el Chromium de pruebas no trae decodificador AAC (`canPlayType` devuelve vacío), así que falla en este entorno y muestra el mensaje de error correcto. Safari de iPhone sí decodifica AAC, pero no lo he probado en un iPhone real.
 - `tsc`/`eslint`/`vitest` (283 tests)/`next build` limpios.
 - **Sigue (pasos 2–8 de BANDLAB_REFERENCE.md §12)**: barra de acciones de región (Eliminar/Copiar/Pegar/Dividir/Loop/⋯ con deslizador + ✓), Mix View + masterización con presets, panel AutoPitch, automatización estilo BandLab, cycle + tomas.
+
+## Reestructura — Mezcla y línea de tiempo copiadas de la captura y el video reales del usuario
+
+El usuario mandó una captura del Mix View de BandLab y un video de su línea de tiempo. Se adaptó la **distribución**, no solo el color.
+
+- [x] **Mezcla (`Mixer/MobileMixView.tsx`, nuevo)**: una tarjeta de color por pista, compacta, dos filas: `número · nombre · pill Fx (o "+ Fx") · [M | S] · ⋯` y abajo la línea de volumen larga con bola blanca + perilla de paneo blanca con L/R. Debajo: AutoMix (abre nuestro asistente de mezcla), Masterización (abre efectos del master; los presets tipo Universal/Fire/Clarity/Tape siguen pendientes), volumen master con medidor. Columna derecha: ícono de cada pista (+ insignia Fx) y botón **+**. `⋯` abre nombre, envíos a bus y eliminar pista. Se quitaron de la mezcla armar/monitor (ya están en la fila de la pista).
+- [x] **Línea de tiempo móvil como BandLab**: la línea de reproducción queda **fija al centro** y las pistas pasan por debajo. Deslizar = moverte en la canción (seek). Al reproducir, la vista avanza sola. Zoom con dos dedos anclado en la línea fija.
+- [x] **Columna de pistas que se encoge** (`Timeline/CompactTrackHeader.tsx`, nuevo): al inicio muestra ícono · nombre · pill Fx; en cuanto deslizas se reduce a solo el ícono (+ Fx), dejando el ancho a las ondas. Botón **+** de nueva pista debajo de las pistas.
+- [x] **Barra superior** como BandLab: salir · [Estudio | Ajustes] · guardar (nube, muestra "Guardado"). El tiempo pasó a la esquina de la regla.
+- [x] **Fila inferior** como BandLab: una sola píldora [micrófono · +Fx · AutoPitch], y a la derecha armar y monitor.
+- **Verificado en navegador (390×844)**: deslizar 400 px = 00:05.000 (80 px/s, correcto); reproducir 2 s mueve la vista en sincronía (scroll 571 px ↔ 00:07.168); volver al inicio regresa la vista a 0; la columna se encoge al deslizar; Mezcla abre con la nueva distribución. Cero errores de página.
+- **No probado**: el gesto real con el dedo en un iPhone (inercia del scroll de iOS + seek en cada cuadro). En Chromium funciona; en Safari real no lo he podido comprobar.
+- `tsc`/`eslint`/`vitest` (283)/`next build` limpios.

@@ -346,3 +346,12 @@ export function UploadFileIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function CloudUploadIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1 0 9.5" />
+      <path d="M12 12v8M9 15l3-3 3 3" />
+    </svg>
+  );
+}

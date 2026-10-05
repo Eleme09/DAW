@@ -13,7 +13,9 @@ import { GridLines } from "./GridLines";
 import { ContextBar } from "./ContextBar";
 import { ZoomControl } from "./ZoomControl";
 import { usePinchZoom } from "./usePinchZoom";
-import { ScissorsIcon, DuplicateIcon } from "../icons";
+import { ScissorsIcon, DuplicateIcon, PlusIcon } from "../icons";
+import { CompactTrackHeader, COLLAPSED_HEADER_WIDTH } from "./CompactTrackHeader";
+import { formatTime } from "../TransportBar";
 
 interface TimelineProps {
   /** Phone Studio layout: no bottom toolbar or context bar here - those live in
@@ -39,6 +41,56 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   const setPixelsPerSecond = useProjectStore((s) => s.setPixelsPerSecond);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [flashTrackId, setFlashTrackId] = useState<string | null>(null);
+  const isRecording = useProjectStore((s) => s.isRecording);
+  // Phone Studio (compact) works like BandLab's: the playhead stays FIXED in
+  // the middle of the screen and the tracks slide under it - swiping the
+  // timeline IS moving through the song. Time 0 therefore sits half a
+  // viewport in (`origin`), and the name column shrinks to just the icon as
+  // soon as you swipe away from the start, giving the waveforms the room.
+  const [viewWidth, setViewWidth] = useState(0);
+  const [scrolledAway, setScrolledAway] = useState(false);
+  const expectedScrollLeft = useRef<number | null>(null);
+  const origin = compact ? Math.max(HEADER_WIDTH * 0.75, Math.round(viewWidth / 2)) : HEADER_WIDTH;
+  const headerWidth = compact ? (scrolledAway ? COLLAPSED_HEADER_WIDTH : origin) : HEADER_WIDTH;
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !compact) return;
+    const ro = new ResizeObserver(() => setViewWidth(el.clientWidth));
+    ro.observe(el);
+    setViewWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [compact]);
+
+  // Compact: keep the scroll position locked to the playhead - during
+  // playback/recording the tracks scroll under the fixed line; while
+  // stopped, anything else that moves the playhead (rewind, ruler tap, zoom)
+  // scrolls the view to match.
+  useEffect(() => {
+    if (!compact) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = currentTime * pixelsPerSecond;
+    if (Math.abs(el.scrollLeft - target) < 1) return;
+    expectedScrollLeft.current = target;
+    el.scrollLeft = target;
+  }, [compact, currentTime, pixelsPerSecond, viewWidth]);
+
+  function handleScroll() {
+    if (!compact) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    setScrolledAway(el.scrollLeft > 2);
+    const expected = expectedScrollLeft.current;
+    if (expected !== null && Math.abs(el.scrollLeft - expected) < 1.5) {
+      expectedScrollLeft.current = null;
+      return;
+    }
+    // A swipe by the user: that's a seek. Not while playing/recording - the
+    // transport owns the position then.
+    if (isPlaying || isRecording) return;
+    seek(Math.max(0, el.scrollLeft / pixelsPerSecond));
+  }
   // Guards only this button's own double-tap/double-fire (a stuck pointer
   // event on touch screens was creating a pile of empty tracks with no
   // visible cause). Local to this component instance, not the store - the
@@ -46,7 +98,7 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   // programmatic batch callers (tests) are unaffected.
   const lastAddClickAt = useRef(0);
 
-  usePinchZoom(scrollRef, pixelsPerSecond, setPixelsPerSecond);
+  usePinchZoom(scrollRef, pixelsPerSecond, setPixelsPerSecond, compact ? { originX: origin, anchorLocalX: origin } : {});
 
   // Visible feedback for "+ Nueva pista": a track appended off-screen (a
   // session already scrolled down, or a tall list) otherwise gives zero
@@ -78,7 +130,7 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   // same "follow" convention as Pro Tools/Ableton, not a hard lock that'd
   // fight a manual scroll the instant playback starts.
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || compact) return;
     const el = scrollRef.current;
     if (!el) return;
     const playheadX = HEADER_WIDTH + currentTime * pixelsPerSecond;
@@ -88,7 +140,7 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
     if (playheadX < viewLeft + HEADER_WIDTH || playheadX > viewRight - margin) {
       el.scrollLeft = Math.max(0, playheadX - HEADER_WIDTH - el.clientWidth * 0.25);
     }
-  }, [currentTime, isPlaying, pixelsPerSecond]);
+  }, [currentTime, isPlaying, pixelsPerSecond, compact]);
 
   const emptyTrackCount = project.tracks.filter((t) => t.clips.length === 0).length;
 
@@ -99,11 +151,17 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   const durationSec = Math.max(MIN_TIMELINE_SECONDS, clipEnd + 15);
   const contentWidth = durationSec * pixelsPerSecond;
   const tracksHeight = RULER_HEIGHT + project.tracks.length * TRACK_HEIGHT;
+  // Compact needs room after the end too, so the last second can still be
+  // brought under the centered playhead.
+  const totalWidth = origin + contentWidth + (compact ? Math.max(0, viewWidth - origin) : 0);
+  // Lanes keep time 0 at `origin` whatever the header column's width is.
+  const laneOffset = origin - headerWidth;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
       <div
         ref={scrollRef}
+        onScroll={handleScroll}
         className="relative flex-1 overflow-auto"
         // pan-x pan-y (not "auto"/unset) keeps native one-finger scrolling
         // in both directions but excludes the browser's own pinch-to-zoom,
@@ -127,38 +185,60 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
             </div>
           </div>
         )}
-        <div className="relative" style={{ width: HEADER_WIDTH + contentWidth }}>
+        <div className="relative" style={{ width: totalWidth }}>
           <div className="sticky top-0 z-20 flex">
             <div
-              className="sticky left-0 z-30 shrink-0 border-b border-r border-line bg-ink"
-              style={{ width: HEADER_WIDTH, height: RULER_HEIGHT }}
-            />
-            <Ruler width={contentWidth} bpm={project.bpm} timeSignature={project.timeSignature} onSeek={(t) => seek(t)} />
+              className="sticky left-0 z-30 flex shrink-0 items-center border-b border-r border-line bg-ink px-2 transition-[width] duration-150"
+              style={{ width: headerWidth, height: RULER_HEIGHT }}
+            >
+              {compact && (
+                <span
+                  className="absolute left-1.5 top-1/2 z-40 -translate-y-1/2 whitespace-nowrap rounded bg-ink/90 px-1 font-mono text-[11px] tabular-nums text-bone"
+                  title="Posición de reproducción"
+                >
+                  {formatTime(currentTime)}
+                </span>
+              )}
+            </div>
+            <div className="shrink-0" style={{ marginLeft: laneOffset }}>
+              <Ruler width={contentWidth} bpm={project.bpm} timeSignature={project.timeSignature} onSeek={(t) => seek(t)} />
+            </div>
           </div>
 
-          <div className="absolute left-0 top-0" style={{ left: HEADER_WIDTH }}>
+          <div className="absolute left-0 top-0" style={{ left: origin }}>
             <LoopRegion height={tracksHeight} />
           </div>
 
           {project.tracks.map((track) => (
             <div key={track.id} className="flex">
-              <TrackHeader track={track} selected={track.id === selectedTrackId} flash={track.id === flashTrackId} />
-              <TrackLane track={track} width={contentWidth} selected={track.id === selectedTrackId} />
+              {compact ? (
+                <CompactTrackHeader track={track} width={headerWidth} collapsed={scrolledAway} selected={track.id === selectedTrackId} />
+              ) : (
+                <TrackHeader track={track} selected={track.id === selectedTrackId} flash={track.id === flashTrackId} />
+              )}
+              <div className="shrink-0" style={{ marginLeft: laneOffset }}>
+                <TrackLane track={track} width={contentWidth} selected={track.id === selectedTrackId} />
+              </div>
             </div>
           ))}
 
-          {/* A session with only 1-2 tracks otherwise leaves a huge flat
-             black gap below them (the scroll container is taller than
-             tracksHeight) - reads as broken, not as "room to add more
-             tracks". Every real DAW keeps its grid visible past the last
-             track; this is that, not a cosmetic flourish. Generous fixed
-             height (not measured against the actual viewport) is
-             deliberate - scrolling into extra empty grid space is normal
-             DAW behavior, not something to avoid. */}
+          {compact && project.tracks.length > 0 && onAddTrack && (
+            <div className="sticky left-0 z-10 p-1.5 transition-[width] duration-150" style={{ width: headerWidth }}>
+              <button
+                onClick={onAddTrack}
+                aria-label="Nueva pista"
+                title="Nueva pista: grabar voz o importar audio/video"
+                className="flex h-11 w-full items-center justify-center rounded-lg bg-surf-2 text-bone hover:bg-surf-3"
+              >
+                <PlusIcon className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+
           {project.tracks.length > 0 && (
             <div
-              className="absolute"
-              style={{ left: HEADER_WIDTH, top: tracksHeight, width: contentWidth, height: 2000 }}
+              className="pointer-events-none absolute"
+              style={{ left: origin, top: tracksHeight, width: contentWidth, height: 2000 }}
             >
               <GridLines width={contentWidth} pixelsPerSecond={pixelsPerSecond} />
             </div>
@@ -166,11 +246,9 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
 
           <div
             className="pointer-events-none absolute top-0 z-10 w-px bg-bone"
-            style={{ left: HEADER_WIDTH + currentTime * pixelsPerSecond, height: tracksHeight }}
+            style={{ left: origin + currentTime * pixelsPerSecond, height: compact ? tracksHeight + 2000 : tracksHeight }}
           >
-            {/* Banderín de 1px con bandera triangular, como en Pro Tools
-               (estudio-ui.html .playhead::before) - marca la cabeza de
-               reproducción sin depender solo de la línea delgada. */}
+            {/* Banderín triangular sobre la línea de reproducción */}
             <div className="absolute -left-1 top-0 h-0 w-0 border-x-4 border-t-4 border-x-transparent border-t-bone" />
           </div>
         </div>

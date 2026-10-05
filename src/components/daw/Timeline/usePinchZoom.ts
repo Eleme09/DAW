@@ -14,8 +14,17 @@ import { HEADER_WIDTH } from "./constants";
 export function usePinchZoom(
   containerRef: React.RefObject<HTMLElement | null>,
   value: number,
-  onChange: (value: number) => void
+  onChange: (value: number) => void,
+  /** Where time 0 sits in content px (the header width on desktop, half the
+   * viewport in the phone Studio), and an optional fixed on-screen anchor -
+   * the phone Studio zooms around its fixed center playhead, not the
+   * fingers, so the position you're on never moves while zooming. */
+  options: { originX?: number; anchorLocalX?: number } = {}
 ): void {
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const startDistance = useRef(0);
   const startValue = useRef(value);
@@ -57,15 +66,16 @@ export function usePinchZoom(
 
       const rect = el.getBoundingClientRect();
       const midX = (pts[0].x + pts[1].x) / 2;
-      const localX = midX - rect.left;
-      const timeAtMid = (el.scrollLeft + localX - HEADER_WIDTH) / valueRef.current;
+      const originX = optionsRef.current.originX ?? HEADER_WIDTH;
+      const localX = optionsRef.current.anchorLocalX ?? midX - rect.left;
+      const timeAtMid = (el.scrollLeft + localX - originX) / valueRef.current;
 
       onChangeRef.current(nextValue);
       // The store setter clamps nextValue to [MIN,MAX]; re-reading the
       // actually-applied value isn't available synchronously here, so this
       // anchors using the requested value - a tiny drift right at the zoom
       // extremes, harmless since the clamp itself is what stops the zoom.
-      el.scrollLeft = Math.max(0, timeAtMid * nextValue + HEADER_WIDTH - localX);
+      el.scrollLeft = Math.max(0, timeAtMid * nextValue + originX - localX);
     }
 
     function endPointer(e: PointerEvent) {

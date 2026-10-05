@@ -4,18 +4,17 @@ import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { Timeline } from "./Timeline/Timeline";
-import { MixerPanel } from "./Mixer/MixerPanel";
+import { MobileMixView } from "./Mixer/MobileMixView";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { BrowserPanel } from "./BrowserPanel";
 import { VozPanel } from "./VozPanel/VozPanel";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { AddTrackSheet } from "./AddTrackSheet";
 import { StudioSettingsSheet } from "./StudioSettingsSheet";
-import { formatTime, useReturnToStart } from "./TransportBar";
+import { useReturnToStart } from "./TransportBar";
 import { MONITOR_NEXT } from "./monitorLabels";
 import {
   BackIcon,
-  PlusIcon,
   GearIcon,
   CloseIcon,
   MixIcon,
@@ -27,7 +26,8 @@ import {
   StopIcon,
   MetronomeIcon,
   MicIcon,
-  KnobIcon,
+  WaveformIcon,
+  CloudUploadIcon,
   TuneIcon,
   RecordIcon,
   HeadphonesIcon,
@@ -49,7 +49,6 @@ export function MobileStudio() {
   const tracks = useProjectStore((s) => s.project.tracks);
   const metronomeEnabled = useProjectStore((s) => s.project.metronomeEnabled);
   const selectedTrackId = useProjectStore((s) => s.selectedTrackId);
-  const currentTime = useProjectStore((s) => s.currentTime);
   const isPlaying = useProjectStore((s) => s.isPlaying);
   const isRecording = useProjectStore((s) => s.isRecording);
   const isCountingIn = useProjectStore((s) => s.isCountingIn);
@@ -77,6 +76,7 @@ export function MobileStudio() {
 
   const [addTrackOpen, setAddTrackOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   const selectedTrack = tracks.find((t) => t.id === selectedTrackId) ?? null;
   const panelOpen = mobileView === "voz" || mobileView === "effects";
@@ -98,41 +98,39 @@ export function MobileStudio() {
     setMobileView("effects");
   }
 
+  async function saveNow() {
+    await persist();
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1500);
+  }
+
   async function exitToLibrary() {
     await persist();
     closeProject();
   }
 
-  const pill = (active: boolean) =>
-    `flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold disabled:opacity-30 ${
-      active ? "bg-bone text-ink" : "bg-surf-2 text-bone-2"
-    }`;
+  const seg = (active: boolean) =>
+    `flex h-9 items-center gap-1.5 rounded-full px-3 text-bone disabled:opacity-30 ${active ? "bg-bone !text-ink" : ""}`;
   const roundBtn = "flex h-11 w-11 items-center justify-center rounded-full text-bone-2 disabled:opacity-30";
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-ink text-bone" style={{ paddingTop: "env(safe-area-inset-top)" }}>
-      {/* Top bar: salir · nueva pista · nombre + tiempo · ajustes */}
-      <div className="flex h-14 shrink-0 items-center gap-1 border-b border-line px-1.5">
+      {/* Barra superior como BandLab: salir · [Estudio | Ajustes] · guardar */}
+      <div className="flex h-14 shrink-0 items-center justify-between px-1.5">
         <button onClick={() => void exitToLibrary()} disabled={busy} aria-label="Salir a mis proyectos" title="Guardar y salir a mis proyectos" className={roundBtn}>
           <BackIcon className="h-5 w-5" />
         </button>
-        <button
-          onClick={() => setAddTrackOpen(true)}
-          disabled={busy}
-          aria-label="Nueva pista"
-          title="Nueva pista: grabar voz o importar audio/video"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-surf-2 text-bone disabled:opacity-30"
-        >
-          <PlusIcon className="h-5 w-5" />
-        </button>
-        <div className="min-w-0 flex-1 text-center">
-          <div className="truncate text-[11px] font-medium text-bone-3">{projectName}</div>
-          <div className="font-mono text-base tabular-nums leading-tight text-bone" title="Posición de reproducción">
-            {formatTime(currentTime)}
-          </div>
+        <div className="flex items-center rounded-full bg-surf-2 p-1">
+          <span className="flex h-9 w-14 items-center justify-center rounded-full bg-bone text-ink" title={projectName}>
+            <WaveformIcon className="h-5 w-5" />
+          </span>
+          <button onClick={() => setSettingsOpen(true)} aria-label="Ajustes del proyecto" title="Ajustes: tempo, metrónomo, micrófono, exportar" className="flex h-9 w-14 items-center justify-center rounded-full text-bone-2">
+            <GearIcon className="h-5 w-5" />
+          </button>
         </div>
-        <button onClick={() => setSettingsOpen(true)} aria-label="Ajustes del proyecto" title="Ajustes: tempo, metrónomo, micrófono, exportar" className={roundBtn}>
-          <GearIcon className="h-5 w-5" />
+        <button onClick={() => void saveNow()} disabled={busy} aria-label="Guardar" title="Guardar proyecto" className={`${roundBtn} relative`}>
+          <CloudUploadIcon className="h-6 w-6" />
+          {savedFlash && <span className="absolute -bottom-1 text-[9px] font-semibold text-live">Guardado</span>}
         </button>
       </div>
 
@@ -157,32 +155,42 @@ export function MobileStudio() {
           </div>
         )}
 
-        {overlay && (
+        {overlay === "mixer" && (
+          <div className="absolute inset-0 z-30 flex flex-col bg-ink">
+            <MobileMixView onAddTrack={() => setAddTrackOpen(true)} />
+          </div>
+        )}
+
+        {overlay === "browser" && (
           <div className="absolute inset-0 z-30 flex flex-col bg-ink">
             <div className="flex h-11 shrink-0 items-center justify-between border-b border-line px-3">
-              <span className="text-sm font-semibold text-bone">{overlay === "mixer" ? "Mezcla" : "Mis muestras"}</span>
+              <span className="text-sm font-semibold text-bone">Mis muestras</span>
               <button onClick={() => setMobileView("timeline")} aria-label="Volver al estudio" title="Volver al estudio" className="flex h-9 w-9 items-center justify-center rounded-full bg-surf-2 text-bone">
                 <CloseIcon className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{overlay === "mixer" ? <MixerPanel /> : <BrowserPanel />}</div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden"><BrowserPanel /></div>
           </div>
         )}
       </div>
 
       {recordingError && <p className="shrink-0 bg-rec/15 px-3 py-1.5 text-xs text-red-300">Micrófono: {recordingError}</p>}
 
-      {/* Fila de la pista seleccionada: Voz · Fx · Afinar · armar · monitor */}
-      <div className="flex h-12 shrink-0 items-center gap-1.5 border-t border-line px-2">
-        <button onClick={() => togglePanel("voz")} disabled={!selectedTrack} className={pill(mobileView === "voz")}>
-          <MicIcon className="h-3.5 w-3.5" /> Voz
-        </button>
-        <button onClick={() => togglePanel("effects")} disabled={!selectedTrack} className={pill(mobileView === "effects")}>
-          <KnobIcon className="h-3.5 w-3.5" /> Fx
-        </button>
-        <button onClick={openTuning} disabled={!selectedTrack} className={pill(false)}>
-          <TuneIcon className="h-3.5 w-3.5" /> Afinar
-        </button>
+      {/* Fila de la pista seleccionada, como BandLab: [voz · +Fx · AutoPitch] … armar · monitor */}
+      <div className="flex h-14 shrink-0 items-center gap-2 px-2">
+        <div className="flex h-11 items-center rounded-full bg-surf-2 px-1">
+          <button onClick={() => togglePanel("voz")} disabled={!selectedTrack} aria-label="Voz" title="Voz: grabación y entrada de la pista" className={seg(mobileView === "voz")}>
+            <MicIcon className="h-5 w-5" />
+          </button>
+          <button onClick={() => togglePanel("effects")} disabled={!selectedTrack} title="Efectos de la pista" className={seg(mobileView === "effects")}>
+            <span className="text-base font-semibold">
+              +<span className="italic">Fx</span>
+            </span>
+          </button>
+          <button onClick={openTuning} disabled={!selectedTrack} title="AutoPitch: afinación de la voz" className={seg(false)}>
+            <TuneIcon className="h-4 w-4" /> <span className="text-sm font-medium">AutoPitch</span>
+          </button>
+        </div>
         <div className="flex-1" />
         <button
           onClick={() => selectedTrack && armTrack(selectedTrack.id)}
