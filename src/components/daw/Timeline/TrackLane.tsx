@@ -18,6 +18,26 @@ interface TrackLaneProps {
   height?: number;
 }
 
+/** The row tint shared by the lane and its lead-in (see TrackLaneLead). */
+function laneBackground(track: Track, selected: boolean, audible: boolean, compact: boolean): string {
+  return audible || !compact ? (selected ? `${track.color}26` : `${track.color}14`) : "#ffffff08";
+}
+
+/** The stretch of the row between the track header and time 0 (the lane
+ * itself starts at time 0): same tint as the lane, so the strip is unbroken. */
+export function TrackLaneLead({ track, width, selected, compact = false, height = TRACK_HEIGHT }: TrackLaneProps) {
+  const anySolo = useProjectStore((s) => s.project.tracks.some((t) => t.solo));
+  const audible = !track.muted && (!anySolo || track.solo);
+  if (width <= 0) return null;
+  return (
+    <div
+      aria-hidden
+      style={{ width, height, background: laneBackground(track, selected, audible, compact) }}
+      className="shrink-0 border-b border-line"
+    />
+  );
+}
+
 export function TrackLane({ track, width, selected, compact = false, height = TRACK_HEIGHT }: TrackLaneProps) {
   const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
   const selectClip = useProjectStore((s) => s.selectClip);
@@ -43,7 +63,7 @@ export function TrackLane({ track, width, selected, compact = false, height = TR
         // 3px) - así se ve de verdad el carril de BandLab, confirmado contra
         // captura real de su app: el color de pista cubre la fila entera a
         // baja opacidad, no solo acenta un borde.
-        background: audible || !compact ? (selected ? `${track.color}26` : `${track.color}14`) : "#ffffff08",
+        background: laneBackground(track, selected, audible, compact),
       }}
       className="relative shrink-0 border-b border-line"
     >

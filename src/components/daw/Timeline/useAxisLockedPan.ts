@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const LOCK_THRESHOLD_PX = 6;
 /** Per-frame velocity multiplier for the fling after you lift your finger. */
 const FRICTION = 0.94;
 const MIN_FLING_VELOCITY = 0.05; // px per ms
+const STALE_SAMPLE_MS = 80;
 
 /**
  * One-finger panning for the phone Studio timeline that behaves like
@@ -23,8 +24,24 @@ const MIN_FLING_VELOCITY = 0.05; // px per ms
  * (a selected region, its trim circles, the cycle bar) own their drags.
  * A click right after a pan is swallowed so lifting the finger doesn't
  * also select/deselect whatever was under it.
+ *
+ * A horizontal pan is a "scrub" (moving through the song): `onScrubStart`
+ * fires when the gesture locks to the horizontal axis and `onScrubEnd` once
+ * the finger is up AND the fling has stopped (or the touch ends without
+ * moving). Studio uses them to pause playback while you scrub and carry on
+ * from the new spot, like dragging a video's progress bar.
  */
-export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | null>, enabled: boolean): void {
+export interface PanScrubHandlers {
+  onScrubStart?: () => void;
+  onScrubEnd?: () => void;
+}
+
+export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | null>, enabled: boolean, handlers: PanScrubHandlers = {}): void {
+  const handlersRef = useRef(handlers);
+  useEffect(() => {
+    handlersRef.current = handlers;
+  });
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !enabled) return;
@@ -41,6 +58,18 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
     } | null = null;
     let momentumFrame = 0;
     let suppressClick = false;
+    let scrubbing = false;
+
+    const startScrub = () => {
+      if (scrubbing) return;
+      scrubbing = true;
+      handlersRef.current.onScrubStart?.();
+    };
+    const endScrub = () => {
+      if (!scrubbing) return;
+      scrubbing = false;
+      handlersRef.current.onScrubEnd?.();
+    };
 
     const stopMomentum = () => {
       if (momentumFrame) cancelAnimationFrame(momentumFrame);
@@ -76,6 +105,7 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
         if (Math.max(Math.abs(dx), Math.abs(dy)) < LOCK_THRESHOLD_PX) return;
         active.axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
         suppressClick = true;
+        if (active.axis === "x") startScrub();
       }
       if (active.axis === "x") el!.scrollLeft = active.scrollLeft - dx;
       else el!.scrollTop = active.scrollTop - dy;
@@ -85,23 +115,43 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
 
     function onPointerUp(e: PointerEvent) {
       pointers.delete(e.pointerId);
-      if (!active || e.pointerId !== active.id) return;
+      if (!active || e.pointerId !== active.id) {
+        if (pointers.size === 0) endScrub();
+        return;
+      }
       const { axis, samples } = active;
       active = null;
-      if (!axis || samples.length < 2) return;
+      if (!axis || samples.length < 2) {
+        endScrub();
+        return;
+      }
       const last = samples[samples.length - 1];
+      // Finger held still before lifting = no fling (the last samples are
+      // from a moment ago, their speed is stale).
+      if (e.timeStamp - last.t > STALE_SAMPLE_MS) {
+        endScrub();
+        return;
+      }
       const first = samples.find((s) => last.t - s.t <= 100) ?? samples[0];
       const dt = Math.max(1, last.t - first.t);
       let velocity = axis === "x" ? -(last.x - first.x) / dt : -(last.y - first.y) / dt;
-      if (Math.abs(velocity) < MIN_FLING_VELOCITY) return;
+      if (Math.abs(velocity) < MIN_FLING_VELOCITY) {
+        endScrub();
+        return;
+      }
       let prev = performance.now();
       const step = (now: number) => {
         const elapsed = now - prev;
         prev = now;
+        const before = axis === "x" ? el!.scrollLeft : el!.scrollTop;
         if (axis === "x") el!.scrollLeft += velocity * elapsed;
         else el!.scrollTop += velocity * elapsed;
+        const moved = (axis === "x" ? el!.scrollLeft : el!.scrollTop) - before;
         velocity *= Math.pow(FRICTION, elapsed / 16.7);
-        momentumFrame = Math.abs(velocity) > MIN_FLING_VELOCITY ? requestAnimationFrame(step) : 0;
+        // Hit the start/end of the song or the tracks: nothing left to coast through.
+        const stuck = Math.abs(velocity * elapsed) > 0.5 && Math.abs(moved) < 0.01;
+        momentumFrame = !stuck && Math.abs(velocity) > MIN_FLING_VELOCITY ? requestAnimationFrame(step) : 0;
+        if (!momentumFrame) endScrub();
       };
       momentumFrame = requestAnimationFrame(step);
     }
@@ -109,6 +159,7 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
     function onPointerCancel(e: PointerEvent) {
       pointers.delete(e.pointerId);
       if (active?.id === e.pointerId) active = null;
+      if (pointers.size === 0) endScrub();
     }
 
     function onClickCapture(e: MouseEvent) {
@@ -125,6 +176,7 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
     el.addEventListener("click", onClickCapture, true);
     return () => {
       stopMomentum();
+      endScrub();
       el.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);

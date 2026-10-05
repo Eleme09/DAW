@@ -3,17 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import {
-  detectClipKey,
+  analyzeClipMelody,
   renderHarmonyVoices,
   stretchClip,
   transposeClip,
   type DetectedKey,
   type HarmonyVoice,
 } from "@/lib/audio/clipProcessing";
+import { isAbortError } from "@/lib/audio/clipWorkerClient";
 import type { AudioClip } from "@/types/project";
-import type { ScaleName } from "@/types/pitch";
+import type { PitchFrame, ScaleName } from "@/types/pitch";
 import { Picker } from "./ui/Picker";
-import { PlayIcon, PauseIcon } from "./icons";
+import { PlayIcon, PauseIcon, CloseIcon } from "./icons";
 
 const SHIFT_MS = 300;
 const GAIN_RANGE_DB = 24;
@@ -51,6 +52,10 @@ const TITLES = {
  * and a row ▶ · name · ✓. It replaces the transport while open. Shift, Gain,
  * Fade and Loop apply live as you move them; Transpose, Time-stretch and
  * Harmonize render audio when you press ✓. Undo reverts any of them.
+ *
+ * The rendering runs in a Web Worker (clipWorker.ts): the screen never
+ * freezes, the ✓ turns into a ✕ that really stops it, and closing the panel
+ * stops it too.
  */
 export function ClipEditPanel() {
   const mode = useProjectStore((s) => s.clipEditMode);
@@ -74,29 +79,54 @@ function PanelBody({ clip }: { clip: AudioClip }) {
   const [speed, setSpeed] = useState<number>(1);
   const [speedListOpen, setSpeedListOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Harmonize state
   const [key, setKey] = useState<DetectedKey | null>(null);
   const [keyDetected, setKeyDetected] = useState<"pending" | "ok" | "none">("pending");
   const [voices, setVoices] = useState<number[]>([2]);
   const [humanize, setHumanize] = useState(true);
+  // The running render (✓) and the key detection each have their own
+  // controller: ✕ and closing the panel abort them, and the pitch track from
+  // the detection is reused by the render so the audio is analysed once.
+  const jobAbort = useRef<AbortController | null>(null);
+  const keyAbort = useRef<AbortController | null>(null);
+  const melodyFrames = useRef<PitchFrame[] | undefined>(undefined);
 
   useEffect(() => {
     if (mode !== "harmonize") return;
-    let cancelled = false;
-    detectClipKey(clip)
-      .then((k) => {
-        if (cancelled) return;
-        setKey(k ?? { key: 0, scale: "major" });
-        setKeyDetected(k ? "ok" : "none");
+    const controller = new AbortController();
+    keyAbort.current = controller;
+    analyzeClipMelody(clip, { signal: controller.signal })
+      .then((melody) => {
+        melodyFrames.current = melody.frames;
+        setKey((current) => current ?? melody.key ?? { key: 0, scale: "major" });
+        setKeyDetected(melody.key ? "ok" : "none");
       })
-      .catch(() => !cancelled && setKeyDetected("none"));
+      .catch((err) => {
+        if (!isAbortError(err)) setKeyDetected("none");
+      });
     return () => {
-      cancelled = true;
+      controller.abort();
+      jobAbort.current?.abort();
     };
     // Detect once per panel open - the clip's audio doesn't change while it's open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
+
+  // Leaving the panel by any route stops a render that is still running.
+  useEffect(() => () => jobAbort.current?.abort(), []);
+
+  function chooseKey(next: DetectedKey) {
+    // Their choice wins: stop looking for the key.
+    keyAbort.current?.abort();
+    setKey(next);
+    setKeyDetected("ok");
+  }
+
+  function cancelJob() {
+    jobAbort.current?.abort();
+  }
 
   const update = (patch: Partial<AudioClip>) => updateClip(clip.trackId, clip.id, patch);
 
@@ -110,26 +140,32 @@ function PanelBody({ clip }: { clip: AudioClip }) {
   async function confirm() {
     setError(null);
     const s = useProjectStore.getState();
+    const controller = new AbortController();
+    jobAbort.current = controller;
+    const job = { signal: controller.signal, onProgress: (f: number) => setProgress(f) };
     try {
       if (mode === "transpose" && semitones !== 0) {
         setBusy(true);
-        update(await transposeClip(clip, semitones));
+        update(await transposeClip(clip, semitones, job));
         s.showToast("Éxito");
       } else if (mode === "stretch" && speed !== 1) {
         setBusy(true);
-        update(await stretchClip(clip, speed));
+        update(await stretchClip(clip, speed, job));
         s.showToast("Éxito");
       } else if (mode === "harmonize") {
         if (!key || voices.length === 0) return;
         setBusy(true);
-        await createHarmonyTracks(clip, key, voices, humanize);
+        await createHarmonyTracks(clip, key, voices, humanize, { ...job, frames: melodyFrames.current });
         s.showToast(`Éxito: ${voices.length} ${voices.length === 1 ? "voz creada" : "voces creadas"}`);
       }
       close();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo procesar");
+      if (isAbortError(err)) s.showToast("Cancelado");
+      else setError(err instanceof Error ? err.message : "No se pudo procesar");
     } finally {
       setBusy(false);
+      setProgress(null);
+      if (jobAbort.current === controller) jobAbort.current = null;
     }
   }
 
@@ -196,24 +232,21 @@ function PanelBody({ clip }: { clip: AudioClip }) {
       <div className="space-y-3 py-1">
         <div className="flex items-center gap-2 text-sm">
           <span className="text-bone-3">Tonalidad</span>
-          {keyDetected === "pending" ? (
-            <span className="text-bone-2">detectando…</span>
-          ) : (
-            <div className="w-40">
-              <Picker
-                value={key ? `${key.key}-${key.scale}` : "0-major"}
-                title="Tonalidad de la armonía"
-                options={NOTE_NAMES_ES.flatMap((n, i) => [
-                  { value: `${i}-major`, label: `${n} mayor` },
-                  { value: `${i}-naturalMinor`, label: `${n} menor` },
-                ])}
-                onChange={(v) => {
-                  const [k, scale] = v.split("-");
-                  setKey({ key: Number(k), scale: scale as ScaleName });
-                }}
-              />
-            </div>
-          )}
+          <div className="w-40">
+            <Picker
+              value={key ? `${key.key}-${key.scale}` : "0-major"}
+              title="Tonalidad de la armonía"
+              options={NOTE_NAMES_ES.flatMap((n, i) => [
+                { value: `${i}-major`, label: `${n} mayor` },
+                { value: `${i}-naturalMinor`, label: `${n} menor` },
+              ])}
+              onChange={(v) => {
+                const [k, scale] = v.split("-");
+                chooseKey({ key: Number(k), scale: scale as ScaleName });
+              }}
+            />
+          </div>
+          {keyDetected === "pending" && <span className="text-bone-2">detectando… (puedes elegirla)</span>}
           {keyDetected === "none" && <span className="text-[11px] text-bone-3">no se detectó, elígela</span>}
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -270,10 +303,23 @@ function PanelBody({ clip }: { clip: AudioClip }) {
             )}
           </div>
         )}
-        <span className="text-sm font-medium text-bone">{busy ? "Procesando…" : TITLES[mode]}</span>
-        <button onClick={() => void confirm()} disabled={busy} aria-label="Aplicar" className="flex h-11 w-11 items-center justify-center text-bone disabled:opacity-30">
-          <CheckIcon className="h-6 w-6" />
-        </button>
+        <span className="text-sm font-medium tabular-nums text-bone">
+          {busy ? `Procesando…${progress !== null ? ` ${Math.round(progress * 100)} %` : ""}` : TITLES[mode]}
+        </span>
+        {busy ? (
+          <button onClick={cancelJob} aria-label="Cancelar" title="Cancelar" className="flex h-11 w-11 items-center justify-center text-bone">
+            <CloseIcon className="h-6 w-6" />
+          </button>
+        ) : (
+          <button
+            onClick={() => void confirm()}
+            disabled={mode === "harmonize" && (!key || voices.length === 0)}
+            aria-label="Aplicar"
+            className="flex h-11 w-11 items-center justify-center text-bone disabled:opacity-30"
+          >
+            <CheckIcon className="h-6 w-6" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -281,11 +327,17 @@ function PanelBody({ clip }: { clip: AudioClip }) {
 
 /** One new track per harmony voice, under the original's effects, spread
  * left/right and 6 dB down - the usual way a harmony stack sits in a mix. */
-async function createHarmonyTracks(clip: AudioClip, key: DetectedKey, steps: number[], humanize: boolean) {
+async function createHarmonyTracks(
+  clip: AudioClip,
+  key: DetectedKey,
+  steps: number[],
+  humanize: boolean,
+  options: Parameters<typeof renderHarmonyVoices>[4]
+) {
   const s = useProjectStore.getState();
   const source = s.project.tracks.find((t) => t.id === clip.trackId);
   const voices = HARMONY_VOICES.filter((v) => steps.includes(v.steps));
-  const rendered = await renderHarmonyVoices(clip, key, voices, humanize);
+  const rendered = await renderHarmonyVoices(clip, key, voices, humanize, options);
   rendered.forEach(({ voice, sampleId }, i) => {
     const st = useProjectStore.getState();
     const track = st.addTrack(`${source?.name ?? "Voz"} · ${voice.label}`);

@@ -7,7 +7,7 @@ import { Picker } from "../ui/Picker";
 import { HEADER_WIDTH, MIN_TIMELINE_SECONDS, RULER_HEIGHT, TRACK_HEIGHT } from "./constants";
 import { Ruler } from "./Ruler";
 import { TrackHeader } from "./TrackHeader";
-import { TrackLane } from "./TrackLane";
+import { TrackLane, TrackLaneLead } from "./TrackLane";
 import { LoopRegion } from "./LoopRegion";
 import { GridLines } from "./GridLines";
 import { ContextBar } from "./ContextBar";
@@ -117,7 +117,26 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
   // programmatic batch callers (tests) are unaffected.
   const lastAddClickAt = useRef(0);
 
-  useAxisLockedPan(scrollRef, compact);
+  // Dragging the timeline while it plays: pause while the finger (or its
+  // fling) is moving through the song, then carry on from the new spot.
+  // Without this every scroll event re-scheduled every clip mid-playback,
+  // and the playback clock fought the finger for the scroll position.
+  // Never while recording - the take's timing must not jump.
+  const resumeAfterScrub = useRef(false);
+  useAxisLockedPan(scrollRef, compact, {
+    onScrubStart: () => {
+      const s = useProjectStore.getState();
+      if (!s.isPlaying || s.isRecording || s.isCountingIn) return;
+      resumeAfterScrub.current = true;
+      s.pause();
+    },
+    onScrubEnd: () => {
+      if (!resumeAfterScrub.current) return;
+      resumeAfterScrub.current = false;
+      const s = useProjectStore.getState();
+      if (!s.isPlaying && !s.isRecording && !s.isCountingIn) s.play();
+    },
+  });
   usePinchZoom(scrollRef, pixelsPerSecond, setPixelsPerSecond, compact ? { originX: origin, anchorLocalX: origin } : {});
 
   // Visible feedback for "+ Nueva pista": a track appended off-screen (a
@@ -250,7 +269,11 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
               ) : (
                 <TrackHeader track={track} selected={track.id === selectedTrackId} flash={track.id === flashTrackId} />
               )}
-              <div className="shrink-0" style={{ marginLeft: laneOffset }}>
+              {/* Before time 0 the row stays tinted (not black) so the track
+                  header, the empty lead-in and the region read as ONE strip -
+                  without this a collapsed header left a dead black gap. */}
+              <TrackLaneLead track={track} width={laneOffset} selected={track.id === selectedTrackId} compact={compact} height={rowHeight} />
+              <div className="shrink-0">
                 <TrackLane
                   track={track}
                   width={contentWidth}
