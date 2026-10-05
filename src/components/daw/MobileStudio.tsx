@@ -7,7 +7,7 @@ import { Timeline } from "./Timeline/Timeline";
 import { MobileMixView } from "./Mixer/MobileMixView";
 import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { BrowserPanel } from "./BrowserPanel";
-import { VozPanel } from "./VozPanel/VozPanel";
+import { TrackEditorView } from "./TrackEditorView";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { ClipEditPanel } from "./ClipEditPanel";
 import { AddTrackSheet } from "./AddTrackSheet";
@@ -24,7 +24,6 @@ import {
   RewindIcon,
   PlayIcon,
   PauseIcon,
-  StopIcon,
   MetronomeIcon,
   MicIcon,
   WaveformIcon,
@@ -82,7 +81,7 @@ export function MobileStudio() {
   const [savedFlash, setSavedFlash] = useState(false);
 
   const selectedTrack = tracks.find((t) => t.id === selectedTrackId) ?? null;
-  const panelOpen = mobileView === "voz" || mobileView === "effects";
+  const panelOpen = mobileView === "effects";
   const overlay = mobileView === "mixer" || mobileView === "browser" ? mobileView : null;
   const busy = isRecording || isCountingIn;
   const monitoringLive = selectedTrack
@@ -147,19 +146,27 @@ export function MobileStudio() {
           <div className="flex h-[46%] shrink-0 flex-col border-t border-line-2 bg-ink">
             <div className="flex h-10 shrink-0 items-center justify-between border-b border-line px-3">
               <span className="truncate text-xs font-semibold text-bone">
-                {mobileView === "voz" ? "Voz" : "Efectos"}
-                {selectedTrack ? ` · ${selectedTrack.name}` : ""}
+                Efectos{selectedTrack ? ` · ${selectedTrack.name}` : ""}
               </span>
               <button onClick={() => setMobileView("timeline")} aria-label="Cerrar panel" title="Cerrar panel" className="flex h-9 w-9 items-center justify-center rounded-full text-bone-2">
                 <CloseIcon className="h-4 w-4" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">{mobileView === "voz" ? <VozPanel /> : <EffectsRackPanel />}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <EffectsRackPanel />
+            </div>
+          </div>
+        )}
+
+        {mobileView === "voz" && (
+          <div className="absolute inset-0 z-30 flex flex-col bg-ink">
+            <TrackEditorView onTuning={openTuning} />
           </div>
         )}
 
         {overlay === "mixer" && (
-          <div className="absolute inset-0 z-30 flex flex-col bg-ink">
+          // Mix View slides in from the left over the timeline, as in BandLab.
+          <div className="absolute inset-0 z-30 flex animate-[slide-in-left_200ms_ease-out] flex-col bg-ink">
             <MobileMixView onAddTrack={() => setAddTrackOpen(true)} />
           </div>
         )}
@@ -235,9 +242,13 @@ export function MobileStudio() {
           disabled={isCountingIn}
           aria-label={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás" : "Grabar"}
           title={isRecording ? "Detener grabación" : "Grabar en la pista armada"}
-          className={`flex h-14 w-14 items-center justify-center rounded-full bg-rec font-mono text-lg font-bold text-bone ${isRecording ? "animate-pulse" : ""}`}
+          // BandLab: while recording the red circle becomes a dark button with
+          // a red square (stop).
+          className={`flex h-14 w-14 items-center justify-center rounded-full font-mono text-lg font-bold text-bone ${
+            isRecording ? "bg-surf-3" : "bg-rec"
+          }`}
         >
-          {isCountingIn ? countInBeats : isRecording ? <StopIcon className="h-5 w-5" /> : null}
+          {isCountingIn ? countInBeats : isRecording ? <span className="h-5 w-5 rounded-[4px] bg-rec" /> : null}
         </button>
         <button onClick={() => (isPlaying ? pause() : play())} disabled={busy} aria-label={isPlaying ? "Pausar" : "Reproducir"} title={isPlaying ? "Pausar" : "Reproducir"} className={`${roundBtn} !text-bone`}>
           {isPlaying && !isRecording ? <PauseIcon className="h-6 w-6" /> : <PlayIcon className="h-6 w-6" />}

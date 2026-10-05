@@ -163,3 +163,11 @@ pide un video/captura al usuario en vez de inventarla.
 - **Eliminación de ruido / Revertir**: inmediatos, aviso "Éxito". Deshacer = flecha a la izquierda de GRABAR.
 - **Loop (centro de ayuda)**: 4, 8 o 16 veces desde el menú inferior; botón para desactivar; ✓ aplica. Dividir: en la línea de reproducción. Copiar → tocar donde pegar → Pegar.
 - **Armonizar**: función de BandLab Max ("AI Harmonizer"); no hay documentación pública de su pantalla. Se implementó como un armonizador estándar (Antares Harmony Engine / Waves Harmony): tonalidad detectada + voces por intervalo diatónico + humanizar; cada voz en su pista.
+
+## 14. Grabar y desplazarse — confirmado con videos del usuario (tema 2)
+
+- **Botón del micrófono (fila inferior)**: abre el editor de la pista seleccionada: la pista sola y grande, línea de reproducción fija al centro, cabecera `nombre · 👑 Takes · ⓘ · ✕`, y debajo herramientas de voz `Retune 👑` y `Limpiador de voz 👑`.
+- **Mientras graba**: la toma nueva crece en un tono pálido del color de la pista con la onda dibujándose en vivo; el botón GRABAR pasa a ser un círculo oscuro con un cuadrado rojo; reproducir y deshacer quedan desactivados; el ícono de audífonos se ilumina.
+- **Barra de ciclo**: barra roja en la parte de arriba de la regla (rojo oscuro = apagado, rojo brillante = encendido). Con ciclo, la reproducción vuelve al inicio del ciclo; grabando, cada vuelta es una toma (centro de ayuda: Composite Recording).
+- **Solo/Mute**: las pistas que no suenan (silenciadas, o porque otra está en solo) se ven en gris en la línea de tiempo.
+- **Desplazamiento**: horizontal = moverse en la canción (con inercia), vertical = moverse entre pistas; la regla y la columna de pistas se quedan quietas. La vista de Mezcla entra deslizándose desde la izquierda.

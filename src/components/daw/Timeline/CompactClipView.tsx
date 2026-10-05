@@ -27,7 +27,19 @@ type DragState =
  * Darker body in the track color with the waveform in the full color; a
  * looped region repeats its waveform tile; fades draw as white lines.
  */
-export function CompactClipView({ clip }: { clip: AudioClip }) {
+/** Grey used for regions that can't be heard (muted track, or another track
+ * is soloed) - BandLab greys those regions out (user's recording). */
+const SILENT_COLOR = "#5f5f66";
+
+export function CompactClipView({
+  clip,
+  laneHeight = TRACK_HEIGHT,
+  audible = true,
+}: {
+  clip: AudioClip;
+  laneHeight?: number;
+  audible?: boolean;
+}) {
   const updateClip = useProjectStore((s) => s.updateClip);
   const selectClip = useProjectStore((s) => s.selectClip);
   const selectTake = useProjectStore((s) => s.selectTake);
@@ -61,7 +73,8 @@ export function CompactClipView({ clip }: { clip: AudioClip }) {
 
   const snap = (sec: number) => snapToGrid(sec, bpm, timeSignature, snapResolution);
   const width = Math.max(4, clip.duration * pps);
-  const height = TRACK_HEIGHT - 8;
+  const height = laneHeight - 8;
+  const color = audible ? clip.color : SILENT_COLOR;
   const loopLength = clip.loopLengthSec;
   const tileWidth = loopLength ? loopLength * pps : width;
   const tiles = loopLength ? Math.ceil(clip.duration / loopLength) : 1;
@@ -126,13 +139,14 @@ export function CompactClipView({ clip }: { clip: AudioClip }) {
       onPointerCancel={() => (drag.current = null)}
       onClick={(e) => e.stopPropagation()}
       title={clip.name}
+      data-no-pan={selected ? "" : undefined}
       style={{
         position: "absolute",
         left: clip.startTime * pps,
         width,
         height,
         top: 4,
-        background: `${clip.color}4d`,
+        background: `${color}4d`,
         touchAction: selected ? "none" : "pan-x pan-y",
         zIndex: selected ? 5 : undefined,
       }}
@@ -149,7 +163,7 @@ export function CompactClipView({ clip }: { clip: AudioClip }) {
               buffer={buffer}
               width={Math.max(1, tileWidth)}
               height={height}
-              color={clip.color}
+              color={color}
               startSec={clip.sourceOffset}
               durationSec={loopLength ?? clip.duration}
             />

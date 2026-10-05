@@ -17,6 +17,8 @@ import { ScissorsIcon, DuplicateIcon, PlusIcon } from "../icons";
 import { CompactTrackHeader, COLLAPSED_HEADER_WIDTH } from "./CompactTrackHeader";
 import { formatTime } from "../TransportBar";
 import { RegionActionBar } from "./RegionActionBar";
+import { CycleBar } from "./CycleBar";
+import { useAxisLockedPan } from "./useAxisLockedPan";
 
 interface TimelineProps {
   /** Phone Studio layout: no bottom toolbar or context bar here - those live in
@@ -24,9 +26,12 @@ interface TimelineProps {
   compact?: boolean;
   /** Where "+ Nueva pista" goes in compact mode (MobileStudio's Add Track sheet). */
   onAddTrack?: () => void;
+  /** Track editor view (BandLab's Voice/Audio editor): only this track,
+   * one tall row filling the height, no name column. */
+  focusTrackId?: string;
 }
 
-export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
+export function Timeline({ compact = false, onAddTrack, focusTrackId }: TimelineProps = {}) {
   const project = useProjectStore((s) => s.project);
   const currentTime = useProjectStore((s) => s.currentTime);
   const isPlaying = useProjectStore((s) => s.isPlaying);
@@ -49,19 +54,26 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   // viewport in (`origin`), and the name column shrinks to just the icon as
   // soon as you swipe away from the start, giving the waveforms the room.
   const [viewWidth, setViewWidth] = useState(0);
+  const [viewHeight, setViewHeight] = useState(0);
   const [scrolledAway, setScrolledAway] = useState(false);
   const [scrollTop, setScrollTop] = useState(0);
   const actionTrackId = useProjectStore((s) => s.selectedClip?.trackId ?? s.selectedTrackId);
   const expectedScrollLeft = useRef<number | null>(null);
   const origin = compact ? Math.max(HEADER_WIDTH * 0.75, Math.round(viewWidth / 2)) : HEADER_WIDTH;
-  const headerWidth = compact ? (scrolledAway ? COLLAPSED_HEADER_WIDTH : origin) : HEADER_WIDTH;
+  const headerWidth = focusTrackId ? 0 : compact ? (scrolledAway ? COLLAPSED_HEADER_WIDTH : origin) : HEADER_WIDTH;
+  const rowHeight = focusTrackId ? Math.max(TRACK_HEIGHT, viewHeight - RULER_HEIGHT - 8) : TRACK_HEIGHT;
+  const tracks = focusTrackId ? project.tracks.filter((t) => t.id === focusTrackId) : project.tracks;
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !compact) return;
-    const ro = new ResizeObserver(() => setViewWidth(el.clientWidth));
+    const measure = () => {
+      setViewWidth(el.clientWidth);
+      setViewHeight(el.clientHeight);
+    };
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    setViewWidth(el.clientWidth);
+    measure();
     return () => ro.disconnect();
   }, [compact]);
 
@@ -90,9 +102,9 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
       expectedScrollLeft.current = null;
       return;
     }
-    // A swipe by the user: that's a seek. Not while playing/recording - the
-    // transport owns the position then.
-    if (isPlaying || isRecording) return;
+    // A swipe by the user: that's a seek (also while playing - scrubbing).
+    // Never while recording: the take's timing must not jump.
+    if (isRecording) return;
     seek(Math.max(0, el.scrollLeft / pixelsPerSecond));
   }
   // Guards only this button's own double-tap/double-fire (a stuck pointer
@@ -102,6 +114,7 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   // programmatic batch callers (tests) are unaffected.
   const lastAddClickAt = useRef(0);
 
+  useAxisLockedPan(scrollRef, compact);
   usePinchZoom(scrollRef, pixelsPerSecond, setPixelsPerSecond, compact ? { originX: origin, anchorLocalX: origin } : {});
 
   // Visible feedback for "+ Nueva pista": a track appended off-screen (a
@@ -154,21 +167,21 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   );
   const durationSec = Math.max(MIN_TIMELINE_SECONDS, clipEnd + 15);
   const contentWidth = durationSec * pixelsPerSecond;
-  const tracksHeight = RULER_HEIGHT + project.tracks.length * TRACK_HEIGHT;
+  const tracksHeight = RULER_HEIGHT + tracks.length * rowHeight;
   // Compact needs room after the end too, so the last second can still be
   // brought under the centered playhead.
   const totalWidth = origin + contentWidth + (compact ? Math.max(0, viewWidth - origin) : 0);
   // Lanes keep time 0 at `origin` whatever the header column's width is.
   const laneOffset = origin - headerWidth;
 
-  const actionRowIndex = project.tracks.findIndex((t) => t.id === actionTrackId);
+  const actionRowIndex = tracks.findIndex((t) => t.id === actionTrackId);
 
   return (
     <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
       {compact && actionRowIndex !== -1 && (
         <RegionActionBar
-          rowTop={RULER_HEIGHT + actionRowIndex * TRACK_HEIGHT - scrollTop}
-          rowHeight={TRACK_HEIGHT}
+          rowTop={RULER_HEIGHT + actionRowIndex * rowHeight - scrollTop}
+          rowHeight={rowHeight}
           minTop={RULER_HEIGHT + 4}
         />
       )}
@@ -180,7 +193,9 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
         // in both directions but excludes the browser's own pinch-to-zoom,
         // which would otherwise fight usePinchZoom's own two-finger
         // handling (zooming the whole page instead of the timeline).
-        style={{ touchAction: "pan-x pan-y" }}
+        // Compact: native scrolling is off and useAxisLockedPan drives it
+        // (axis lock, fling, no iOS rubber-band dragging the sticky ruler).
+        style={compact ? { touchAction: "none", overscrollBehavior: "none" } : { touchAction: "pan-x pan-y" }}
       >
         {project.tracks.length === 0 && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 text-center">
@@ -201,7 +216,7 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
         <div className="relative" style={{ width: totalWidth }}>
           <div className="sticky top-0 z-20 flex">
             <div
-              className="sticky left-0 z-30 flex shrink-0 items-center border-b border-r border-line bg-ink px-2 transition-[width] duration-150"
+              className="sticky left-0 z-30 flex shrink-0 items-center border-b border-r border-line bg-ink px-2"
               style={{ width: headerWidth, height: RULER_HEIGHT }}
             >
               {compact && (
@@ -213,30 +228,39 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
                 </span>
               )}
             </div>
-            <div className="shrink-0" style={{ marginLeft: laneOffset }}>
+            <div className="relative shrink-0" style={{ marginLeft: laneOffset }}>
               <Ruler width={contentWidth} bpm={project.bpm} timeSignature={project.timeSignature} onSeek={(t) => seek(t)} />
+              {compact && <CycleBar />}
             </div>
           </div>
 
-          <div className="absolute left-0 top-0" style={{ left: origin }}>
-            <LoopRegion height={tracksHeight} />
-          </div>
+          {!compact && (
+            <div className="absolute left-0 top-0" style={{ left: origin }}>
+              <LoopRegion height={tracksHeight} />
+            </div>
+          )}
 
-          {project.tracks.map((track) => (
+          {tracks.map((track) => (
             <div key={track.id} className="flex">
-              {compact ? (
+              {focusTrackId ? null : compact ? (
                 <CompactTrackHeader track={track} width={headerWidth} collapsed={scrolledAway} selected={track.id === selectedTrackId} />
               ) : (
                 <TrackHeader track={track} selected={track.id === selectedTrackId} flash={track.id === flashTrackId} />
               )}
               <div className="shrink-0" style={{ marginLeft: laneOffset }}>
-                <TrackLane track={track} width={contentWidth} selected={track.id === selectedTrackId} compact={compact} />
+                <TrackLane
+                  track={track}
+                  width={contentWidth}
+                  selected={track.id === selectedTrackId}
+                  compact={compact}
+                  height={rowHeight}
+                />
               </div>
             </div>
           ))}
 
-          {compact && project.tracks.length > 0 && onAddTrack && (
-            <div className="sticky left-0 z-10 p-1.5 transition-[width] duration-150" style={{ width: headerWidth }}>
+          {compact && !focusTrackId && project.tracks.length > 0 && onAddTrack && (
+            <div className="sticky left-0 z-10 p-1.5" style={{ width: headerWidth }}>
               <button
                 onClick={onAddTrack}
                 aria-label="Nueva pista"

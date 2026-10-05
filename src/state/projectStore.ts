@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { splitCyclePasses } from "@/lib/timeline/cyclePasses";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { listProjects, loadProject as loadProjectFromDisk, saveProject } from "@/lib/storage/projectStore";
 import { putSample } from "@/lib/storage/sampleStore";
@@ -58,6 +59,9 @@ interface ProjectState {
   isPlaying: boolean;
   selectedTrackId: TrackId | null;
   isRecording: boolean;
+  /** Timeline position where the current take started - drives the live
+   * "growing take" drawn while recording (BandLab shows it in a pale tint). */
+  recordStartTime: number | null;
   /** True while the pre-recording count-in is playing (recording hasn't started yet). */
   isCountingIn: boolean;
   /** Beats left in the count-in, including the current one (4,3,2,1), or null when not counting in. */
@@ -321,6 +325,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     isPlaying: false,
     selectedTrackId: null,
     isRecording: false,
+    recordStartTime: null,
     isCountingIn: false,
     countInBeats: null,
     recordingError: null,
@@ -944,24 +949,25 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       // the user had armed it manually and not hit record yet.
       if (!completedCountIn) return;
 
+      const recordFrom = get().currentTime;
       const result = await getAudioEngine().startRecording(
         project.tracks,
         project.loop,
         project.bpm,
-        get().currentTime,
+        recordFrom,
         project.buses
       );
       if (!result.ok) {
         set({ recordingError: result.error });
         return;
       }
-      set({ isRecording: true, isPlaying: true });
+      set({ isRecording: true, isPlaying: true, recordStartTime: recordFrom });
     },
 
     stopRecording: async () => {
       if (!get().isRecording) return;
       const result = getAudioEngine().stopRecording();
-      set({ isRecording: false, isPlaying: false, currentTime: getAudioEngine().getCurrentTime() });
+      set({ isRecording: false, isPlaying: false, recordStartTime: null, currentTime: getAudioEngine().getCurrentTime() });
       if (!result || result.durationSec <= 0) return;
 
       const project = get().project;
@@ -996,6 +1002,29 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       // recorded from the very start of the timeline has nothing earlier
       // to shift into.
       const latencySec = getAudioEngine().getLatencySec() ?? 0;
+
+      // Recorded with the Cycle on and it wrapped: one take per lap, stacked
+      // on the cycle (takes are grouped by addClip because they overlap).
+      const passes = splitCyclePasses(result.startTime, result.durationSec, project.loop, latencySec);
+      if (passes) {
+        passes.forEach((pass, i) =>
+          get().addClip({
+            id: crypto.randomUUID(),
+            trackId: armedTrack.id,
+            sampleId,
+            name: `${armedTrack.name} toma ${i + 1}`,
+            startTime: pass.startTime,
+            duration: pass.duration,
+            sourceOffset: pass.sourceOffset,
+            gainDb: 0,
+            fadeInSec: 0,
+            fadeOutSec: 0,
+            color: armedTrack.color,
+          })
+        );
+        return;
+      }
+
       const clip: AudioClip = {
         id: crypto.randomUUID(),
         trackId: armedTrack.id,
@@ -1021,7 +1050,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       }
       if (!state.isRecording) return;
       getAudioEngine().discardRecording();
-      set({ isRecording: false, isPlaying: false, currentTime: getAudioEngine().getCurrentTime() });
+      set({ isRecording: false, isPlaying: false, recordStartTime: null, currentTime: getAudioEngine().getCurrentTime() });
     },
 
     renameProject: (name) => setProject(touch({ ...get().project, name }), { coalesce: true }),

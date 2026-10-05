@@ -979,3 +979,15 @@ El usuario mandó una captura del Mix View de BandLab y un video de su línea de
 - **Verificado en navegador (390×844)**: seleccionar, menú, Ganancia (+14.4 dB), Transponer +5, Expansión 2x (ancho 320→160 px), Fade, Loop x4 (→640 px), Revertir, Ruido, Copiar, Armonizar (tonalidad detectada, 2 pistas de armonía creadas). Cero errores.
 - **No verificado / límites honestos**: no puedo escuchar el resultado — la calidad de transponer/estirar/armonizar está medida con pruebas (frecuencia y duración correctas), no a oído. Estirar 20 s estéreo tarda ~1-2.5 s y congela la pantalla mientras procesa. Falta: selección múltiple con pulsación larga, arrastrar el ícono de loop, Fusionar.
 - `tsc`/`eslint`/`vitest` (289)/`next build` limpios.
+
+## Tema 2: Grabar + desplazamiento (desde los videos del usuario)
+
+- [x] **Desplazamiento arreglado** (`Timeline/useAxisLockedPan.ts`): el video del usuario mostraba que al mover el dedo en diagonal se arrastraba todo (regla, nombres) y aparecían huecos negros por el rebote de iOS. Ahora el gesto se bloquea en UN eje (horizontal = canción, vertical = pistas), tiene inercia al soltar, sin rebote; la regla y la columna no se mueven de su sitio. Se quitó la animación de ancho de la columna que se veía rota a medio encoger.
+- [x] **Toma en vivo** (`Timeline/LiveTake.tsx`): mientras grabas, la toma crece en tono pálido con la onda dibujándose en vivo. Botón GRABAR durante la grabación = círculo oscuro con cuadrado rojo.
+- [x] **Barra de ciclo** (`Timeline/CycleBar.tsx`): roja en la regla; tocar = encender/apagar, arrastrar = mover, extremos = cambiar tamaño.
+- [x] **Bug real arreglado — grabar con ciclo**: antes dejaba un solo clip largo mal colocado (más largo que el ciclo). Ahora cada vuelta es una toma apilada en el ciclo (`lib/timeline/cyclePasses.ts`, 4 pruebas). Verificado: ~19 s grabando sobre un ciclo de 8 s = 3 tomas.
+- [x] **Editor de pista** (`TrackEditorView.tsx`, botón del micrófono): pista sola y grande, Tomas (elegir cuál suena), Retune, Limpiador de voz (quita ruido de todas las regiones de la pista), Cadena de voz (el panel de voz anterior).
+- [x] **Pistas que no suenan en gris** (mute o solo de otra pista). **Mezcla entra deslizándose** desde la izquierda.
+- **Verificado en navegador (390×844, micrófono falso)**: arrastre diagonal-horizontal no mueve en vertical y viceversa; inercia (398→715 px tras soltar); tocar clip lo selecciona sin desplazar; tocar carril vacío deselecciona; ciclo se enciende al tocar; solo pone las demás en gris; grabación en vivo; 3 tomas con ciclo. Cero errores.
+- **No verificado**: cómo se siente el gesto con el dedo en un iPhone real (Playwright solo simula ratón). Si el ciclo rebobina mientras graba, el motor sigue grabando de corrido — eso se comprobó solo en Chromium.
+- `tsc`/`eslint`/`vitest` (293)/`next build` limpios.

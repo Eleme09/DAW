@@ -29,6 +29,9 @@ export function CompactTrackHeader({ track, width, collapsed, selected }: Compac
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const firstFx = track.inserts[0];
+  const anySolo = useProjectStore((s) => s.project.tracks.some((t) => t.solo));
+  // Not heard right now (muted, or another track is soloed): greyed like BandLab.
+  const silent = track.muted || (anySolo && !track.solo);
   const tint = selected ? `${track.color}40` : `${track.color}1f`;
 
   function openFx(e: React.MouseEvent) {
@@ -47,9 +50,9 @@ export function CompactTrackHeader({ track, width, collapsed, selected }: Compac
         backgroundColor: "var(--color-ink)",
         backgroundImage: `linear-gradient(${tint}, ${tint})`,
       }}
-      className={`sticky left-0 z-10 flex shrink-0 items-center overflow-hidden border-b border-r border-line transition-[width] duration-150 ${
+      className={`sticky left-0 z-10 flex shrink-0 items-center overflow-hidden border-b border-r border-line ${
         collapsed ? "flex-col justify-center gap-1" : "gap-2.5 px-3"
-      } ${track.muted ? "opacity-60" : ""}`}
+      } ${silent ? "grayscale *:opacity-40" : ""}`}
     >
       <span className="relative shrink-0">
         <MicIcon className="h-5 w-5" style={{ color: track.color }} />
