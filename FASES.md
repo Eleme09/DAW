@@ -10,7 +10,7 @@ Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BA
 | 1 | Clips: seleccionar, barra de acciones, menú ⋯, panel inferior, Armonizar | Hecho | d94f9eb |
 | 2 | Grabar + desplazamiento: eje bloqueado con inercia, toma en vivo, ciclo y tomas, editor de pista | Hecho | 09fcf9d |
 | 3 | Efectos (+Fx): librería de presets, agregar efecto, perillas | Pendiente — esperar videos |  |
-| 4 | AutoPitch: panel, tonalidad, categorías, armonías (24 presets) + pestañas Letra y Ajustes | Hecho | (este commit) |
+| 4 | AutoPitch: panel, tonalidad, categorías, armonías (24 presets) + pestañas Letra y Ajustes | Hecho | 6369504 |
 | 5 | Masterización: Universal/Fire/Clarity/Tape, intensidad, EQ | Pendiente |  |
 | 6 | Automatización | Pendiente |  |
 | 7 | Ajustes: tempo, metrónomo, latencia, importar/exportar | Parcial: pestaña Ajustes hecha en el tema 4 (tempo, compás, clave, contar, volumen de metrónomo, entrada, exportar); falta prueba de latencia |  |
