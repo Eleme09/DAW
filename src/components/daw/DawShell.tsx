@@ -11,6 +11,7 @@ import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { VozPanel } from "./VozPanel/VozPanel";
 import { ProjectHomeScreen } from "./ProjectHomeScreen";
+import { MiniTrackStrip } from "./MiniTrackStrip";
 import { MicIcon, FolderIcon, TimelineIcon, MixIcon, KnobIcon } from "./icons";
 import type { ComponentType } from "react";
 
@@ -92,6 +93,7 @@ export function DawShell() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-ink text-bone">
       <TransportBar />
+      <MiniTrackStrip />
       <AutomationEditor />
       <div className="flex flex-1 overflow-hidden">
         {/* Voz is a mobile-only dedicated screen, same reasoning as the
