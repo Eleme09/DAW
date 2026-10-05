@@ -16,6 +16,7 @@ import { usePinchZoom } from "./usePinchZoom";
 import { ScissorsIcon, DuplicateIcon, PlusIcon } from "../icons";
 import { CompactTrackHeader, COLLAPSED_HEADER_WIDTH } from "./CompactTrackHeader";
 import { formatTime } from "../TransportBar";
+import { RegionActionBar } from "./RegionActionBar";
 
 interface TimelineProps {
   /** Phone Studio layout: no bottom toolbar or context bar here - those live in
@@ -49,6 +50,8 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   // soon as you swipe away from the start, giving the waveforms the room.
   const [viewWidth, setViewWidth] = useState(0);
   const [scrolledAway, setScrolledAway] = useState(false);
+  const [scrollTop, setScrollTop] = useState(0);
+  const actionTrackId = useProjectStore((s) => s.selectedClip?.trackId ?? s.selectedTrackId);
   const expectedScrollLeft = useRef<number | null>(null);
   const origin = compact ? Math.max(HEADER_WIDTH * 0.75, Math.round(viewWidth / 2)) : HEADER_WIDTH;
   const headerWidth = compact ? (scrolledAway ? COLLAPSED_HEADER_WIDTH : origin) : HEADER_WIDTH;
@@ -81,6 +84,7 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
     const el = scrollRef.current;
     if (!el) return;
     setScrolledAway(el.scrollLeft > 2);
+    setScrollTop(el.scrollTop);
     const expected = expectedScrollLeft.current;
     if (expected !== null && Math.abs(el.scrollLeft - expected) < 1.5) {
       expectedScrollLeft.current = null;
@@ -157,8 +161,17 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
   // Lanes keep time 0 at `origin` whatever the header column's width is.
   const laneOffset = origin - headerWidth;
 
+  const actionRowIndex = project.tracks.findIndex((t) => t.id === actionTrackId);
+
   return (
-    <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
+    <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
+      {compact && actionRowIndex !== -1 && (
+        <RegionActionBar
+          rowTop={RULER_HEIGHT + actionRowIndex * TRACK_HEIGHT - scrollTop}
+          rowHeight={TRACK_HEIGHT}
+          minTop={RULER_HEIGHT + 4}
+        />
+      )}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -217,7 +230,7 @@ export function Timeline({ compact = false, onAddTrack }: TimelineProps = {}) {
                 <TrackHeader track={track} selected={track.id === selectedTrackId} flash={track.id === flashTrackId} />
               )}
               <div className="shrink-0" style={{ marginLeft: laneOffset }}>
-                <TrackLane track={track} width={contentWidth} selected={track.id === selectedTrackId} />
+                <TrackLane track={track} width={contentWidth} selected={track.id === selectedTrackId} compact={compact} />
               </div>
             </div>
           ))}

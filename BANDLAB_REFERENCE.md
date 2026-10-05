@@ -155,3 +155,11 @@ pide un video/captura al usuario en vez de inventarla.
 6. **Panel AutoPitch** con presets por categoría (incluidas armonías), key, nivel, AutoDetect.
 7. **Automatización** al estilo BandLab (botón global, desplegable por pista, doble toque borra).
 8. **Ciclo + tomas** al estilo BandLab.
+
+## 13. Región (clip) — confirmado con videos del usuario (iPhone, BandLab en español)
+
+- **Tocar región**: contorno blanco + bolita blanca en cada extremo (recortar/extender). Barra flotante oscura sobre la pista de arriba: **Eliminar · Copiar · Dividir (]|[) · Loop · Armonizar (Ai, Premium) · ⋯**. ⋯ se vuelve **^** y despliega: **Cambio › · Ganancia › · Normalizar 👑 · Transponer › · Expansión de tiempo › · Fade ›** | **Eliminación de ruido · Revertir**.
+- **Acción con valor**: el transporte se reemplaza por un panel: valor arriba ("+114 ms", "+24.0 dB", "±0 semitonos"), deslizador (relleno morado desde cero, bola blanca), fila **▶ · nombre · ✓**. Cambio = ±300 ms (oficial). Ganancia llega a +24 dB. Transponer ±12. Expansión de tiempo: selector **0.50x / 1.00x / 2.00x** (2x = más rápido/corto). Fade: deslizador de dos bolitas y líneas blancas diagonales sobre la región.
+- **Eliminación de ruido / Revertir**: inmediatos, aviso "Éxito". Deshacer = flecha a la izquierda de GRABAR.
+- **Loop (centro de ayuda)**: 4, 8 o 16 veces desde el menú inferior; botón para desactivar; ✓ aplica. Dividir: en la línea de reproducción. Copiar → tocar donde pegar → Pegar.
+- **Armonizar**: función de BandLab Max ("AI Harmonizer"); no hay documentación pública de su pantalla. Se implementó como un armonizador estándar (Antares Harmony Engine / Waves Harmony): tonalidad detectada + voces por intervalo diatónico + humanizar; cada voz en su pista.

@@ -355,3 +355,125 @@ export function CloudUploadIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function TrashIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+    </svg>
+  );
+}
+
+export function CopyIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="8" y="8" width="12" height="12" rx="2.5" />
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </svg>
+  );
+}
+
+/** BandLab's slice icon: ]|[ */
+export function SliceIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 5h3v14H5M19 5h-3v14h3M12 3v18" />
+    </svg>
+  );
+}
+
+export function LoopIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M20 12a8 8 0 1 1-2.3-5.6" />
+      <path d="M20 4v4h-4" />
+    </svg>
+  );
+}
+
+/** "Ai" + sparkle - BandLab's harmonize action icon. */
+export function HarmonizeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3" y="4" width="16" height="16" rx="3" />
+      <path d="M7 16l2.5-7 2.5 7M8 13.5h3M15 11v5" />
+      <path d="M20 2.5v3M18.5 4h3" />
+    </svg>
+  );
+}
+
+export function ShiftIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 4v16M8 8l-4 4 4 4M16 8l4 4-4 4" />
+    </svg>
+  );
+}
+
+export function GainIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 9h3l4-4v14l-4-4H4z" />
+      <path d="M15 9v6M18 7v10" />
+    </svg>
+  );
+}
+
+export function NormalizeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 4h16M4 20h16M12 7v10M9 10l3-3 3 3M9 14l3 3 3-3" />
+    </svg>
+  );
+}
+
+export function TransposeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="7" cy="17" r="2.5" />
+      <path d="M9.5 17V6l4-1.5M17 4v12M14 13l3 3 3-3M14 7l3-3 3 3" />
+    </svg>
+  );
+}
+
+export function StretchIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M9 5h6M9 19h6" />
+    </svg>
+  );
+}
+
+export function FadeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M3 19L9 5h6l6 14" />
+      <circle cx="9" cy="5" r="1.5" />
+      <circle cx="15" cy="5" r="1.5" />
+    </svg>
+  );
+}
+
+export function DenoiseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20L20 4M14 4h.01M18 8h.01M20 12h.01M10 4h.01M17 15h.01M7 9h.01M4 13h.01" />
+    </svg>
+  );
+}
+
+export function ReverseIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M20 8H5M8 4L4 8l4 4M4 16h15M16 12l4 4-4 4" />
+    </svg>
+  );
+}
+
+export function ChevronUpIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 15l6-6 6 6" />
+    </svg>
+  );
+}

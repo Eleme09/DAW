@@ -9,6 +9,7 @@ import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { BrowserPanel } from "./BrowserPanel";
 import { VozPanel } from "./VozPanel/VozPanel";
 import { AutomationEditor } from "./Automation/AutomationEditor";
+import { ClipEditPanel } from "./ClipEditPanel";
 import { AddTrackSheet } from "./AddTrackSheet";
 import { StudioSettingsSheet } from "./StudioSettingsSheet";
 import { useReturnToStart } from "./TransportBar";
@@ -55,6 +56,8 @@ export function MobileStudio() {
   const countInBeats = useProjectStore((s) => s.countInBeats);
   const recordingError = useProjectStore((s) => s.recordingError);
   const mobileView = useProjectStore((s) => s.mobileView);
+  const clipEditMode = useProjectStore((s) => s.clipEditMode);
+  const toast = useProjectStore((s) => s.toast);
   const setMobileView = useProjectStore((s) => s.setMobileView);
   const play = useProjectStore((s) => s.play);
   const pause = useProjectStore((s) => s.pause);
@@ -176,6 +179,10 @@ export function MobileStudio() {
 
       {recordingError && <p className="shrink-0 bg-rec/15 px-3 py-1.5 text-xs text-red-300">Micrófono: {recordingError}</p>}
 
+      {clipEditMode ? (
+        <ClipEditPanel />
+      ) : (
+        <>
       {/* Fila de la pista seleccionada, como BandLab: [voz · +Fx · AutoPitch] … armar · monitor */}
       <div className="flex h-14 shrink-0 items-center gap-2 px-2">
         <div className="flex h-11 items-center rounded-full bg-surf-2 px-1">
@@ -248,6 +255,14 @@ export function MobileStudio() {
           </button>
         )}
       </div>
+        </>
+      )}
+
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-40 z-50 flex justify-center px-4">
+          <span className="rounded-xl bg-[#2c2c2e] px-4 py-2.5 text-sm text-bone shadow-xl">{toast}</span>
+        </div>
+      )}
 
       <AutomationEditor />
       <AddTrackSheet open={addTrackOpen} onClose={() => setAddTrackOpen(false)} />

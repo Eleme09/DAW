@@ -176,6 +176,11 @@ function scheduleClip(
 
   applyFades(envelope.gain, clip);
 
+  if (clip.loopLengthSec) {
+    source.loop = true;
+    source.loopStart = clip.sourceOffset;
+    source.loopEnd = clip.sourceOffset + clip.loopLengthSec;
+  }
   source.start(clip.startTime, clip.sourceOffset, clip.duration);
 }
 

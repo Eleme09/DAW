@@ -8,9 +8,12 @@ interface WaveformProps {
   width: number;
   height: number;
   color?: string;
+  /** Only draw this part of the buffer (a trimmed clip), in seconds. */
+  startSec?: number;
+  durationSec?: number;
 }
 
-export function Waveform({ buffer, width, height, color = "rgba(255,255,255,0.75)" }: WaveformProps) {
+export function Waveform({ buffer, width, height, color = "rgba(255,255,255,0.75)", startSec, durationSec }: WaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -28,7 +31,9 @@ export function Waveform({ buffer, width, height, color = "rgba(255,255,255,0.75
     if (!buffer || width <= 0) return;
 
     const bucketCount = Math.max(1, Math.floor(width));
-    const { min, max } = computePeaks(buffer, bucketCount);
+    const startSample = Math.round((startSec ?? 0) * buffer.sampleRate);
+    const endSample = durationSec === undefined ? buffer.length : startSample + Math.round(durationSec * buffer.sampleRate);
+    const { min, max } = computePeaks(buffer, bucketCount, startSample, endSample);
     const mid = height / 2;
 
     ctx.fillStyle = color;
@@ -37,7 +42,7 @@ export function Waveform({ buffer, width, height, color = "rgba(255,255,255,0.75
       const y2 = mid + max[x] * mid;
       ctx.fillRect(x, Math.min(y1, y2), 1, Math.max(1, Math.abs(y2 - y1)));
     }
-  }, [buffer, width, height, color]);
+  }, [buffer, width, height, color, startSec, durationSec]);
 
   return <canvas ref={canvasRef} style={{ width, height }} className="block" />;
 }

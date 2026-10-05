@@ -32,6 +32,8 @@ import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND
 export type EffectTarget = TrackId | BusId | "master";
 /** Which single pane is full-width on mobile - see DawShell. Unused at `md`+,
  * where every pane renders simultaneously. */
+export type ClipEditMode = "shift" | "gain" | "transpose" | "stretch" | "fade" | "loop" | "harmonize";
+
 export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects";
 /** Which sub-tab BrowserPanel is showing - lifted out of that component so
  * a track/effect's "Ask AI" button can jump straight to the Assistant tab. */
@@ -74,6 +76,19 @@ interface ProjectState {
   setPixelsPerSecond: (value: number) => void;
   mobileView: MobileView;
   setMobileView: (view: MobileView) => void;
+  /** The region tapped in the phone Studio (BandLab: white outline + trim
+   * circles + Region Action Menu). View state, not project data. */
+  selectedClip: { trackId: TrackId; clipId: string } | null;
+  selectClip: (sel: { trackId: TrackId; clipId: string } | null) => void;
+  /** Which valued region action is open in the bottom panel (slider + ✓). */
+  clipEditMode: ClipEditMode | null;
+  setClipEditMode: (mode: ClipEditMode | null) => void;
+  clipboard: AudioClip | null;
+  copyClip: (trackId: TrackId, clipId: string) => void;
+  /** Pastes the copied region on the selected track at the playhead. */
+  pasteClip: () => void;
+  toast: string | null;
+  showToast: (message: string) => void;
   /** Which chain the EffectsRackPanel is showing - lifted out of that
    * component so the Mixer's per-strip/master/bus "FX" buttons can jump to
    * it. */
@@ -319,6 +334,41 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     // "mixer" = Mix View; "browser" = sample library (see MobileStudio.tsx).
     mobileView: "timeline",
     setMobileView: (view) => set({ mobileView: view }),
+    selectedClip: null,
+    selectClip: (sel) =>
+      set(sel ? { selectedClip: sel, selectedTrackId: sel.trackId, clipEditMode: null } : { selectedClip: null, clipEditMode: null }),
+    clipEditMode: null,
+    setClipEditMode: (mode) => set({ clipEditMode: mode }),
+    clipboard: null,
+    copyClip: (trackId, clipId) => {
+      const clip = get().project.tracks.find((t) => t.id === trackId)?.clips.find((c) => c.id === clipId);
+      if (clip) set({ clipboard: clip });
+    },
+    pasteClip: () => {
+      const { clipboard, selectedTrackId, currentTime, project } = get();
+      const track = project.tracks.find((t) => t.id === selectedTrackId);
+      if (!clipboard || !track) return;
+      const pasted: AudioClip = {
+        ...clipboard,
+        id: crypto.randomUUID(),
+        trackId: track.id,
+        startTime: currentTime,
+        color: track.color,
+        takeGroupId: undefined,
+        muted: undefined,
+      };
+      setProject(
+        touch({ ...project, tracks: project.tracks.map((t) => (t.id !== track.id ? t : { ...t, clips: [...t.clips, pasted] })) }),
+        { extra: { selectedClip: { trackId: track.id, clipId: pasted.id } } }
+      );
+    },
+    toast: null,
+    showToast: (message) => {
+      set({ toast: message });
+      window.setTimeout(() => {
+        if (get().toast === message) set({ toast: null });
+      }, 1600);
+    },
     effectsRackMode: "track",
     setEffectsRackMode: (mode) => set({ effectsRackMode: mode }),
     selectedBusId: null,
@@ -649,7 +699,8 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const track = project.tracks.find((t) => t.id === selectedTrackId);
       if (!track) return;
       const toSplit = track.clips.filter(
-        (c) => currentTime > c.startTime + MIN_CLIP_SEC && currentTime < c.startTime + c.duration - MIN_CLIP_SEC
+        (c) =>
+          !c.loopLengthSec && currentTime > c.startTime + MIN_CLIP_SEC && currentTime < c.startTime + c.duration - MIN_CLIP_SEC
       );
       if (toSplit.length === 0) return;
 

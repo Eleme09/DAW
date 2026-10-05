@@ -33,6 +33,10 @@ export interface AudioClip {
   /** Per-clip mute, distinct from the track's own mute - used to hide
    * non-active takes within a group without deleting them. */
   muted?: boolean;
+  /** BandLab "Loop": when set, the source region [sourceOffset,
+   * sourceOffset + loopLengthSec) repeats to fill `duration` (4/8/16 times
+   * from the region action, or any length by dragging the end handle). */
+  loopLengthSec?: number;
 }
 
 export type AutomationParam = "volume" | "pan";

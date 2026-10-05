@@ -5,9 +5,15 @@ export interface PeakData {
   bucketCount: number;
 }
 
-export function computePeaks(buffer: AudioBuffer, bucketCount: number): PeakData {
+export function computePeaks(
+  buffer: AudioBuffer,
+  bucketCount: number,
+  startSample = 0,
+  endSample = buffer.length
+): PeakData {
   const channels = buffer.numberOfChannels;
-  const length = buffer.length;
+  const from = Math.max(0, Math.min(buffer.length, startSample));
+  const length = Math.max(0, Math.min(buffer.length, endSample) - from);
   const samplesPerBucket = Math.max(1, Math.floor(length / bucketCount));
   const min = new Float32Array(bucketCount);
   const max = new Float32Array(bucketCount);
@@ -16,8 +22,8 @@ export function computePeaks(buffer: AudioBuffer, bucketCount: number): PeakData
   for (let c = 0; c < channels; c++) channelData.push(buffer.getChannelData(c));
 
   for (let bucket = 0; bucket < bucketCount; bucket++) {
-    const start = bucket * samplesPerBucket;
-    const end = Math.min(length, start + samplesPerBucket);
+    const start = from + bucket * samplesPerBucket;
+    const end = Math.min(from + length, start + samplesPerBucket);
     let bucketMin = 0;
     let bucketMax = 0;
     for (let i = start; i < end; i++) {

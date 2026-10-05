@@ -899,9 +899,17 @@ export class AudioEngine {
     const startsInFuture = clip.startTime >= fromTime;
     const when = startsInFuture ? ctxStartTime + (clip.startTime - fromTime) : ctxStartTime;
     const offsetIntoClip = startsInFuture ? 0 : fromTime - clip.startTime;
-    const sourceOffset = clip.sourceOffset + offsetIntoClip;
+    const loopLength = clip.loopLengthSec;
+    const sourceOffset = loopLength
+      ? clip.sourceOffset + (offsetIntoClip % loopLength)
+      : clip.sourceOffset + offsetIntoClip;
     const playDuration = clip.duration - offsetIntoClip;
     if (playDuration <= 0) return;
+    if (loopLength) {
+      source.loop = true;
+      source.loopStart = clip.sourceOffset;
+      source.loopEnd = clip.sourceOffset + loopLength;
+    }
 
     this.applyFades(envelope.gain, clip, when, startsInFuture ? 0 : offsetIntoClip);
 

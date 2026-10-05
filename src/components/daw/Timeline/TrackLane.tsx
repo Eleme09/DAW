@@ -4,18 +4,32 @@ import { useProjectStore } from "@/state/projectStore";
 import type { Track } from "@/types/project";
 import { TRACK_HEIGHT } from "./constants";
 import { ClipView } from "./ClipView";
+import { CompactClipView } from "./CompactClipView";
 import { GridLines } from "./GridLines";
 
 interface TrackLaneProps {
   track: Track;
   width: number;
   selected: boolean;
+  /** Phone Studio: BandLab-style regions (tap selects, see CompactClipView);
+   * tapping empty lane space clears the region selection. */
+  compact?: boolean;
 }
 
-export function TrackLane({ track, width, selected }: TrackLaneProps) {
+export function TrackLane({ track, width, selected, compact = false }: TrackLaneProps) {
   const pixelsPerSecond = useProjectStore((s) => s.pixelsPerSecond);
+  const selectClip = useProjectStore((s) => s.selectClip);
+  const selectTrack = useProjectStore((s) => s.selectTrack);
   return (
     <div
+      onClick={
+        compact
+          ? () => {
+              selectClip(null);
+              selectTrack(track.id);
+            }
+          : undefined
+      }
       style={{
         width,
         height: TRACK_HEIGHT,
@@ -34,7 +48,7 @@ export function TrackLane({ track, width, selected }: TrackLaneProps) {
         // block on top of the active one.
         .filter((clip) => !clip.muted)
         .map((clip) => (
-          <ClipView key={clip.id} clip={clip} />
+          compact ? <CompactClipView key={clip.id} clip={clip} /> : <ClipView key={clip.id} clip={clip} />
         ))}
     </div>
   );

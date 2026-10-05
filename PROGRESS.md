@@ -967,3 +967,15 @@ El usuario mandó una captura del Mix View de BandLab y un video de su línea de
 - **Verificado en navegador (390×844)**: deslizar 400 px = 00:05.000 (80 px/s, correcto); reproducir 2 s mueve la vista en sincronía (scroll 571 px ↔ 00:07.168); volver al inicio regresa la vista a 0; la columna se encoge al deslizar; Mezcla abre con la nueva distribución. Cero errores de página.
 - **No probado**: el gesto real con el dedo en un iPhone (inercia del scroll de iOS + seek en cada cuadro). En Chromium funciona; en Safari real no lo he podido comprobar.
 - `tsc`/`eslint`/`vitest` (283)/`next build` limpios.
+
+## Tema 1: Clips como BandLab (desde los videos del usuario)
+
+- [x] **Seleccionar región** (`Timeline/CompactClipView.tsx`): tocar = contorno blanco + bolitas blancas para recortar/extender; solo la región seleccionada se arrastra (si no, deslizar mueve la canción). Fondo oscuro del color de la pista, onda en color pleno, fades como líneas blancas, loop repite la onda.
+- [x] **Barra de acciones** (`Timeline/RegionActionBar.tsx`): Eliminar · Copiar · Dividir · Loop · Armonizar · ⋯ (→ ^) con el menú completo: Cambio, Ganancia, Normalizar, Transponer, Expansión de tiempo, Fade, Eliminación de ruido, Revertir. "Pegar" aparece tras copiar.
+- [x] **Panel inferior** (`ClipEditPanel.tsx`): valor + deslizador + ▶ · nombre · ✓, reemplaza al transporte. Cambio ±300 ms, Ganancia ±24 dB, Transponer ±12, Expansión 0.50x/1.00x/2.00x, Fade de dos bolitas, Loop 4/8/16/Desactivar.
+- [x] **DSP nuevo** (`audio-engine/timeStretch.ts`, 6 pruebas): estirar tiempo sin cambiar tono (WSOLA), transponer cualquier audio (también beats, no solo voz), reversa. Loop real en el motor de reproducción y en la exportación (`loopLengthSec`).
+- [x] **Armonizar** (`lib/audio/clipProcessing.ts` + panel): detecta la tonalidad de la región, eliges voces (3ª/4ª/5ª arriba-abajo, octava), humanizar opcional; crea una pista por voz con los mismos efectos, −6 dB y paneada a los lados. Basado en cómo funcionan Antares Harmony Engine / Waves Harmony; la pantalla real del "AI Harmonizer" de BandLab Max no tiene documentación pública.
+- [x] **Bug viejo arreglado**: la forma de onda de un clip recortado dibujaba el audio completo aplastado; ahora dibuja solo la parte que suena.
+- **Verificado en navegador (390×844)**: seleccionar, menú, Ganancia (+14.4 dB), Transponer +5, Expansión 2x (ancho 320→160 px), Fade, Loop x4 (→640 px), Revertir, Ruido, Copiar, Armonizar (tonalidad detectada, 2 pistas de armonía creadas). Cero errores.
+- **No verificado / límites honestos**: no puedo escuchar el resultado — la calidad de transponer/estirar/armonizar está medida con pruebas (frecuencia y duración correctas), no a oído. Estirar 20 s estéreo tarda ~1-2.5 s y congela la pantalla mientras procesa. Falta: selección múltiple con pulsación larga, arrastrar el ícono de loop, Fusionar.
+- `tsc`/`eslint`/`vitest` (289)/`next build` limpios.
