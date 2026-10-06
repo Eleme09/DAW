@@ -70,7 +70,7 @@ export class FlangerEffect implements Effect<FlangerParams> {
     const t = this.ctx.currentTime;
     this.lastRateHz = params.rateHz;
     this.lfo.frequency.setTargetAtTime(params.rateHz, t, 0.01);
-    this.lfoDepth.gain.setTargetAtTime(params.depthMs / 1000, t, 0.01);
+    this.lfoDepth.gain.setTargetAtTime(params.depthMs / 1000, t, 0.06); // slower: a depth jump is a pitch jump
     this.feedback.gain.setTargetAtTime(Math.min(0.9, params.feedback), t, 0.01);
     this.dryGain.gain.setTargetAtTime(1 - params.mix, t, 0.01);
     this.wetGain.gain.setTargetAtTime(params.mix, t, 0.01);

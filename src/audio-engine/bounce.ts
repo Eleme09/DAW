@@ -13,6 +13,7 @@
 import { dbToGain } from "./dbUtils";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { AutoPitchEffect, AUTOPITCH_WORKLET_URL } from "./autopitch/AutoPitchEffect";
+import { DYNAMICS_WORKLET_URL, createOutputGuard } from "./effects/dynamics";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
 import type { AudioClip, BusId, Project } from "@/types/project";
 
@@ -68,6 +69,8 @@ export async function bounceProject(
   if (project.tracks.some((t) => t.autoPitch?.enabled) || projectUsesEffect(project, "pitchShift")) {
     await ctx.audioWorklet.addModule(AUTOPITCH_WORKLET_URL);
   }
+  // always: the master's output protection runs on it too
+  await ctx.audioWorklet.addModule(DYNAMICS_WORKLET_URL);
   const deps: EffectChainDeps = {
     isNoiseGateWorkletLoaded: () => true,
     ensureNoiseGateWorklet: () => Promise.resolve(),
@@ -75,6 +78,8 @@ export async function bounceProject(
     ensurePitchCorrectionWorklet: () => Promise.resolve(),
     isAutoPitchWorkletLoaded: () => true,
     ensureAutoPitchWorklet: () => Promise.resolve(),
+    isDynamicsWorkletLoaded: () => true,
+    ensureDynamicsWorklet: () => Promise.resolve(),
   };
 
   const master = ctx.createGain();
@@ -86,7 +91,10 @@ export async function bounceProject(
   masterVolume.gain.value = dbToGain(project.masterVolumeDb);
   master.connect(masterChain.inputNode);
   masterChain.outputNode.connect(masterVolume);
-  masterVolume.connect(ctx.destination);
+  // same output protection as the live engine (AudioEngine.insertOutputGuard)
+  const guard = createOutputGuard(ctx);
+  masterVolume.connect(guard.node);
+  guard.node.connect(ctx.destination);
   masterChain.setInserts(project.masterInserts);
 
   // Buses first - a track's sends (below) connect INTO a bus's input, same

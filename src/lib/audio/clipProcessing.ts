@@ -45,6 +45,7 @@ async function storeChannels(name: string, channels: Float32Array[], sampleRate:
     sampleRate,
     channels: channels.length,
     createdAt: new Date().toISOString(),
+    origin: "processed",
   });
   return { sampleId, durationSec };
 }

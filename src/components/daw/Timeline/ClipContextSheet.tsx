@@ -134,6 +134,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
       sampleRate: buffer.sampleRate,
       channels: buffer.numberOfChannels,
       createdAt: new Date().toISOString(),
+      origin: "processed",
     });
     updateClip(clip.trackId, clip.id, { sampleId: newSampleId, sourceOffset: 0 });
   }

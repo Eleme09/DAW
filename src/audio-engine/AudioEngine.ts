@@ -1,6 +1,7 @@
 import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
 import { AutoPitchEffect, AUTOPITCH_WORKLET_URL } from "./autopitch/AutoPitchEffect";
+import { DYNAMICS_WORKLET_URL, DynamicsNode, createOutputGuard } from "./effects/dynamics";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { isTrackMonitoredLive } from "./monitoring";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
@@ -115,6 +116,24 @@ const RECORDER_WORKLET_URL = "/worklets/recorder-processor.js";
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
 const PITCH_CORRECTION_WORKLET_URL = "/worklets/realtime-pitch-processor.js";
 
+/** Faders, pans, mutes and sends: only when the target really changes
+ * (every project change re-syncs every track), and with a 10 ms glide
+ * instead of a jump - a fader dragged while the music plays used to step
+ * ~60 times a second (zipper noise). The first write to a node lands at
+ * once, so playback starts at the right level. */
+const glideTargets = new WeakMap<AudioParam, number>();
+function glide(param: AudioParam, value: number, ctx: BaseAudioContext): void {
+  const last = glideTargets.get(param);
+  if (last !== undefined && Math.abs(last - value) < 1e-7) return;
+  glideTargets.set(param, value);
+  if (last === undefined) {
+    param.value = value;
+    return;
+  }
+  param.cancelScheduledValues(ctx.currentTime);
+  param.setTargetAtTime(value, ctx.currentTime, 0.01);
+}
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -124,6 +143,12 @@ export class AudioEngine {
   private masterChain: EffectChain | null = null;
   private noiseGateWorkletPromise: Promise<void> | null = null;
   private noiseGateWorkletLoaded = false;
+  private dynamicsWorkletPromise: Promise<void> | null = null;
+  private dynamicsWorkletLoaded = false;
+  /** Output protection: a transparent look-ahead limiter at -0.3 dBFS at
+   * the very end of the master, so a hot mix never hard-clips the phone's
+   * output (the hot phone takes + an EQ boost or makeup used to). */
+  private outputGuard: DynamicsNode | null = null;
 
   private tracks = new Map<TrackId, TrackGraph>();
   private buses = new Map<BusId, BusGraph>();
@@ -265,6 +290,7 @@ export class AudioEngine {
       this.masterChain = masterChain;
 
       this.startBypassMaintenanceLoop();
+      void this.ensureDynamicsWorklet().then(() => this.insertOutputGuard());
 
       if (this.selectedOutputDeviceId && this.isOutputDeviceSelectionSupported()) {
         void (ctx as unknown as { setSinkId(id: string): Promise<void> }).setSinkId(this.selectedOutputDeviceId);
@@ -382,7 +408,7 @@ export class AudioEngine {
    * meter/destination) - same convention as a Pro Tools/FL master fader. */
   setMasterVolume(db: number): void {
     this.ensureContext();
-    if (this.masterVolume) this.masterVolume.gain.value = dbToGain(db);
+    if (this.masterVolume) glide(this.masterVolume.gain, dbToGain(db), this.ctx!);
   }
 
   private effectChainDeps(): EffectChainDeps {
@@ -393,7 +419,30 @@ export class AudioEngine {
       ensurePitchCorrectionWorklet: () => this.ensurePitchCorrectionWorklet(),
       isAutoPitchWorkletLoaded: () => this.autoPitchWorkletLoaded,
       ensureAutoPitchWorklet: () => this.ensureAutoPitchWorklet(),
+      isDynamicsWorkletLoaded: () => this.dynamicsWorkletLoaded,
+      ensureDynamicsWorklet: () => this.ensureDynamicsWorklet(),
     };
+  }
+
+  private ensureDynamicsWorklet(): Promise<void> {
+    if (this.dynamicsWorkletLoaded) return Promise.resolve();
+    if (!this.dynamicsWorkletPromise) {
+      const ctx = this.ensureContext();
+      this.dynamicsWorkletPromise = ctx.audioWorklet.addModule(DYNAMICS_WORKLET_URL).then(() => {
+        this.dynamicsWorkletLoaded = true;
+      });
+    }
+    return this.dynamicsWorkletPromise;
+  }
+
+  /** masterVolume -> guard -> analyser (was masterVolume -> analyser). */
+  private insertOutputGuard(): void {
+    if (this.outputGuard || !this.ctx || !this.masterVolume || !this.masterAnalyser) return;
+    const guard = createOutputGuard(this.ctx);
+    this.masterVolume.disconnect(this.masterAnalyser);
+    this.masterVolume.connect(guard.node);
+    guard.node.connect(this.masterAnalyser);
+    this.outputGuard = guard;
   }
 
   private ensureNoiseGateWorklet(): Promise<void> {
@@ -557,10 +606,10 @@ export class AudioEngine {
       this.syncAutoPitch(track, graph);
       graph.effectChain.setInserts(track.inserts);
       graph.effectChain.setBlend(track.fx?.blend ?? 1);
-      graph.volume.gain.value = dbToGain(track.volumeDb);
-      graph.pan.pan.value = track.pan;
+      glide(graph.volume.gain, dbToGain(track.volumeDb), this.ctx!);
+      glide(graph.pan.pan, track.pan, this.ctx!);
       const audible = !track.muted && (this.soloedTracks.size === 0 || track.solo);
-      graph.muteGain.gain.value = audible ? 1 : 0;
+      glide(graph.muteGain.gain, audible ? 1 : 0, this.ctx!);
 
       this.syncTrackSends(track, graph);
     }
@@ -610,8 +659,8 @@ export class AudioEngine {
         this.buses.set(bus.id, graph);
       }
       graph.effectChain.setInserts(bus.inserts);
-      graph.volume.gain.value = dbToGain(bus.volumeDb);
-      graph.pan.pan.value = bus.pan;
+      glide(graph.volume.gain, dbToGain(bus.volumeDb), this.ctx!);
+      glide(graph.pan.pan, bus.pan, this.ctx!);
       const audible = !bus.muted && (this.soloedBuses.size === 0 || bus.solo);
       graph.muteGain.gain.value = audible ? 1 : 0;
     }
@@ -640,7 +689,7 @@ export class AudioEngine {
         sendGain.connect(busGraph.input);
         graph.sendGains.set(send.busId, sendGain);
       }
-      sendGain.gain.value = dbToGain(send.levelDb);
+      glide(sendGain.gain, dbToGain(send.levelDb), this.ctx!);
     }
   }
 

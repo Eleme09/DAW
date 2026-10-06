@@ -116,7 +116,7 @@ export class DelayEffect implements Effect<DelayParams> {
     const time = Math.min(MAX_DELAY_SEC, Math.max(0.001, params.timeMs / 1000));
     const fb = Math.min(0.95, Math.max(0, params.feedback));
     const ping = params.pingPong === true;
-    for (const d of [this.delay, this.delayL, this.delayR]) d.delayTime.setTargetAtTime(time, t, 0.01);
+    this.glideTime(time, t);
     for (const g of [this.feedback, this.fbLR, this.fbRL]) g.gain.setTargetAtTime(fb, t, 0.01);
     for (const f of [this.dampingFilter, this.dampL, this.dampR]) f.frequency.setTargetAtTime(params.filterFreq, t, 0.01);
     this.lowCut.frequency.setTargetAtTime(Math.max(20, Math.min(2000, params.lowCutHz ?? 20)), t, 0.01);
@@ -124,6 +124,33 @@ export class DelayEffect implements Effect<DelayParams> {
     this.pingPongOut.gain.setTargetAtTime(ping ? 1 : 0, t, 0.02);
     this.dryGain.gain.setTargetAtTime(1 - params.mix, t, 0.01);
     this.wetGain.gain.setTargetAtTime(params.mix, t, 0.01);
+  }
+
+  /** Current delay-time ramp, so a new target starts exactly where the
+   * old one is (reading `.value` lags a block: re-anchoring on it jumped
+   * the read point and clicked). */
+  private ramp: { from: number; to: number; t0: number; t1: number } | null = null;
+
+  /** Delay time glides no faster than 0.3 s per second (a tape delay's pitch
+   * bend while the knob turns). It used to follow in 10 ms: dragging across
+   * the range read the buffer BACKWARDS - garbled noise. */
+  private glideTime(time: number, t: number): void {
+    const lines = [this.delay, this.delayL, this.delayR];
+    if (!this.ramp) {
+      for (const d of lines) d.delayTime.value = time;
+      this.ramp = { from: time, to: time, t0: t, t1: t };
+      return;
+    }
+    const r = this.ramp;
+    if (Math.abs(r.to - time) < 1e-6) return;
+    const now = t >= r.t1 ? r.to : r.from + ((r.to - r.from) * (t - r.t0)) / (r.t1 - r.t0);
+    const end = t + Math.max(0.03, Math.abs(time - now) / 0.3);
+    for (const d of lines) {
+      d.delayTime.cancelScheduledValues(t);
+      d.delayTime.setValueAtTime(now, t);
+      d.delayTime.linearRampToValueAtTime(time, end);
+    }
+    this.ramp = { from: now, to: time, t0: t, t1: end };
   }
 
   dispose(): void {

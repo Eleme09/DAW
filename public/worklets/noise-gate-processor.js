@@ -19,6 +19,14 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     super();
     this.envelope = 0; // 0..1 gain currently applied
     this.holdSamplesRemaining = 0;
+    // Level detector: instant peak with a 10 ms decay, so the gate reads the
+    // voice's level, not each waveform cycle. It opens at the threshold and
+    // only closes 3 dB below it (hysteresis): near the threshold it used to
+    // flutter open/closed on every cycle - a rattle.
+    this.level = 0;
+    this.levelDecay = Math.exp(-1 / (0.01 * sampleRate));
+    this.isOpen = false;
+    this.thresholdSmoothed = null;
     this.samplesSincePost = 0;
     this.postIntervalSamples = Math.round(sampleRate * 0.05); // ~20 Hz to the main thread
   }
@@ -28,11 +36,16 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     const output = outputs[0];
     if (!input || input.length === 0) return true;
 
-    const thresholdDb = parameters.thresholdDb[0];
+    // the threshold glides (a knob move is not a jump)
+    const thresholdTarget = parameters.thresholdDb[0];
+    if (this.thresholdSmoothed === null) this.thresholdSmoothed = thresholdTarget;
+    this.thresholdSmoothed += (thresholdTarget - this.thresholdSmoothed) * 0.25;
+    const thresholdDb = this.thresholdSmoothed;
     const attackMs = parameters.attackMs[0];
     const releaseMs = parameters.releaseMs[0];
     const holdMs = parameters.holdMs[0];
     const thresholdLinear = Math.pow(10, thresholdDb / 20);
+    const closeLinear = thresholdLinear * 0.7079; // -3 dB
 
     const attackCoeff = Math.exp(-1 / ((attackMs / 1000) * sampleRate));
     const releaseCoeff = Math.exp(-1 / ((releaseMs / 1000) * sampleRate));
@@ -44,7 +57,11 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     const envelopeAtSample = new Float32Array(blockSize);
     const detector = input[0];
     for (let i = 0; i < blockSize; i++) {
-      const open = Math.abs(detector[i]) >= thresholdLinear;
+      const a = Math.abs(detector[i]);
+      this.level = a > this.level ? a : this.level * this.levelDecay;
+      if (this.level >= thresholdLinear) this.isOpen = true;
+      else if (this.level < closeLinear) this.isOpen = false;
+      const open = this.isOpen;
       if (open) this.holdSamplesRemaining = holdSamples;
       const target = open || this.holdSamplesRemaining > 0 ? 1 : 0;
       const coeff = target > this.envelope ? attackCoeff : releaseCoeff;

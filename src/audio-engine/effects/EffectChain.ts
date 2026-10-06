@@ -18,7 +18,7 @@ import { StereoWidthEffect } from "./StereoWidthEffect";
 import { PitchCorrectionEffect } from "./PitchCorrectionEffect";
 import { VocoderEffect } from "./VocoderEffect";
 import type { EffectInstance, EffectType } from "@/types/effects";
-import { compressorLatencySec } from "./latency";
+import { limiterLatencySec } from "./dynamics";
 import { PitchShiftEffect } from "./PitchShiftEffect";
 
 export interface EffectChainDeps {
@@ -29,6 +29,9 @@ export interface EffectChainDeps {
   /** The AutoPitch module, which the pitch shifter runs on. */
   isAutoPitchWorkletLoaded: () => boolean;
   ensureAutoPitchWorklet: () => Promise<void>;
+  /** Our compressor/limiter (Gravedad, Estratos, Horizonte, Sibila). */
+  isDynamicsWorkletLoaded: () => boolean;
+  ensureDynamicsWorklet: () => Promise<void>;
 }
 
 /** Effect types backed by an AudioWorklet, which must finish loading its
@@ -38,6 +41,10 @@ const WORKLET_BACKED_TYPES: Partial<Record<EffectType, { isLoaded: (deps: Effect
   noiseGate: { isLoaded: (d) => d.isNoiseGateWorkletLoaded(), ensure: (d) => d.ensureNoiseGateWorklet() },
   pitchCorrection: { isLoaded: (d) => d.isPitchCorrectionWorkletLoaded(), ensure: (d) => d.ensurePitchCorrectionWorklet() },
   pitchShift: { isLoaded: (d) => d.isAutoPitchWorkletLoaded(), ensure: (d) => d.ensureAutoPitchWorklet() },
+  compressor: { isLoaded: (d) => d.isDynamicsWorkletLoaded(), ensure: (d) => d.ensureDynamicsWorklet() },
+  multibandCompressor: { isLoaded: (d) => d.isDynamicsWorkletLoaded(), ensure: (d) => d.ensureDynamicsWorklet() },
+  limiter: { isLoaded: (d) => d.isDynamicsWorkletLoaded(), ensure: (d) => d.ensureDynamicsWorklet() },
+  deesser: { isLoaded: (d) => d.isDynamicsWorkletLoaded(), ensure: (d) => d.ensureDynamicsWorklet() },
 };
 
 /** No-op passthrough, used as a placeholder while the noise-gate worklet loads. */
@@ -102,12 +109,14 @@ function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unkno
 /** Effects built on DynamicsCompressorNode, whose fixed look-ahead delays
  * the signal (see latency.ts). The chain's dry path for Blend is delayed by
  * the same amount, or mixing it back in would comb-filter the voice. */
-const LATENT_TYPES = new Set<EffectType>(["compressor", "deesser", "limiter", "multibandCompressor", "pitchShift"]);
+const REWIRE_FADE_SEC = 0.012;
 
-/** Delay one live, un-bypassed effect adds to the signal. */
+/** Delay one live, un-bypassed effect adds to the signal (the compressors
+ * have no look-ahead; the limiter's is its own). */
 function effectLatencySec(type: EffectType, sampleRate: number): number {
   if (type === "pitchShift") return PitchShiftEffect.latencySec(sampleRate);
-  return LATENT_TYPES.has(type) ? compressorLatencySec(sampleRate) : 0;
+  if (type === "limiter") return limiterLatencySec(sampleRate);
+  return 0;
 }
 
 interface ChainEntry {
@@ -214,11 +223,41 @@ export class EffectChain {
     // only when the order or the set of live nodes changed
     const key = inserts.map((i) => (this.effects.has(i.id) ? i.id : "")).join("|");
     if (key !== this.wiredKey) {
-      this.rewire(inserts);
-      this.wiredKey = key;
-    } else {
+      this.rewireSmoothly();
+    } else if (!this.rewirePending) {
       this.updateDryLatency(inserts);
     }
+  }
+
+  private rewirePending = false;
+
+  /** Adding, removing or moving an effect while the music plays used to
+   * re-plug the chain mid-waveform: a click, and a fresh compressor let
+   * the first peak through at full makeup. Now the chain's output dips for
+   * 20 ms around the re-plug. Offline (export) it re-plugs at once. */
+  private rewireSmoothly(): void {
+    const live = typeof AudioContext !== "undefined" && this.ctx instanceof AudioContext && this.ctx.state === "running";
+    if (!live) {
+      this.rewire(this.lastInserts);
+      this.wiredKey = this.lastInserts.map((i) => (this.effects.has(i.id) ? i.id : "")).join("|");
+      return;
+    }
+    if (this.rewirePending) return; // the pending one uses the latest inserts
+    this.rewirePending = true;
+    const t = this.ctx.currentTime;
+    this.output.gain.cancelScheduledValues(t);
+    this.output.gain.setValueAtTime(this.output.gain.value, t);
+    this.output.gain.linearRampToValueAtTime(0, t + REWIRE_FADE_SEC);
+    setTimeout(() => {
+      this.rewirePending = false;
+      if (this.disposed) return;
+      this.rewire(this.lastInserts);
+      this.wiredKey = this.lastInserts.map((i) => (this.effects.has(i.id) ? i.id : "")).join("|");
+      const now = this.ctx.currentTime;
+      this.output.gain.cancelScheduledValues(now);
+      this.output.gain.setValueAtTime(0, now);
+      this.output.gain.linearRampToValueAtTime(1, now + REWIRE_FADE_SEC);
+    }, REWIRE_FADE_SEC * 1000 + 10);
   }
 
   private instantiate(ins: EffectInstance): void {
@@ -241,8 +280,7 @@ export class EffectChain {
           this.appliedParams.set(ins.id, current.params);
           this.appliedBypass.set(ins.id, current.bypassed);
         }
-        this.rewire(this.lastInserts);
-        this.wiredKey = this.lastInserts.map((i) => (this.effects.has(i.id) ? i.id : "")).join("|");
+        this.rewireSmoothly();
       });
       return;
     }
@@ -295,7 +333,7 @@ export class EffectChain {
       if (this.effects.has(ins.id) && !ins.bypassed) latency += effectLatencySec(ins.type, this.ctx.sampleRate);
     }
     const next = Math.min(0.2, latency);
-    if (Math.abs(this.dryDelay.delayTime.value - next) > 1e-9) this.dryDelay.delayTime.value = next;
+    if (Math.abs(this.dryDelay.delayTime.value - next) > 1e-9) this.dryDelay.delayTime.setTargetAtTime(next, this.ctx.currentTime, 0.01);
   }
 
   /** Called continuously by AudioEngine's own maintenance loop (not tied to
@@ -321,7 +359,10 @@ export class EffectChain {
     return this.effects.get(id)?.wrapper.getMeasuredDeltaDb();
   }
 
+  private disposed = false;
+
   dispose(): void {
+    this.disposed = true;
     for (const [, entry] of this.effects) {
       entry.instance.dispose();
       entry.wrapper.dispose();

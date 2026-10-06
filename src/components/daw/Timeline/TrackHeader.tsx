@@ -1,5 +1,6 @@
 "use client";
 
+import { faderDbToPos, faderPosToDb } from "@/lib/audio/faderLaw";
 import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { TRACK_COLORS, type Track } from "@/types/project";
@@ -8,7 +9,7 @@ import { MONITOR_NEXT, MONITOR_LABEL, MONITOR_CLASS } from "../monitorLabels";
 import { useMonitoringLive } from "../useMonitoringLive";
 import { Knob } from "../ui/Knob";
 import { BottomSheet } from "../BottomSheet";
-import { AutomationIcon, SparkleIcon, MoreIcon, MicIcon, RecordIcon, ChevronDownIcon } from "../icons";
+import { AutomationIcon, MoreIcon, MicIcon, RecordIcon, ChevronDownIcon } from "../icons";
 import { HEADER_WIDTH, TRACK_HEIGHT } from "./constants";
 
 interface TrackHeaderProps {
@@ -28,9 +29,6 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
   const armTrack = useProjectStore((s) => s.armTrack);
   const setAutomationTrackId = useProjectStore((s) => s.setAutomationTrackId);
   const hasAutomation = track.automation.volume.enabled || track.automation.pan.enabled;
-  const setAssistantDraftMessage = useProjectStore((s) => s.setAssistantDraftMessage);
-  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
-  const setMobileView = useProjectStore((s) => s.setMobileView);
   const { monitoringLive, likelyHeadphones, isRecording } = useMonitoringLive(track.armed, track.monitorMode);
   const isLiveInput = track.armed && isRecording;
   const [moreOpen, setMoreOpen] = useState(false);
@@ -173,6 +171,7 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
             defaultValue={0}
             label="Volumen"
             unit=" dB"
+            taper={{ toPos: faderDbToPos, fromPos: (p) => Math.round(faderPosToDb(p) * 10) / 10 }}
             onChange={(volumeDb) => updateTrack(track.id, { volumeDb })}
           />
           <Knob
@@ -197,18 +196,6 @@ export function TrackHeader({ track, selected, flash }: TrackHeaderProps) {
           >
             <AutomationIcon className="h-4 w-4" />
             Automatización
-          </button>
-          <button
-            onClick={() => {
-              setAssistantDraftMessage(`${track.name}: `);
-              setBrowserTab("assistant");
-              setMobileView("browser");
-              setMoreOpen(false);
-            }}
-            className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-surf-2 text-xs font-medium text-bone-2"
-          >
-            <SparkleIcon className="h-4 w-4" />
-            Preguntar a la IA
           </button>
         </div>
         <div className="flex gap-2">

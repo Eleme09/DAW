@@ -25,6 +25,7 @@ export async function importAudioFile(file: File): Promise<SampleAsset> {
     sampleRate: buffer.sampleRate,
     channels: buffer.numberOfChannels,
     createdAt: new Date().toISOString(),
+    origin: file.type.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/i.test(file.name) ? "video" : "import",
   };
   await addSampleAsset(asset);
   return asset;

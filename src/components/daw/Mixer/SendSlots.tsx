@@ -1,5 +1,6 @@
 "use client";
 
+import { faderDbToPos, faderPosToDb } from "@/lib/audio/faderLaw";
 import { useProjectStore } from "@/state/projectStore";
 import type { Track } from "@/types/project";
 import { Picker } from "../ui/Picker";
@@ -59,6 +60,7 @@ export function SendSlots({ track }: SendSlotsProps) {
                 label={`Env. ${i + 1}`}
                 unit=" dB"
                 size={32}
+                taper={{ toPos: faderDbToPos, fromPos: (p) => Math.round(faderPosToDb(p) * 10) / 10 }}
                 onChange={(levelDb) => setTrackSend(track.id, send.busId, levelDb)}
               />
             )}

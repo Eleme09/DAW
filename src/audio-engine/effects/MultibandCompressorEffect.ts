@@ -1,7 +1,7 @@
 import type { Effect } from "./Effect";
 import type { MultibandBandParams, MultibandCompressorParams } from "@/types/effects";
 import { BUTTERWORTH_Q_DB } from "./latency";
-import { nativeCompressorMakeupDb } from "./nativeCompressor";
+import { DynamicsNode } from "./dynamics";
 
 /**
  * 3-band Linkwitz-Riley (4th-order) crossover: input splits at lowMidFreq
@@ -10,8 +10,8 @@ import { nativeCompressorMakeupDb } from "./nativeCompressor";
  * sum at midHighFreq) so its phase matches mid+high and the three bands sum
  * flat when nothing is compressing. Butterworth sections use Web Audio's
  * dB-valued Q (BUTTERWORTH_Q_DB). Each band gets its own
- * DynamicsCompressorNode + makeup gain; the three compressors share the same
- * look-ahead, so the bands stay aligned.
+ * dynamics-processor compressor (makeup included, no hidden gain, no
+ * look-ahead), so the bands stay aligned.
  */
 export class MultibandCompressorEffect implements Effect<MultibandCompressorParams> {
   private ctx: BaseAudioContext;
@@ -22,12 +22,9 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
   private highSplit: BiquadFilterNode[] = [];
   private nodes: AudioNode[] = [];
 
-  private lowComp: DynamicsCompressorNode;
-  private midComp: DynamicsCompressorNode;
-  private highComp: DynamicsCompressorNode;
-  private lowMakeup: GainNode;
-  private midMakeup: GainNode;
-  private highMakeup: GainNode;
+  private lowComp: DynamicsNode;
+  private midComp: DynamicsNode;
+  private highComp: DynamicsNode;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -48,12 +45,9 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
       return [a, b];
     };
 
-    this.lowComp = ctx.createDynamicsCompressor();
-    this.midComp = ctx.createDynamicsCompressor();
-    this.highComp = ctx.createDynamicsCompressor();
-    this.lowMakeup = ctx.createGain();
-    this.midMakeup = ctx.createGain();
-    this.highMakeup = ctx.createGain();
+    this.lowComp = new DynamicsNode(ctx, "comp");
+    this.midComp = new DynamicsNode(ctx, "comp");
+    this.highComp = new DynamicsNode(ctx, "comp");
 
     // low: LP @ lowMid, then the allpass @ midHigh (LP + HP summed)
     const [lowIn, lowOut] = lr("lowpass", this.lowSplit);
@@ -66,7 +60,7 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     lowOut.connect(apHpIn);
     apLpOut.connect(lowSum);
     apHpOut.connect(lowSum);
-    lowSum.connect(this.lowComp);
+    lowSum.connect(this.lowComp.node);
 
     // rest: HP @ lowMid, then split @ midHigh
     const [restIn, restOut] = lr("highpass", this.lowSplit);
@@ -75,15 +69,12 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     this.input.connect(restIn);
     restOut.connect(midIn);
     restOut.connect(highIn);
-    midOut.connect(this.midComp);
-    highOut.connect(this.highComp);
+    midOut.connect(this.midComp.node);
+    highOut.connect(this.highComp.node);
 
-    this.lowComp.connect(this.lowMakeup);
-    this.midComp.connect(this.midMakeup);
-    this.highComp.connect(this.highMakeup);
-    this.lowMakeup.connect(this.output);
-    this.midMakeup.connect(this.output);
-    this.highMakeup.connect(this.output);
+    this.lowComp.node.connect(this.output);
+    this.midComp.node.connect(this.output);
+    this.highComp.node.connect(this.output);
   }
 
   get inputNode(): AudioNode {
@@ -93,11 +84,11 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     return this.output;
   }
 
-  /** Real gain reduction in dB per band, from each band's own native
-   * DynamicsCompressorNode.reduction - same telemetry pattern as
+  /** Gain reduction in dB per band, reported by each band's worklet - same
+   * telemetry pattern as
    * CompressorEffect/LimiterEffect/DeEsserEffect. */
   getReductionDb(): { low: number; mid: number; high: number } {
-    return { low: this.lowComp.reduction, mid: this.midComp.reduction, high: this.highComp.reduction };
+    return { low: this.lowComp.getReductionDb(), mid: this.midComp.getReductionDb(), high: this.highComp.getReductionDb() };
   }
 
   setParams(params: MultibandCompressorParams): void {
@@ -106,26 +97,20 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     for (const f of this.lowSplit) f.frequency.setTargetAtTime(params.lowMidFreq, t, 0.01);
     for (const f of this.highSplit) f.frequency.setTargetAtTime(params.midHighFreq, t, 0.01);
 
-    this.applyBand(this.lowComp, this.lowMakeup, params.low, params);
-    this.applyBand(this.midComp, this.midMakeup, params.mid, params);
-    this.applyBand(this.highComp, this.highMakeup, params.high, params);
+    this.applyBand(this.lowComp, params.low, params);
+    this.applyBand(this.midComp, params.mid, params);
+    this.applyBand(this.highComp, params.high, params);
   }
 
-  private applyBand(
-    comp: DynamicsCompressorNode,
-    makeup: GainNode,
-    band: MultibandBandParams,
-    shared: MultibandCompressorParams
-  ): void {
-    const t = this.ctx.currentTime;
-    comp.threshold.setTargetAtTime(band.thresholdDb, t, 0.01);
-    comp.ratio.setTargetAtTime(band.ratio, t, 0.01);
-    comp.attack.setTargetAtTime(shared.attackMs / 1000, t, 0.005);
-    comp.release.setTargetAtTime(shared.releaseMs / 1000, t, 0.01);
-    // minus the node's automatic makeup (nativeCompressor.ts), which differs
-    // per band with each band's threshold/ratio and tilted the tone
-    const auto = nativeCompressorMakeupDb(band.thresholdDb, band.ratio, comp.knee.value);
-    makeup.gain.setTargetAtTime(Math.pow(10, (band.makeupDb - auto) / 20), t, 0.01);
+  private applyBand(comp: DynamicsNode, band: MultibandBandParams, shared: MultibandCompressorParams): void {
+    comp.set({
+      thresholdDb: band.thresholdDb,
+      ratio: band.ratio,
+      kneeDb: 6,
+      attackSec: shared.attackMs / 1000,
+      releaseSec: shared.releaseMs / 1000,
+      makeupDb: band.makeupDb,
+    });
   }
 
   dispose(): void {
@@ -134,8 +119,5 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     this.lowComp.disconnect();
     this.midComp.disconnect();
     this.highComp.disconnect();
-    this.lowMakeup.disconnect();
-    this.midMakeup.disconnect();
-    this.highMakeup.disconnect();
   }
 }

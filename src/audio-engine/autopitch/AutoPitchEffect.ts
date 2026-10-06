@@ -22,6 +22,8 @@ export class AutoPitchEffect {
   private irKey: string | null = null;
   private first = true;
   private lowLatency = false;
+  private lastSettings: AutoPitchSettings | null = null;
+  private written = new Map<string, number>();
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -51,16 +53,29 @@ export class AutoPitchEffect {
   }
 
   setSettings(settings: AutoPitchSettings): void {
+    // Every project change re-syncs every track (a knob on another track,
+    // a fader...): the same settings object means nothing to do. It used to
+    // re-schedule ~70 parameters per track each time, ~60 times a second
+    // while a knob moved, and leave them all under endless automation.
+    if (settings === this.lastSettings) return;
+    this.lastSettings = settings;
     const { worklet, reverb } = resolveAutoPitch(settings);
     this.lowLatency = worklet.lowLatency >= 0.5;
     const t = this.ctx.currentTime;
     for (const [name, value] of Object.entries(worklet)) {
+      if (this.written.get(name) === value) continue;
+      this.written.set(name, value);
       const param = this.node.parameters.get(name);
       if (!param) continue;
       // First write lands at once (an offline render must be right from
-      // sample zero); later ones glide a few ms so knob moves don't click.
+      // sample zero); later ones glide 30 ms - a ramp that ends, so the
+      // parameter is constant again afterwards.
       if (this.first) param.value = value;
-      else param.setTargetAtTime(value, t, 0.015);
+      else {
+        param.cancelScheduledValues(t);
+        param.setValueAtTime(param.value, t);
+        param.linearRampToValueAtTime(value, t + 0.03);
+      }
     }
     this.first = false;
     this.setReverb(reverb, t);

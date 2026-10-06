@@ -115,7 +115,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ presence: 4, air: 9, top: 3, comp: { thresholdDb: -26, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 4, makeupDb: 11.6 } }),
+      ...phoneBase({ presence: 4, air: 9, top: 3, comp: { thresholdDb: -26, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 4, makeupDb: 8.9 } }),
       sat({ driveDb: 10, mix: 0.35, tone: "bright" }),
       exciter({ freq: 7000, driveDb: 6, mix: 0.2 }),
       delay({ timeMs: at140(0.5), sync: "1/8", feedback: 0.2, mix: 0.1, filterFreq: 4500, lowCutHz: 300 }),
@@ -134,7 +134,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ hp: 140, box: -6, clarity: 5, presence: 2, air: 5, top: 0, comp: { thresholdDb: -28, ratio: 8, attackMs: 1, releaseMs: 60, kneeDb: 3, makeupDb: 4.8 } }),
+      ...phoneBase({ hp: 140, box: -6, clarity: 5, presence: 2, air: 5, top: 0, comp: { thresholdDb: -28, ratio: 8, attackMs: 1, releaseMs: 60, kneeDb: 3, makeupDb: 0.3 } }),
       sat({ driveDb: 18, mix: 0.55, tone: "bright" }),
       clipper({ ceilingDb: -2 }),
       reverb({ mix: 0.08, decaySec: 0.6, sizeType: "room", predelayMs: 10, lowCutHz: 300, highCutHz: 7000 }),
@@ -152,7 +152,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ comp: { makeupDb: 15.7 },  air: 8 }),
+      ...phoneBase({ comp: { makeupDb: 12.9 },  air: 8 }),
       chorus({ rateHz: 0.6, depthMs: 3, mix: 0.22 }),
       delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.35, mix: 0.18, filterFreq: 3500, lowCutHz: 350 }),
       reverb({ mix: 0.22, decaySec: 2.8, sizeType: "hall", predelayMs: 40, lowCutHz: 300, highCutHz: 7500 }),
@@ -170,7 +170,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ body: 3, presence: 2, air: 4, top: 0, comp: { thresholdDb: -25, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 5, makeupDb: 13.5 } }),
+      ...phoneBase({ body: 3, presence: 2, air: 4, top: 0, comp: { thresholdDb: -25, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 5, makeupDb: 12.4 } }),
       sat({ driveDb: 6, mix: 0.3, tone: "warm" }),
       delay({ timeMs: at140(0.75), sync: "1/8.", feedback: 0.3, mix: 0.15, filterFreq: 3000, lowCutHz: 300 }),
       reverb({ mix: 0.15, decaySec: 1.6, sizeType: "plate", predelayMs: 30, lowCutHz: 250, highCutHz: 8000 }),
@@ -187,7 +187,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ comp: { makeupDb: 11.8 } }),
+      ...phoneBase({ comp: { makeupDb: 8.8 } }),
       delay({ timeMs: at140(0.5), sync: "1/8", feedback: 0.15, mix: 0.08, filterFreq: 4500, lowCutHz: 300 }),
       reverb({ mix: 0.1, decaySec: 1.2, sizeType: "plate", predelayMs: 25, lowCutHz: 250, highCutHz: 9000 }),
       safety(),
@@ -202,7 +202,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ hp: 120, presence: 4, comp: { thresholdDb: -27, ratio: 7, attackMs: 2, releaseMs: 70, kneeDb: 3, makeupDb: 15.7 } }),
+      ...phoneBase({ hp: 120, presence: 4, comp: { thresholdDb: -27, ratio: 7, attackMs: 2, releaseMs: 70, kneeDb: 3, makeupDb: 13.2 } }),
       sat({ driveDb: 5, mix: 0.2, tone: "neutral" }),
       safety(),
     ],
@@ -219,7 +219,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ comp: { makeupDb: 13.0 },  air: 9, top: 3 }),
+      ...phoneBase({ comp: { makeupDb: 10.2 },  air: 9, top: 3 }),
       exciter({ freq: 7000, driveDb: 6, mix: 0.2 }),
       delay({ timeMs: at140(1), sync: "1/4", feedback: 0.25, mix: 0.12, filterFreq: 4000, lowCutHz: 300 }),
       reverb({ mix: 0.2, decaySec: 2.0, sizeType: "plate", predelayMs: 35, lowCutHz: 250, highCutHz: 10000 }),
@@ -235,7 +235,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ hp: 80, body: 3, presence: 1, air: 5, top: 0, comp: { thresholdDb: -30, ratio: 3, attackMs: 12, releaseMs: 160, kneeDb: 10, makeupDb: 12.6 }, deess: { thresholdDb: -34 } }),
+      ...phoneBase({ hp: 80, body: 3, presence: 1, air: 5, top: 0, comp: { thresholdDb: -30, ratio: 3, attackMs: 12, releaseMs: 160, kneeDb: 10, makeupDb: 12.0 }, deess: { thresholdDb: -34 } }),
       sat({ driveDb: 4, mix: 0.25, tone: "warm" }),
       reverb({ mix: 0.12, decaySec: 0.9, sizeType: "room", predelayMs: 15, lowCutHz: 200, highCutHz: 7000 }),
       safety(),
@@ -254,7 +254,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     effects: [
       eq(band("highpass", 450, 0, 0.9), band("peaking", 1500, 6, 0.9), band("lowpass", 3500, 0, 0.9)),
       sat({ driveDb: 14, mix: 0.6, tone: "neutral" }),
-      comp({ thresholdDb: -24, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 3, makeupDb: 11.1 }),
+      comp({ thresholdDb: -24, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 3, makeupDb: 9.0 }),
       delay({ timeMs: at140(0.5), sync: "1/8", pingPong: true, feedback: 0.3, mix: 0.25, filterFreq: 3000, lowCutHz: 500 }),
       safety(),
     ],
@@ -268,7 +268,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ hp: 200, air: 7, comp: { thresholdDb: -26, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 17.1 } }),
+      ...phoneBase({ hp: 200, air: 7, comp: { thresholdDb: -26, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 15.0 } }),
       chorus({ rateHz: 0.8, depthMs: 4, mix: 0.4 }),
       width({ width: 1.6 }),
       reverb({ mix: 0.25, decaySec: 2.2, sizeType: "hall", predelayMs: 30, lowCutHz: 350, highCutHz: 8000 }),
@@ -284,7 +284,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ hp: 300, air: 2, top: 0, comp: { makeupDb: 16.9 } }),
+      ...phoneBase({ hp: 300, air: 2, top: 0, comp: { makeupDb: 15.5 } }),
       eq(band("lowpass", 6500, 0, 0.7)),
       delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.45, mix: 0.3, filterFreq: 2500, lowCutHz: 400 }),
       reverb({ mix: 0.35, decaySec: 3.5, sizeType: "hall", predelayMs: 50, lowCutHz: 400, highCutHz: 6000 }),
@@ -303,7 +303,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     factory: true,
     effects: [
       gate({ thresholdDb: -50, attackMs: 1, releaseMs: 180, holdMs: 60 }),
-      ...phoneBase({ presence: 2, air: 4, top: 0, comp: { thresholdDb: -20, ratio: 2.5, attackMs: 15, releaseMs: 150, kneeDb: 8, makeupDb: 5.6 } }),
+      ...phoneBase({ presence: 2, air: 4, top: 0, comp: { thresholdDb: -20, ratio: 2.5, attackMs: 15, releaseMs: 150, kneeDb: 8, makeupDb: 3.2 } }),
       safety(),
     ],
   },
@@ -316,7 +316,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ comp: { makeupDb: 9.9 },  presence: 4, air: 9, top: 4 }),
+      ...phoneBase({ comp: { makeupDb: 6.9 },  presence: 4, air: 9, top: 4 }),
       exciter({ freq: 7000, driveDb: 8, mix: 0.25 }),
       safety(),
     ],
@@ -330,7 +330,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ comp: { thresholdDb: -22, ratio: 3, attackMs: 10, releaseMs: 120, kneeDb: 6, makeupDb: 11.4 } }),
+      ...phoneBase({ comp: { thresholdDb: -22, ratio: 3, attackMs: 10, releaseMs: 120, kneeDb: 6, makeupDb: 8.5 } }),
       comp({ thresholdDb: -12, ratio: 6, attackMs: 2, releaseMs: 60, kneeDb: 2, makeupDb: 2 }),
       limiter({ thresholdDb: -2, releaseMs: 80, ceilingDb: -1 }),
     ],
@@ -347,7 +347,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     cover: art("#c7c9ff", "#2c2f86", "rings"),
     blend: 1,
     factory: true,
-    effects: [...phoneBase({ comp: { makeupDb: 11.9 } }), reverb({ mix: 0.18, decaySec: 1.4, sizeType: "plate", predelayMs: 25, lowCutHz: 250, highCutHz: 9000 }), safety()],
+    effects: [...phoneBase({ comp: { makeupDb: 8.9 } }), reverb({ mix: 0.18, decaySec: 1.4, sizeType: "plate", predelayMs: 25, lowCutHz: 250, highCutHz: 9000 }), safety()],
   },
   {
     id: "factory.sala-grande",
@@ -357,7 +357,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     cover: art("#1d1f5c", "#6a3093", "nebula"),
     blend: 1,
     factory: true,
-    effects: [...phoneBase({ comp: { makeupDb: 12.6 } }), reverb({ mix: 0.25, decaySec: 3.2, sizeType: "hall", predelayMs: 45, lowCutHz: 300, highCutHz: 7000 }), safety()],
+    effects: [...phoneBase({ comp: { makeupDb: 9.7 } }), reverb({ mix: 0.25, decaySec: 3.2, sizeType: "hall", predelayMs: 45, lowCutHz: 300, highCutHz: 7000 }), safety()],
   },
   {
     id: "factory.eco-negra",
@@ -367,7 +367,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     cover: art("#0f4a52", "#7ef0ff", "orbit"),
     blend: 1,
     factory: true,
-    effects: [...phoneBase({ comp: { makeupDb: 12.0 } }), delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.35, mix: 0.2, filterFreq: 4000, lowCutHz: 300 }), safety()],
+    effects: [...phoneBase({ comp: { makeupDb: 9.2 } }), delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.35, mix: 0.2, filterFreq: 4000, lowCutHz: 300 }), safety()],
   },
   {
     id: "factory.slap",
@@ -377,7 +377,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     cover: art("#7ef0ff", "#0a2f35", "diagonal"),
     blend: 1,
     factory: true,
-    effects: [...phoneBase({ comp: { makeupDb: 11.8 } }), delay({ timeMs: 110, sync: null, feedback: 0.08, mix: 0.18, filterFreq: 5000, lowCutHz: 250 }), safety()],
+    effects: [...phoneBase({ comp: { makeupDb: 8.8 } }), delay({ timeMs: 110, sync: null, feedback: 0.08, mix: 0.18, filterFreq: 5000, lowCutHz: 250 }), safety()],
   },
 
   // ------------------------------------------------------------ efectos
@@ -392,7 +392,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     effects: [
       eq(band("highpass", 600, 0, 1), band("peaking", 1800, 5, 1), band("lowpass", 3000, 0, 1)),
       sat({ driveDb: 16, mix: 0.7, tone: "warm" }),
-      comp({ thresholdDb: -20, ratio: 4, attackMs: 5, releaseMs: 80, kneeDb: 4, makeupDb: 3.7 }),
+      comp({ thresholdDb: -20, ratio: 4, attackMs: 5, releaseMs: 80, kneeDb: 4, makeupDb: 1.7 }),
       reverb({ mix: 0.1, decaySec: 0.5, sizeType: "room", predelayMs: 0, lowCutHz: 500, highCutHz: 4000 }),
       safety(),
     ],
@@ -408,7 +408,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     effects: [
       eq(band("highpass", 150), band("lowpass", 5500, 0, 0.7), band("peaking", 520, -3, 1.3), band("peaking", 900, 2, 0.8)),
       sat({ driveDb: 9, mix: 0.45, tone: "warm" }),
-      comp({ thresholdDb: -24, ratio: 4, attackMs: 10, releaseMs: 140, kneeDb: 8, makeupDb: 10.3 }),
+      comp({ thresholdDb: -24, ratio: 4, attackMs: 10, releaseMs: 140, kneeDb: 8, makeupDb: 8.9 }),
       chorus({ rateHz: 0.3, depthMs: 2, mix: 0.15 }),
       reverb({ mix: 0.18, decaySec: 0.9, sizeType: "room", predelayMs: 10, lowCutHz: 200, highCutHz: 5000 }),
       safety(),
@@ -423,7 +423,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      ...phoneBase({ comp: { makeupDb: 13.3 } }),
+      ...phoneBase({ comp: { makeupDb: 10.9 } }),
       flanger({ rateHz: 0.35, depthMs: 3, feedback: 0.55, mix: 0.45 }),
       reverb({ mix: 0.12, decaySec: 1.2, sizeType: "plate", predelayMs: 20, lowCutHz: 300, highCutHz: 9000 }),
       safety(),
@@ -441,7 +441,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
       eq(band("highpass", 100), band("peaking", 520, -4, 1.3), band("peaking", 3500, 3, 1)),
       vocoder({ carrierType: "sawtooth", carrierFreqHz: 110, mix: 0.8 }),
       // the vocoder comes out ~15 dB under the voice: bring it back up
-      comp({ thresholdDb: -36, ratio: 3, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 23.4 }),
+      comp({ thresholdDb: -36, ratio: 3, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 20.4 }),
       reverb({ mix: 0.1, decaySec: 1, sizeType: "plate", predelayMs: 10, lowCutHz: 300, highCutHz: 8000 }),
       safety(),
     ],

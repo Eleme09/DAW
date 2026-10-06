@@ -6,7 +6,8 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { listProjects, loadProject as loadProjectFromDisk, saveProject } from "@/lib/storage/projectStore";
 import { putSample } from "@/lib/storage/sampleStore";
 import { addSampleAsset } from "@/lib/storage/sampleIndex";
-import { collectProjectSampleIds, hydrateProjectSamples } from "@/lib/audio/sampleLoader";
+import { collectProjectSampleIds, ensureSampleLoaded, hydrateProjectSamples } from "@/lib/audio/sampleLoader";
+import { runClipJob } from "@/lib/audio/clipWorkerClient";
 import {
   createEmptyProject,
   createDefaultAutomation,
@@ -19,6 +20,7 @@ import {
   type BusId,
   type Project,
   type ProjectKey,
+  type BeatInfo,
   type SampleAsset,
   type Send,
   type Track,
@@ -156,6 +158,9 @@ interface ProjectState {
   addBus: (name?: string) => Bus;
   removeBus: (busId: BusId) => void;
   updateBus: (busId: BusId, patch: Partial<Bus>) => void;
+  /** Automezcla: a whole new balance (faders, pans, the shared reverb bus
+   * and sends) in one undo step. */
+  applyMix: (next: Project) => void;
   /** Swaps a bus with its immediate left/right neighbor in channel order. */
   moveBus: (busId: BusId, direction: -1 | 1) => void;
   /** Sets or updates a track's send to `busId` at `levelDb` - creates the
@@ -227,6 +232,13 @@ interface ProjectState {
   renameProject: (name: string) => void;
   setLyrics: (lyrics: string) => void;
   setProjectKey: (key: ProjectKey) => void;
+  /** The first beat imported into a project sets its tempo and key (and
+   * every AutoPitch's key). No-op once the project has a beatInfo. */
+  analyzeFirstBeat: (sampleId: string, name: string) => Promise<void>;
+  beatAnalyzing: boolean;
+  /** Shown once after the analysis (the studio's banner). */
+  beatNotice: BeatInfo | null;
+  dismissBeatNotice: () => void;
   setCountInBars: (bars: number) => void;
   setMetronomeVolume: (volume: number) => void;
   /** Creates the track's AutoPitch (from the project key) on first use.
@@ -284,6 +296,37 @@ const HISTORY_LIMIT = 200;
 const AUTOSAVE_DEBOUNCE_MS = 1200;
 
 /** Beats of audible count-in (click track) played before recording starts. */
+
+/** Beat or not, from the mono mix: share of energy under 150 Hz and share
+ * of near-silent 50 ms blocks. */
+function looksLikeBeat(mono: Float32Array, sr: number): boolean {
+  const step = 4;
+  const a = 1 - Math.exp((-2 * Math.PI * 150 * step) / sr);
+  let lp = 0;
+  let total = 0;
+  let low = 0;
+  const blockLen = Math.round((0.05 * sr) / step);
+  const blocks: number[] = [];
+  let be = 0;
+  let bn = 0;
+  for (let i = 0; i < mono.length; i += step) {
+    const x = mono[i];
+    lp += (x - lp) * a;
+    total += x * x;
+    low += lp * lp;
+    be += x * x;
+    if (++bn >= blockLen) {
+      blocks.push(be / bn);
+      be = 0;
+      bn = 0;
+    }
+  }
+  if (total <= 0 || blocks.length < 20) return false;
+  const sorted = [...blocks].sort((x, y) => x - y);
+  const loud = sorted[Math.floor(sorted.length * 0.95)];
+  const silent = blocks.filter((e) => e < loud * Math.pow(10, -3.5)).length / blocks.length;
+  return low / total > 0.25 && silent < 0.2;
+}
 
 export const useProjectStore = create<ProjectState>((set, get, api) => {
   let unsubscribeTime: (() => void) | null = null;
@@ -553,6 +596,12 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         tracks: project.tracks.map((t) => ({ ...t, sends: t.sends.filter((s) => s.busId !== busId) })),
       });
       setProject(nextProject, { extra: { selectedBusId } });
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+    },
+
+    applyMix: (next) => {
+      const nextProject = touch(next);
+      setProject(nextProject);
       getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
     },
 
@@ -1149,6 +1198,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         sampleRate: getAudioEngine().getContext()?.sampleRate ?? 44100,
         channels: 1,
         createdAt: new Date().toISOString(),
+        origin: "recording",
       };
       await addSampleAsset(asset);
 
@@ -1214,6 +1264,65 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     renameProject: (name) => setProject(touch({ ...get().project, name }), { coalesce: true }),
     setLyrics: (lyrics) => setProject(touch({ ...get().project, lyrics }), { coalesce: true }),
     setProjectKey: (key) => setProject(touch({ ...get().project, key })),
+    beatAnalyzing: false,
+    beatNotice: null,
+    dismissBeatNotice: () => set({ beatNotice: null }),
+    analyzeFirstBeat: async (sampleId, name) => {
+      if (get().project.beatInfo || get().beatAnalyzing) return;
+      const buffer = await ensureSampleLoaded(sampleId);
+      if (!buffer || buffer.duration < 15) return;
+      const sr = buffer.sampleRate;
+      const n = Math.min(buffer.length, Math.floor(120 * sr));
+      const mono = new Float32Array(n);
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+        const data = buffer.getChannelData(ch);
+        for (let i = 0; i < n; i++) mono[i] += data[i] / buffer.numberOfChannels;
+      }
+      // only a beat sets the project: lots of low end (808, kick) and no
+      // gaps. A vocal imported first must not (measured on the user's files:
+      // beat 0.79 low / 0.5 % silent, vocals 0.02 / 55-69 %).
+      if (!looksLikeBeat(mono, sr)) return;
+      set({ beatAnalyzing: true });
+      try {
+        const result = await runClipJob({ kind: "beat", mono, sampleRate: sr });
+        if (result.kind !== "beat") return;
+        const a = result.analysis;
+        const project = get().project;
+        if (project.beatInfo) return;
+        const key: ProjectKey = { tonic: a.key.tonic, scale: a.key.scale };
+        const beatInfo: BeatInfo = {
+          sampleId,
+          name,
+          bpm: a.bpm,
+          bpmConfidence: a.bpmConfidence,
+          key,
+          keyConfidence: a.keyConfidence,
+          keyAgreed: a.keyAgreed,
+          alternative: { tonic: a.keyAlternative.tonic, scale: a.keyAlternative.scale },
+        };
+        const nextProject = touch({
+          ...project,
+          bpm: a.bpm,
+          key,
+          beatInfo,
+          tracks: project.tracks.map((t) => ({
+            ...t,
+            inserts: syncDelaysToTempo(t.inserts, a.bpm),
+            autoPitch: t.autoPitch ? { ...t.autoPitch, key: key.tonic, scale: key.scale } : t.autoPitch,
+          })),
+          buses: project.buses.map((b) => ({ ...b, inserts: syncDelaysToTempo(b.inserts, a.bpm) })),
+          masterInserts: syncDelaysToTempo(project.masterInserts, a.bpm),
+        });
+        setProject(nextProject);
+        getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+        getAudioEngine().syncMasterInserts(nextProject.masterInserts);
+        set({ beatNotice: beatInfo });
+      } catch {
+        // analysis is a convenience: the project just keeps its tempo/key
+      } finally {
+        set({ beatAnalyzing: false });
+      }
+    },
     setCountInBars: (bars) => setProject(touch({ ...get().project, countInBars: bars })),
     setMetronomeVolume: (volume) => {
       setProject(touch({ ...get().project, metronomeVolume: volume }), { coalesce: true });

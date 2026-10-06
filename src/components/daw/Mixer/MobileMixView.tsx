@@ -4,15 +4,14 @@ import { useRef, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import { fxChipLabel } from "@/lib/fx/catalog";
+import { faderDbToPos, faderPosToDb } from "@/lib/audio/faderLaw";
 import type { Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
 import { BottomSheet } from "../BottomSheet";
-import { MixAssistantPanel } from "../MixAssistantPanel";
+import { AutoMixSheet } from "./AutoMixSheet";
 import { SendSlots } from "./SendSlots";
 import { MicIcon, MoreIcon, ChevronRightIcon, PlusIcon, MixIcon } from "../icons";
 
-const MIN_DB = -60;
-const MAX_DB = 6;
 
 /**
  * Phone Mix View, laid out like BandLab's (user's own screenshot of it):
@@ -58,8 +57,10 @@ export function MobileMixView({ onAddTrack }: { onAddTrack: () => void }) {
           className="flex h-14 items-center gap-3 rounded-xl bg-surf px-4 text-left"
         >
           <MixIcon className="h-5 w-5 text-bone-2" />
-          <span className="text-[15px] font-semibold text-bone">AutoMix</span>
-          <span className="rounded bg-[#2f80ed] px-1.5 text-xs font-bold text-white">AI</span>
+          <span className="min-w-0">
+            <span className="block text-[15px] font-semibold leading-tight text-bone">Automezcla</span>
+            <span className="block text-xs text-bone-3">Niveles, paneo y reverb en un toque</span>
+          </span>
           <ChevronRightIcon className="ml-auto h-5 w-5 text-bone-3" />
         </button>
 
@@ -119,9 +120,7 @@ export function MobileMixView({ onAddTrack }: { onAddTrack: () => void }) {
       </div>
 
       <TrackMenu track={menuTrack} onClose={() => setMenuTrackId(null)} />
-      <BottomSheet open={assistantOpen} onClose={() => setAssistantOpen(false)} title="AutoMix">
-        <MixAssistantPanel />
-      </BottomSheet>
+      <AutoMixSheet open={assistantOpen} onClose={() => setAssistantOpen(false)} />
     </div>
   );
 }
@@ -219,9 +218,31 @@ function TrackCard({
 function TrackMenu({ track, onClose }: { track: Track | null; onClose: () => void }) {
   const updateTrack = useProjectStore((s) => s.updateTrack);
   const removeTrack = useProjectStore((s) => s.removeTrack);
-  if (!track) return null;
+  const moveTrack = useProjectStore((s) => s.moveTrack);
+  const trackCount = useProjectStore((s) => s.project.tracks.length);
+  // the sheet follows the live track (its order changes as it moves)
+  const live = useProjectStore((s) => s.project.tracks.find((t) => t.id === track?.id) ?? null);
+  if (!track || !live) return null;
   return (
     <BottomSheet open onClose={onClose} title={track.name}>
+      <div className="flex gap-2">
+        <button
+          onClick={() => moveTrack(live.id, -1)}
+          disabled={live.order <= 0}
+          aria-label="Subir pista"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-surf-2 text-sm font-medium text-bone disabled:opacity-30"
+        >
+          <span aria-hidden>↑</span> Subir
+        </button>
+        <button
+          onClick={() => moveTrack(live.id, 1)}
+          disabled={live.order >= trackCount - 1}
+          aria-label="Bajar pista"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-surf-2 text-sm font-medium text-bone disabled:opacity-30"
+        >
+          <span aria-hidden>↓</span> Bajar
+        </button>
+      </div>
       <label className="block text-xs text-bone-3">
         Nombre
         <input
@@ -261,14 +282,14 @@ function LineFader({
   thumb?: "solid" | "ring";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x: number; db: number } | null>(null);
-  const pct = ((Math.min(MAX_DB, Math.max(MIN_DB, valueDb)) - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+  const drag = useRef<{ x: number; pos: number } | null>(null);
+  // fader law (lib/audio/faderLaw.ts): 0 dB at 79 %, halfway -12 dB
+  const pct = faderDbToPos(valueDb) * 100;
 
   function onPointerMove(e: React.PointerEvent) {
     if (!drag.current || !ref.current) return;
     const width = ref.current.clientWidth || 1;
-    const db = drag.current.db + ((e.clientX - drag.current.x) / width) * (MAX_DB - MIN_DB);
-    onChange(Math.round(Math.min(MAX_DB, Math.max(MIN_DB, db)) * 10) / 10);
+    onChange(Math.round(faderPosToDb(drag.current.pos + (e.clientX - drag.current.x) / width) * 10) / 10);
   }
 
   return (
@@ -278,7 +299,7 @@ function LineFader({
       onPointerDown={(e) => {
         e.stopPropagation();
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
-        drag.current = { x: e.clientX, db: valueDb };
+        drag.current = { x: e.clientX, pos: faderDbToPos(valueDb) };
       }}
       onPointerMove={onPointerMove}
       onPointerUp={() => (drag.current = null)}

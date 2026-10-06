@@ -1,9 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-
-const MIN_DB = -60;
-const MAX_DB = 6;
+import { FADER_MIN_DB as MIN_DB, faderDbToPos, faderPosToDb } from "@/lib/audio/faderLaw";
 /** Real dB marks, per PROMPT_MAESTRO FASE 9 section 3 - the bottom of the
  * physical range reads as -inf (the floor), not a literal -60. */
 const SCALE_MARKS: { db: number; label: string }[] = [
@@ -59,26 +57,16 @@ export function Fader({
   onDragStart,
   onDragEnd,
 }: FaderProps) {
-  const drag = useRef<{ start: number; startDb: number } | null>(null);
+  const drag = useRef<{ start: number; startPos: number } | null>(null);
   const horizontal = orientation === "horizontal";
   const trackLength = length ?? height;
-  // Drag maps 1:1 to the visible track, not a fixed px-per-dB constant - a
-  // short mobile strip (130px, MobileChannelRow) used to need a full 150px
-  // of drag (60dB * the old fixed 2.5px/dB) just to reach the bottom of its
-  // own 130px-long track, and saturated at +6dB after barely 15px, leaving
-  // most of the visible travel dead. Measured directly (not guessed) before
-  // fixing: dragging the full 130px from 0dB landed on +6dB (clamped) -
-  // confirming you physically could not reach the far end in one drag.
-  // Mapping the whole MIN_DB..MAX_DB range across whatever length this
-  // instance is actually drawn at means the thumb always tracks the
-  // finger exactly, on every strip size (mobile row, desktop channel,
-  // master) - not a second special case for the short one.
-  const pxPerDb = trackLength / (MAX_DB - MIN_DB);
-
+  // Drag maps 1:1 to the visible track (the thumb tracks the finger on
+  // every strip size), through the fader law (lib/audio/faderLaw.ts):
+  // 0 dB at 79 % of the travel, halfway -12 dB.
   function beginDrag(e: React.PointerEvent) {
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    drag.current = { start: horizontal ? e.clientX : e.clientY, startDb: valueDb };
+    drag.current = { start: horizontal ? e.clientX : e.clientY, startPos: faderDbToPos(valueDb) };
     onDragStart?.();
   }
 
@@ -87,8 +75,8 @@ export function Fader({
     const pos = horizontal ? e.clientX : e.clientY;
     // Horizontal: moving right increases the value, same sign as moving
     // up does for vertical - both are "toward the loud end" of the travel.
-    const deltaDb = ((horizontal ? 1 : -1) * (pos - drag.current.start)) / pxPerDb;
-    onChange(Math.min(MAX_DB, Math.max(MIN_DB, drag.current.startDb + deltaDb)));
+    const delta = ((horizontal ? 1 : -1) * (pos - drag.current.start)) / Math.max(1, trackLength);
+    onChange(Math.round(faderPosToDb(drag.current.startPos + delta) * 10) / 10);
   }
 
   function onPointerUp(e: React.PointerEvent) {
@@ -97,8 +85,8 @@ export function Fader({
     onDragEnd?.();
   }
 
-  const pct = ((Math.min(MAX_DB, Math.max(MIN_DB, valueDb)) - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
-  const zeroPct = ((0 - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+  const pct = faderDbToPos(valueDb) * 100;
+  const zeroPct = faderDbToPos(0) * 100;
   const title = `${label ? label + " — " : ""}${valueDb.toFixed(1)} dB — arrastra para ajustar, doble clic para reiniciar a 0dB`;
 
   if (horizontal) {
@@ -126,7 +114,7 @@ export function Fader({
         {showScale && (
           <div className="relative shrink-0" style={{ width: trackLength, height: 12 }}>
             {SCALE_MARKS.map(({ db, label: markLabel }) => {
-              const markPct = ((Math.min(MAX_DB, Math.max(MIN_DB, db)) - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+              const markPct = faderDbToPos(db) * 100;
               return (
                 <span
                   key={db}
@@ -167,7 +155,7 @@ export function Fader({
       {showScale && (
         <div className="relative shrink-0" style={{ height: trackLength, width: 18 }}>
           {SCALE_MARKS.map(({ db, label: markLabel }) => {
-            const markPct = ((Math.min(MAX_DB, Math.max(MIN_DB, db)) - MIN_DB) / (MAX_DB - MIN_DB)) * 100;
+            const markPct = faderDbToPos(db) * 100;
             return (
               <span
                 key={db}

@@ -140,6 +140,19 @@ export interface Marker {
   time: number;
 }
 
+export interface BeatInfo {
+  sampleId: string;
+  name: string;
+  bpm: number;
+  bpmConfidence: number;
+  key: ProjectKey;
+  keyConfidence: number;
+  /** Both key models agreed. */
+  keyAgreed: boolean;
+  /** The other likely key, offered when the user doubts. */
+  alternative: ProjectKey;
+}
+
 export interface ProjectKey {
   /** Pitch class 0=Do .. 11=Si. */
   tonic: number;
@@ -166,6 +179,9 @@ export interface Project {
   /** Project key (Settings → "Clave del proyecto"); a track's AutoPitch
    * starts from it. */
   key: ProjectKey;
+  /** What the first imported beat measured (it set bpm and key). Present
+   * once analysed, so a second beat doesn't change the project. */
+  beatInfo?: BeatInfo;
   /** Count-in before recording, in bars (0 = off). */
   countInBars: number;
   /** Metronome click level, 0..1. */
@@ -182,7 +198,12 @@ export interface SampleAsset {
   sampleRate: number;
   channels: number;
   createdAt: string;
+  /** Where it came from ("Mis audios" filters by it). Older entries don't
+   * have it: guessed from the name. */
+  origin?: SampleOrigin;
 }
+
+export type SampleOrigin = "recording" | "import" | "video" | "processed";
 
 export function createEmptyProject(name = "Sin título"): Project {
   const now = new Date().toISOString();

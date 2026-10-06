@@ -14,7 +14,6 @@ import {
 import { EffectParamsEditor } from "./EffectParamsEditor";
 import { BottomSheet } from "../BottomSheet";
 import {
-  SparkleIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
   ArrowUpIcon,
@@ -66,12 +65,6 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
   const toggleEffectBypass = useProjectStore((s) => s.toggleEffectBypass);
   const removeEffect = useProjectStore((s) => s.removeEffect);
   const moveEffect = useProjectStore((s) => s.moveEffect);
-  const targetName = useProjectStore((s) =>
-    target === "master" ? "Master" : (s.project.tracks.find((t) => t.id === target)?.name ?? target)
-  );
-  const setAssistantDraftMessage = useProjectStore((s) => s.setAssistantDraftMessage);
-  const setBrowserTab = useProjectStore((s) => s.setBrowserTab);
-  const setMobileView = useProjectStore((s) => s.setMobileView);
 
   const presets = EFFECT_PRESET_META[effect.type];
   const activePresetId = slots[activeSlot].presetId;
@@ -102,12 +95,6 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
     updateEffectParams(target, effect.id, slots[slot].params);
   }
 
-  function askAi() {
-    setAssistantDraftMessage(`${EFFECT_LABELS[effect.type]} en ${targetName}: `);
-    setBrowserTab("assistant");
-    setMobileView("browser");
-  }
-
   return (
     <div className={`rounded border ${effect.bypassed ? "border-line opacity-50" : "border-line-2"} bg-surf`}>
       <div
@@ -125,16 +112,6 @@ export function EffectCard({ target, effect, isFirst, isLast }: EffectCardProps)
         </span>
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent }} title="Tipo de efecto" />
         <span className="ml-1.5 flex-1 truncate text-xs font-medium text-bone">{EFFECT_LABELS[effect.type]}</span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            askAi();
-          }}
-          title="Preguntar a la IA sobre este efecto"
-          className="-m-3.5 flex h-11 w-11 shrink-0 items-center justify-center text-bone-2 hover:text-bone-2"
-        >
-          <SparkleIcon className="h-3.5 w-3.5" />
-        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();

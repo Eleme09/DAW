@@ -1169,3 +1169,44 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
 - **No verificado**: fluidez de las animaciones en un iPhone real. Con una toma muy caliente varios presets con armonías pasan de 0 dBFS en la salida del AutoPitch (Big Harmony +3.6, Krafty +6.6, igual que antes): dentro de la app no recorta hasta la salida final, y los preajustes Fx de fábrica terminan en limitador; sin Fx podría recortar en la salida. Nadie escuchó todavía los presets compensados.
 
 - Análisis de lo que falta para venderla: `ANALISIS-PRODUCTO.md`.
+
+## Perillas sin picos, volumen coherente, beat → BPM y clave, Automezcla nueva, Mis audios
+
+- **Picos y "suena raro" al mover perillas con audio sonando**:
+  - **Causa principal, medida.** El compresor del navegador (DynamicsCompressorNode) recalcula una ganancia automática oculta cada vez que cambian el umbral, el ratio o el knee, y la aplica de golpe cada bloque de 3 ms. Mover la perilla daba escalones de 1.4 dB; daba igual cómo se suavizara.
+  - **Compresor propio**: `public/worklets/dynamics-processor.js`, en Gravedad, Estratos, Horizonte y Sibila. Todos sus parámetros se deslizan muestra a muestra y no hay ganancia oculta; el limitador tiene anticipación de 5 ms y techo duro.
+  - **Prueba de barrido**: cada perilla movida a 60 Hz con un tono continuo, contando clics frente a la perilla quieta.
+    - Antes: umbral +47 dB de clics, ratio +60, knee +38, multibanda +45, limitador +30.
+    - Ahora: 0 en compresor, multibanda y de-esser; +11 en el limitador (es el limitador trabajando).
+  - **Delay**: al girar el tiempo, el búfer se leía al revés (ruido). Ahora el tiempo cambia como mucho 0.3 s por segundo, como un delay de cinta, partiendo exacto de donde iba.
+  - **Chorus y flanger**: la profundidad se desliza más lento.
+  - **Gate**: detector de nivel con 3 dB de histéresis (antes temblaba cerca del umbral) y umbral suavizado.
+  - **Autotune**: cada movimiento de cualquier perilla reenviaba ~70 parámetros del autotune de todas las pistas y los dejaba en automatización permanente. Ahora solo se envía si cambió algo, con una rampa que termina.
+  - **Agregar, quitar o mover un efecto con música**: hace un fundido de 12 ms alrededor del recableado (antes: clic, y un compresor nuevo dejaba pasar el primer pico).
+  - **Protección de salida**: limitador invisible a −0.3 dBFS al final del master, en vivo y al exportar. Con tomas calientes y una subida de EQ o de makeup, antes recortaba duro.
+  - **Faders, paneos, sends y mute**: se deslizan 10 ms y solo cuando cambian (antes escalones).
+- **Preajustes Fx re-nivelados con el compresor nuevo**: los 22 quedaron entre −10.0 y −11.0 LUFS (objetivo −11).
+- **Volumen coherente.** Los faders repartían −60…+6 dB en línea recta: a la mitad sonaba a −27 dB, casi mudo. Ahora usan ley cúbica de consola (`lib/audio/faderLaw.ts`): 0 dB al 79 % del recorrido, mitad = −12 dB, un cuarto = −30 dB. Aplica a pista, master, sends y la perilla de volumen.
+- **Subir/Bajar pista** en el menú ⋯ de la pista (Mezcla).
+- **El primer beat fija BPM y clave del proyecto** (`audio-engine/beat/beatAnalysis.ts`, corre en segundo plano):
+  - **Cuándo**: solo si el audio tiene pinta de beat (graves fuertes, sin huecos). Una voz importada primero no cuenta.
+  - **Qué aplica**: tempo, clave del proyecto y clave de todos los autotunes, más los delays sincronizados. Aviso con BPM, clave y código Camelot, botón para la otra clave probable y "Ajustar".
+  - **Tu beat**: 162 BPM y Fa# menor (11A), en 1.5–2 s en Chromium.
+  - **Medido con datos reales** (GiantSteps, fragmentos de 2 min de electrónica anotados a mano):
+    - Tempo: 68 % exacto y 93 % contando doble/mitad. Los fallos son casi todos drum&bass a 174 que sale 87.
+    - Clave: 44 % exacta, 53 % con la puntuación MIREX (quinta/relativa cuentan parcial). Es el set más difícil (mucha música modal). Con tu beat cuadró con La mayor/Fa# menor, que ya usábamos.
+  - **No verificado**: precisión en trap/reggaeton; no hay un set etiquetado de esos géneros. Investigué Audioforges: dice que cruza dos modelos y avisa si no coinciden, pero no publica cómo lo hace ni su precisión.
+- **Automezcla** (reemplaza "AutoMix AI", que abría el asistente viejo y tardaba muchísimo; ya no dice "IA"):
+  - **Mide**: cada pista a través de su propia cadena (autotune + Fx), 20 s del tramo más fuerte. Tarda ~1.7 s con 3 pistas.
+  - **Reconoce el rol de cada pista**: beat, voz principal (también sus partes en otra pista), doble y ad-lib. Usa graves, silencios y dónde suena de verdad cada pista.
+  - **Niveles que propone**: beat a −14 LUFS y voz 1.5 por encima; dobles −6 y ad-libs −5 bajo la voz, paneados.
+  - **Reverb**: un bus "Espacio" con placa corta compartida para las voces sin reverb propia.
+  - **Aplicar**: muestra la propuesta, cada rol se puede corregir, y se aplica en un solo paso de deshacer.
+  - **Probado con tus archivos**: beat / voz / copia → Beat, Voz principal, Voz principal.
+- **Mis audios** (reemplaza el panel viejo con "Asistente IA", "Mezcla IA" y los botones antiguos por muestra):
+  - Lista limpia de grabaciones, importados, audio de video y editados, con filtros, duración y fecha.
+  - Tocar un audio lo pone en la pista en el cursor.
+  - Borrar pide confirmación y se bloquea si algún proyecto lo usa (dice cuál).
+  - Se quitaron los botones "Preguntar a la IA".
+- `tsc`, `eslint`, `vitest` (413 con las nuevas: ley del fader, automezcla, análisis de beat, nivel de presets de autotune), `next build`, flujos en Chromium 390×844.
+- **No verificado**: nada de esto en un iPhone real. Nadie ha escuchado todavía el compresor nuevo; suena distinto al del navegador: sin la anticipación de 6 ms deja pasar un poco más el ataque.

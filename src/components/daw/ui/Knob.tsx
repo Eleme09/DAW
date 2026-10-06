@@ -22,16 +22,13 @@ interface KnobProps {
    * every other caller. */
   onDragStart?: () => void;
   onDragEnd?: () => void;
+  /** Non-linear travel (e.g. the fader law for volume): value <-> 0..1. */
+  taper?: { toPos: (value: number) => number; fromPos: (pos: number) => number };
 }
 
 const START_ANGLE = -135;
 const SWEEP_DEGREES = 270;
 const LONG_PRESS_MS = 550;
-
-function valueToAngle(value: number, min: number, max: number): number {
-  const pct = max === min ? 0 : (value - min) / (max - min);
-  return START_ANGLE + pct * SWEEP_DEGREES;
-}
 
 function polarPoint(cx: number, cy: number, r: number, angleDeg: number): { x: number; y: number } {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -57,6 +54,7 @@ export function Knob({
   throwPx = 150,
   onDragStart,
   onDragEnd,
+  taper,
 }: KnobProps) {
   const dragRef = useRef<{ startY: number; startValue: number; moved: boolean } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,7 +62,9 @@ export function Knob({
   const [editValue, setEditValue] = useState("");
 
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
-  const angle = valueToAngle(clamp(value), min, max);
+  const toPos = (v: number) => (taper ? taper.toPos(v) : max === min ? 0 : (clamp(v) - min) / (max - min));
+  const fromPos = (p: number) => clamp(taper ? taper.fromPos(p) : min + p * (max - min));
+  const angle = START_ANGLE + Math.min(1, Math.max(0, toPos(value))) * SWEEP_DEGREES;
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - 4;
@@ -96,7 +96,7 @@ export function Knob({
       clearLongPress();
     }
     const deltaPct = deltaY / throwPx;
-    onChange(clamp(drag.startValue + deltaPct * (max - min)));
+    onChange(fromPos(Math.min(1, Math.max(0, toPos(drag.startValue) + deltaPct))));
   }
 
   function onPointerUp(e: React.PointerEvent) {

@@ -1,4 +1,5 @@
 import type { PitchFrame, ScaleName } from "@/types/pitch";
+import type { BeatAnalysis } from "@/audio-engine/beat/beatAnalysis";
 
 /**
  * Messages between the app and clipWorker.ts. The heavy region actions
@@ -22,11 +23,13 @@ export type ClipJob =
     }
   | { kind: "transpose"; channels: Float32Array[]; sampleRate: number; semitones: number }
   | { kind: "stretch"; channels: Float32Array[]; sampleRate: number; speed: number }
-  | { kind: "denoise"; channels: Float32Array[]; sampleRate: number };
+  | { kind: "denoise"; channels: Float32Array[]; sampleRate: number }
+  | { kind: "beat"; mono: Float32Array; sampleRate: number };
 
 export type ClipJobResult =
   | { kind: "analyze"; frames: PitchFrame[]; key: number; scale: ScaleName; detected: boolean }
-  | { kind: "channels"; channels: Float32Array[] };
+  | { kind: "channels"; channels: Float32Array[] }
+  | { kind: "beat"; analysis: BeatAnalysis };
 
 export type WorkerMessage =
   | { type: "progress"; fraction: number }
@@ -35,6 +38,6 @@ export type WorkerMessage =
 
 /** Buffers to hand over to the worker instead of copying. */
 export function transferListFor(job: ClipJob): Transferable[] {
-  if (job.kind === "analyze" || job.kind === "harmony") return [job.mono.buffer];
+  if (job.kind === "analyze" || job.kind === "harmony" || job.kind === "beat") return [job.mono.buffer];
   return job.channels.map((c) => c.buffer);
 }

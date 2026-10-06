@@ -1,59 +1,42 @@
 import type { Effect } from "./Effect";
 import type { LimiterParams } from "@/types/effects";
-import { makeHardClipCurve } from "./curves";
+import { DynamicsNode, LIMITER_LOOKAHEAD_MS } from "./dynamics";
 
 /**
- * Brickwall-ish limiter: a fast DynamicsCompressorNode does the gain
- * reduction, a hard-clip WaveShaper after it guarantees true peak never
- * exceeds `ceilingDb` even if the compressor's release lags a transient.
+ * Horizonte: look-ahead brickwall limiter (dynamics-processor worklet,
+ * "limit" mode). `thresholdDb` is how hard it is pushed (drive = -threshold,
+ * the "Empuje" knob); nothing passes `ceilingDb` - the worklet lowers the
+ * gain before a peak arrives and clips whatever slips through.
  */
 export class LimiterEffect implements Effect<LimiterParams> {
-  private ctx: BaseAudioContext;
-  private compressor: DynamicsCompressorNode;
-  private clipper: WaveShaperNode;
-  private makeupGain: GainNode;
+  private dyn: DynamicsNode;
 
   constructor(ctx: BaseAudioContext) {
-    this.ctx = ctx;
-    this.compressor = ctx.createDynamicsCompressor();
-    this.compressor.knee.value = 0;
-    this.compressor.ratio.value = 20;
-    this.compressor.attack.value = 0.001;
-
-    this.clipper = ctx.createWaveShaper();
-    this.clipper.curve = makeHardClipCurve();
-    this.clipper.oversample = "2x"; // only catches overs after the compressor: 2x is plenty, half the cost
-    this.makeupGain = ctx.createGain();
-
-    this.compressor.connect(this.clipper);
-    this.clipper.connect(this.makeupGain);
+    this.dyn = new DynamicsNode(ctx, "limit");
+    // fast enough to be fully down within the look-ahead
+    this.dyn.set({ attackSec: LIMITER_LOOKAHEAD_MS / 1000 / 4 });
   }
 
   get inputNode(): AudioNode {
-    return this.compressor;
+    return this.dyn.node;
   }
   get outputNode(): AudioNode {
-    return this.makeupGain;
+    return this.dyn.node;
   }
 
-  /** Real gain reduction in dB right now, from the native node's own
-   * `.reduction` - see CompressorEffect.getReductionDb()'s doc comment. */
   getReductionDb(): number {
-    return this.compressor.reduction;
+    return this.dyn.getReductionDb();
   }
 
   setParams(params: LimiterParams): void {
-    const t = this.ctx.currentTime;
-    this.compressor.threshold.setTargetAtTime(params.thresholdDb, t, 0.005);
-    this.compressor.release.setTargetAtTime(params.releaseMs / 1000, t, 0.01);
-    // Clipper hard-limits to 0 dBFS; scale down afterward so true peak lands at the ceiling.
-    const ceilingGainLinear = Math.pow(10, params.ceilingDb / 20);
-    this.makeupGain.gain.setTargetAtTime(ceilingGainLinear, t, 0.01);
+    this.dyn.set({
+      driveDb: Math.max(0, -params.thresholdDb),
+      ceilingDb: params.ceilingDb,
+      releaseSec: params.releaseMs / 1000,
+    });
   }
 
   dispose(): void {
-    this.compressor.disconnect();
-    this.clipper.disconnect();
-    this.makeupGain.disconnect();
+    this.dyn.disconnect();
   }
 }

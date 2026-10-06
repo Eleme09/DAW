@@ -7,6 +7,7 @@ import { Timeline } from "./Timeline/Timeline";
 import { MobileMixView } from "./Mixer/MobileMixView";
 import { FxPanel } from "./Fx/FxPanel";
 import { BrowserPanel } from "./BrowserPanel";
+import { BeatNotice } from "./BeatNotice";
 import { TrackEditorView } from "./TrackEditorView";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { ClipEditPanel } from "./ClipEditPanel";
@@ -226,12 +227,14 @@ export function MobileStudio() {
 
         {overlay === "browser" && (
           <div className="absolute inset-0 z-30 flex flex-col bg-ink">
-            <div className="flex h-11 shrink-0 items-center justify-between border-b border-line px-3">
-              <span className="text-sm font-semibold text-bone">Mis muestras</span>
-              <button onClick={() => setMobileView("timeline")} aria-label="Volver al estudio" title="Volver al estudio" className="flex h-9 w-9 items-center justify-center rounded-full bg-surf-2 text-bone">
-                <CloseIcon className="h-4 w-4" />
-              </button>
-            </div>
+            <button
+              onClick={() => setMobileView("timeline")}
+              aria-label="Volver al estudio"
+              title="Volver al estudio"
+              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-surf-2 text-bone"
+            >
+              <CloseIcon className="h-4 w-4" />
+            </button>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden"><BrowserPanel /></div>
           </div>
         )}
@@ -338,6 +341,7 @@ export function MobileStudio() {
         </div>
       )}
 
+      <BeatNotice onAdjust={() => setTab("settings")} />
       <AutomationEditor />
       <AddTrackSheet open={addTrackOpen} onClose={() => setAddTrackOpen(false)} />
     </div>

@@ -2,6 +2,7 @@
 import { analyzeMelody, renderHarmonyChannels } from "@/audio-engine/pitch/harmonyJob";
 import { pitchShift, timeStretch } from "@/audio-engine/timeStretch";
 import { reduceNoiseBuffer } from "@/audio-engine/analysis/spectralNoiseReduction";
+import { analyzeBeat } from "@/audio-engine/beat/beatAnalysis";
 import type { ClipJob, WorkerMessage } from "./clipJobs";
 
 /**
@@ -46,6 +47,10 @@ scope.onmessage = (event: MessageEvent<ClipJob>) => {
       case "stretch": {
         const channels = timeStretch(job.channels, job.sampleRate, job.speed);
         send({ type: "done", result: { kind: "channels", channels } }, channels.map((c) => c.buffer));
+        break;
+      }
+      case "beat": {
+        send({ type: "done", result: { kind: "beat", analysis: analyzeBeat(job.mono, job.sampleRate) } });
         break;
       }
       case "denoise": {

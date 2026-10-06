@@ -1,52 +1,41 @@
 import type { Effect } from "./Effect";
 import type { CompressorParams } from "@/types/effects";
-import { nativeCompressorMakeupDb } from "./nativeCompressor";
+import { DynamicsNode } from "./dynamics";
 
-/** Thin wrapper around the native DynamicsCompressorNode + a makeup-gain
- * stage. The node's own automatic makeup (nativeCompressor.ts) is divided
- * back out, so `makeupDb` is the real makeup: lowering the threshold
- * compresses more and gets quieter, as on any hardware compressor, instead
- * of getting louder by itself. */
+/** Gravedad: one feed-forward compressor (dynamics-processor worklet).
+ * `makeupDb` is the only gain added - no hidden automatic makeup - and
+ * every knob glides, so turning one while the music plays never clicks. */
 export class CompressorEffect implements Effect<CompressorParams> {
-  private ctx: BaseAudioContext;
-  private compressor: DynamicsCompressorNode;
-  private makeup: GainNode;
+  private dyn: DynamicsNode;
 
   constructor(ctx: BaseAudioContext) {
-    this.ctx = ctx;
-    this.compressor = ctx.createDynamicsCompressor();
-    this.makeup = ctx.createGain();
-    this.compressor.connect(this.makeup);
+    this.dyn = new DynamicsNode(ctx, "comp");
   }
 
   get inputNode(): AudioNode {
-    return this.compressor;
+    return this.dyn.node;
   }
   get outputNode(): AudioNode {
-    return this.makeup;
+    return this.dyn.node;
   }
 
-  /** Real gain reduction in dB right now, straight from the native node's
-   * own `.reduction` (Web Audio computes this internally from its actual
-   * attack/release/knee state) - not a value derived from our own transfer
-   * function, which would only be the idealized/instantaneous shape. */
+  /** Gain reduction the worklet reports (most over the last ~50 ms), dB. */
   getReductionDb(): number {
-    return this.compressor.reduction;
+    return this.dyn.getReductionDb();
   }
 
   setParams(params: CompressorParams): void {
-    const t = this.ctx.currentTime;
-    this.compressor.threshold.setTargetAtTime(params.thresholdDb, t, 0.01);
-    this.compressor.ratio.setTargetAtTime(params.ratio, t, 0.01);
-    this.compressor.attack.setTargetAtTime(params.attackMs / 1000, t, 0.005);
-    this.compressor.release.setTargetAtTime(params.releaseMs / 1000, t, 0.01);
-    this.compressor.knee.setTargetAtTime(params.kneeDb, t, 0.01);
-    const auto = nativeCompressorMakeupDb(params.thresholdDb, params.ratio, params.kneeDb);
-    this.makeup.gain.setTargetAtTime(Math.pow(10, (params.makeupDb - auto) / 20), t, 0.01);
+    this.dyn.set({
+      thresholdDb: params.thresholdDb,
+      ratio: params.ratio,
+      kneeDb: params.kneeDb,
+      attackSec: params.attackMs / 1000,
+      releaseSec: params.releaseMs / 1000,
+      makeupDb: params.makeupDb,
+    });
   }
 
   dispose(): void {
-    this.compressor.disconnect();
-    this.makeup.disconnect();
+    this.dyn.disconnect();
   }
 }

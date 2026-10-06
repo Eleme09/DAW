@@ -42,6 +42,8 @@ export function AddTrackSheet({ open, onClose }: AddTrackSheetProps) {
     setImporting(true);
     setError(null);
     const failed: string[] = [];
+    // the first beat of a project sets its tempo and key (once per
+    // project; the store checks it really is a beat)
     for (const file of Array.from(files)) {
       try {
         const asset = await importAudioFile(file);
@@ -61,6 +63,7 @@ export function AddTrackSheet({ open, onClose }: AddTrackSheetProps) {
         };
         addClip(clip);
         selectTrack(track.id);
+        void useProjectStore.getState().analyzeFirstBeat(asset.id, asset.name);
       } catch {
         failed.push(file.name);
       }
@@ -117,8 +120,8 @@ export function AddTrackSheet({ open, onClose }: AddTrackSheetProps) {
           <FolderIcon className="h-5 w-5" />
         </span>
         <span>
-          <span className="block text-sm font-semibold text-bone">Mis muestras</span>
-          <span className="block text-xs text-bone-3">Audio que ya importaste o grabaste antes</span>
+          <span className="block text-sm font-semibold text-bone">Mis audios</span>
+          <span className="block text-xs text-bone-3">Lo que ya grabaste o importaste (también audio de videos)</span>
         </span>
       </button>
 
