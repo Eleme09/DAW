@@ -520,3 +520,52 @@ describe("buses and sends", () => {
     expect(buses.map((b) => b.id)).toEqual([busB.id, busA.id]);
   });
 });
+
+describe("placeClip (dragging a region)", () => {
+  beforeEach(resetStore);
+
+  function setup() {
+    const s = useProjectStore.getState();
+    const a = s.addTrack("A");
+    const b = s.addTrack("B");
+    const clip: AudioClip = {
+      id: "c1", trackId: a.id, sampleId: "s1", name: "toma", startTime: 2, duration: 3, sourceOffset: 0,
+      gainDb: 0, fadeInSec: 0, fadeOutSec: 0, color: a.color, takeGroupId: "g1",
+    };
+    useProjectStore.getState().addClip(clip);
+    return { a, b };
+  }
+  const tracks = () => useProjectStore.getState().project.tracks;
+
+  it("moves in time on the same track", () => {
+    const { a } = setup();
+    useProjectStore.getState().placeClip(a.id, "c1", 5.5);
+    expect(tracks()[0].clips.find((c) => c.id === "c1")?.startTime).toBe(5.5);
+  });
+
+  it("moves to another track, takes its color, stays selected, and undoes in one step", () => {
+    const { a, b } = setup();
+    useProjectStore.getState().placeClip(a.id, "c1", 4, b.id);
+    const moved = tracks()[1].clips.find((c) => c.id === "c1");
+    expect(tracks()[0].clips.some((c) => c.id === "c1")).toBe(false);
+    expect(moved).toMatchObject({ trackId: b.id, startTime: 4, color: b.color });
+    expect(moved?.takeGroupId).toBeUndefined();
+    expect(useProjectStore.getState().selectedClip).toEqual({ trackId: b.id, clipId: "c1" });
+    useProjectStore.getState().undo();
+    expect(tracks()[0].clips.find((c) => c.id === "c1")?.startTime).toBe(2);
+    expect(tracks()[1].clips).toHaveLength(0);
+  });
+
+  it("below the last track makes a new track", () => {
+    const { a } = setup();
+    useProjectStore.getState().placeClip(a.id, "c1", 1, "new");
+    expect(tracks()).toHaveLength(3);
+    expect(tracks()[2].clips[0]).toMatchObject({ id: "c1", trackId: tracks()[2].id, startTime: 1 });
+  });
+
+  it("never goes before time 0", () => {
+    const { a } = setup();
+    useProjectStore.getState().placeClip(a.id, "c1", -3);
+    expect(tracks()[0].clips[0].startTime).toBe(0);
+  });
+});

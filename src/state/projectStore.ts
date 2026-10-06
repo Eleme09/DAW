@@ -169,6 +169,10 @@ interface ProjectState {
   /** Moves a clip to a different track, keeping its timeline position - the
    * clip leaves the source track's `clips` array and joins the target's. */
   moveClipToTrack: (trackId: TrackId, clipId: string, targetTrackId: TrackId) => void;
+  /** Drops a dragged region: new start time and, optionally, another track
+   * ("new" = a new track below the last one). One undo step; the region
+   * stays selected and takes the target track's color. */
+  placeClip: (trackId: TrackId, clipId: string, startTime: number, target?: TrackId | "new") => void;
   /** Makes one take in a group the active (audible) one, muting its siblings. */
   selectTake: (trackId: TrackId, takeGroupId: string, activeClipId: string) => void;
   splitClipAtPlayhead: () => void;
@@ -720,6 +724,41 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
           }),
         }),
         { extra: { selectedTrackId: targetTrackId } }
+      );
+    },
+
+    placeClip: (trackId, clipId, startTime, target) => {
+      const project = get().project;
+      const source = project.tracks.find((t) => t.id === trackId);
+      const clip = source?.clips.find((c) => c.id === clipId);
+      if (!source || !clip) return;
+      const start = Math.max(0, startTime);
+      let tracks = project.tracks;
+      let targetId = target ?? trackId;
+      if (target === "new") {
+        const created = createTrack(`Pista ${tracks.length + 1}`, tracks.length);
+        tracks = [...tracks, created];
+        targetId = created.id;
+      }
+      const targetTrack = tracks.find((t) => t.id === targetId);
+      if (!targetTrack) return;
+      if (targetId === trackId && Math.abs(start - clip.startTime) < 1e-6) return;
+      const moved =
+        targetId === trackId
+          ? { ...clip, startTime: start }
+          : // a take group only means something on the track it was recorded on
+            { ...clip, startTime: start, trackId: targetId, color: targetTrack.color, takeGroupId: undefined };
+      setProject(
+        touch({
+          ...project,
+          tracks: tracks.map((t) => {
+            if (t.id === trackId && t.id === targetId) return { ...t, clips: t.clips.map((c) => (c.id === clipId ? moved : c)) };
+            if (t.id === trackId) return { ...t, clips: t.clips.filter((c) => c.id !== clipId) };
+            if (t.id === targetId) return { ...t, clips: [...t.clips, moved] };
+            return t;
+          }),
+        }),
+        { extra: { selectedTrackId: targetId, selectedClip: { trackId: targetId, clipId } } }
       );
     },
 

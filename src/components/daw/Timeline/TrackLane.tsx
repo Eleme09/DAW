@@ -7,6 +7,7 @@ import { ClipView } from "./ClipView";
 import { CompactClipView } from "./CompactClipView";
 import { GridLines } from "./GridLines";
 import { LiveTake } from "./LiveTake";
+import { useClipDrag } from "./clipDrag";
 
 interface TrackLaneProps {
   track: Track;
@@ -44,6 +45,10 @@ export function TrackLane({ track, width, selected, compact = false, height = TR
   const selectTrack = useProjectStore((s) => s.selectTrack);
   const anySolo = useProjectStore((s) => s.project.tracks.some((t) => t.solo));
   const recordingHere = useProjectStore((s) => s.isRecording && track.armed);
+  // a region from another track hovering over this row: where it will land
+  const dropTarget = useClipDrag(
+    (s) => !!s.drag && s.drag.fromTrackId !== track.id && useProjectStore.getState().project.tracks[s.drag.targetIndex]?.id === track.id
+  );
   // What you'd actually hear from this track right now.
   const audible = !track.muted && (!anySolo || track.solo);
   return (
@@ -63,7 +68,8 @@ export function TrackLane({ track, width, selected, compact = false, height = TR
         // 3px) - así se ve de verdad el carril de BandLab, confirmado contra
         // captura real de su app: el color de pista cubre la fila entera a
         // baja opacidad, no solo acenta un borde.
-        background: laneBackground(track, selected, audible, compact),
+        background: dropTarget ? `${track.color}40` : laneBackground(track, selected, audible, compact),
+        boxShadow: dropTarget ? "inset 0 0 0 1px rgba(255,255,255,.35)" : undefined,
       }}
       className="relative shrink-0 border-b border-line"
     >

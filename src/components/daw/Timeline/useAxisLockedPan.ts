@@ -59,6 +59,11 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
     let momentumFrame = 0;
     let suppressClick = false;
     let scrubbing = false;
+    /** A region picked up by a long press takes over the finger (CompactClipView). */
+    const onCancelPan = () => {
+      active = null;
+      endScrub();
+    };
 
     const startScrub = () => {
       if (scrubbing) return;
@@ -170,6 +175,7 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
     }
 
     el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("daw-cancel-pan", onCancelPan);
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     window.addEventListener("pointercancel", onPointerCancel);
@@ -178,6 +184,7 @@ export function useAxisLockedPan(containerRef: React.RefObject<HTMLElement | nul
       stopMomentum();
       endScrub();
       el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("daw-cancel-pan", onCancelPan);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerCancel);

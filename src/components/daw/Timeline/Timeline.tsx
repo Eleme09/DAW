@@ -19,6 +19,7 @@ import { formatTime } from "../TransportBar";
 import { RegionActionBar } from "./RegionActionBar";
 import { CycleBar } from "./CycleBar";
 import { useAxisLockedPan } from "./useAxisLockedPan";
+import { useClipDrag } from "./clipDrag";
 
 interface TimelineProps {
   /** Phone Studio layout: no bottom toolbar or context bar here - those live in
@@ -197,10 +198,11 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
   const laneOffset = origin - headerWidth;
 
   const actionRowIndex = tracks.findIndex((t) => t.id === actionTrackId);
+  const clipDrag = useClipDrag((s) => s.drag);
 
   return (
     <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-ink">
-      {compact && !rulerOnly && actionRowIndex !== -1 && (
+      {compact && !rulerOnly && actionRowIndex !== -1 && !clipDrag && (
         <RegionActionBar
           rowTop={RULER_HEIGHT + actionRowIndex * rowHeight - scrollTop}
           rowHeight={rowHeight}
@@ -209,6 +211,7 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
       )}
       <div
         ref={scrollRef}
+        data-timeline-scroll=""
         onScroll={handleScroll}
         className="relative flex-1 overflow-auto"
         // pan-x pan-y (not "auto"/unset) keeps native one-finger scrolling
@@ -284,6 +287,16 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
               </div>
             </div>
           ))}
+
+          {compact && !focusTrackId && clipDrag && clipDrag.targetIndex >= tracks.length && (
+            // dropping below the last track makes a new one
+            <div className="flex" style={{ height: rowHeight }}>
+              <div className="sticky left-0 z-10 flex shrink-0 items-center justify-center text-[11px] font-semibold text-bone-2" style={{ width: headerWidth }}>
+                Nueva pista
+              </div>
+              <div className="shrink-0 border-y border-dashed border-bone/40 bg-white/5" style={{ width: laneOffset + contentWidth }} />
+            </div>
+          )}
 
           {compact && !focusTrackId && !rulerOnly && project.tracks.length > 0 && onAddTrack && (
             <div className="sticky left-0 z-10 p-1.5" style={{ width: headerWidth }}>
