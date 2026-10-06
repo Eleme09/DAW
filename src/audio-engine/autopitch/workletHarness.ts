@@ -31,7 +31,7 @@ export interface WorkletHelpers {
 }
 
 function load(sampleRate: number): { Processor: ProcessorClass; helpers: WorkletHelpers } {
-  const source = readFileSync(join(process.cwd(), "public/worklets/autopitch-processor.js"), "utf8");
+  const source = readFileSync(process.env.AUTOPITCH_WORKLET ?? join(process.cwd(), "public/worklets/autopitch-processor.js"), "utf8");
   let Processor: ProcessorClass | null = null;
   const exportsHolder: { helpers?: WorkletHelpers } = {};
   const sandbox = {

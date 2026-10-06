@@ -67,3 +67,78 @@ export function phoneVoice(seconds: number, seed = 7): Float32Array {
   for (let i = 0; i < n; i++) out[i] *= g;
   return out;
 }
+
+export interface SungVowel {
+  data: Float32Array;
+  /** Sample index of every glottal pulse (where the excitation fired). */
+  pulses: number[];
+}
+
+/**
+ * A held sung vowel with a known pitch contour, built the way a voice is: a
+ * glottal pulse train (with a little random period jitter) through formant
+ * resonators. Unlike `phoneVoice` it has no consonants or creak - it is for
+ * measuring how CLEAN a sustained tuned note is (period regularity, where the
+ * grains sit on the waveform), and it returns the exact pulse times so a test
+ * can check the tuner's pitch marks against the truth.
+ */
+export function sungVowel(opts: {
+  seconds: number;
+  hz: number;
+  /** Constant offset from `hz`, in cents. */
+  cents?: number;
+  vibratoCents?: number;
+  vibratoHz?: number;
+  /** Random period jitter (fraction of the period, peak-to-peak). */
+  jitter?: number;
+  formants?: number[][];
+  peak?: number;
+  seed?: number;
+  sampleRate?: number;
+}): SungVowel {
+  const {
+    seconds,
+    hz,
+    cents = 0,
+    vibratoCents = 20,
+    vibratoHz = 5.2,
+    jitter = 0.004,
+    formants = [[800, 90], [1250, 110], [2500, 160], [3400, 200], [4400, 300]],
+    peak = 0.8,
+    seed = 5,
+    sampleRate = SR,
+  } = opts;
+  let r = seed;
+  const rand = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const n = Math.floor(seconds * sampleRate);
+  const out = new Float32Array(n);
+  const pulses: number[] = [];
+  const filters = formants.map(([f, bw]) => {
+    const rr = Math.exp((-Math.PI * bw) / sampleRate);
+    return { a1: 2 * rr * Math.cos((2 * Math.PI * f) / sampleRate), a2: -rr * rr, y1: 0, y2: 0 };
+  });
+  let phase = 0;
+  let vib = 0;
+  let pk = 0;
+  for (let i = 0; i < n; i++) {
+    vib += (2 * Math.PI * vibratoHz) / sampleRate;
+    const f0 = hz * Math.pow(2, (cents + vibratoCents * Math.sin(vib)) / 1200) * (1 + jitter * (rand() - 0.5));
+    phase += f0 / sampleRate;
+    let y = 0;
+    if (phase >= 1) {
+      phase -= 1;
+      y = 1;
+      pulses.push(i);
+    }
+    for (const f of filters) {
+      const v = y + f.a1 * f.y1 + f.a2 * f.y2;
+      f.y2 = f.y1;
+      f.y1 = v;
+      y = v;
+    }
+    out[i] = y;
+    pk = Math.max(pk, Math.abs(y));
+  }
+  for (let i = 0; i < n; i++) out[i] *= peak / (pk || 1);
+  return { data: out, pulses };
+}

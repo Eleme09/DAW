@@ -21,6 +21,7 @@ Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BA
 - Tema 4: los presets premium no se pudieron escuchar en BandLab; su sonido sale de la descripción oficial de cada uno (FAQ de AutoPitch), no de una comparación de audio. Sin probar en un iPhone real: consumo de CPU (medido en Node: 7–16 % de un núcleo por pista según preset) y latencia al monitorear.
 - Tema 4: se corrigió un fallo grave (la salida se disparaba y luego se quedaba muda con la perilla baja) pero NO se pudo comparar a oído contra BandLab; si el timbre sigue sin gustar, mandar un video corto con el MISMO fragmento en BandLab y en el DAW, con un solo preset (Classic) a la vez.
 - Tema 4: un paso de semitono cantado ~30 cents desafinado tarda ~75–100 ms en cambiar de nota (a cambio de no "parpadear" con vibrato); cantado a ≤25 cents de la nota cambia al instante.
+- Tema 4 (tercera tanda): aspereza del motor medida y bajada (jitter de periodo 2.17 % → ~0.1 %), AutoPitch se apaga tocando el preset activo, barra de región se cierra al tocar fuera, fila mic/+Fx/AutoPitch por pista. NO se pudo oír; la toma del video B parece recortada desde la grabación (iPhone), sin confirmar: ver PROGRESS.
 
 - Tema 1: selección múltiple con pulsación larga, arrastrar el ícono de loop, Fusionar.
 - Tema 1: no se puede escuchar el resultado de transponer/estirar/armonizar (solo medido con pruebas); procesar 20 s tarda 1–2.5 s.

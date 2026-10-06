@@ -215,6 +215,27 @@ interface ProjectState {
   persist: () => Promise<void>;
 }
 
+/** The track the track-level controls (mic, Fx, AutoPitch, arm, monitor)
+ * should act on when nothing is chosen yet: the armed one, else the first. A
+ * freshly opened project used to start with no track selected, which left
+ * that whole row greyed out until a clip was tapped. */
+export function defaultTrackId(tracks: Track[]): TrackId | null {
+  return (tracks.find((t) => t.armed) ?? tracks[0])?.id ?? null;
+}
+
+/** After the project is swapped under the selection (undo/redo), keep the
+ * selected track/region only if they still exist, else fall back. */
+function validSelection(state: { selectedTrackId: TrackId | null; selectedClip: { trackId: TrackId; clipId: string } | null }, project: Project) {
+  const trackStillThere = project.tracks.some((t) => t.id === state.selectedTrackId);
+  const clipStillThere =
+    state.selectedClip !== null &&
+    project.tracks.some((t) => t.id === state.selectedClip!.trackId && t.clips.some((c) => c.id === state.selectedClip!.clipId));
+  return {
+    selectedTrackId: trackStillThere ? state.selectedTrackId : defaultTrackId(project.tracks),
+    ...(clipStillThere ? {} : { selectedClip: null, clipEditMode: null }),
+  };
+}
+
 function touch(project: Project): Project {
   return { ...project, updatedAt: new Date().toISOString() };
 }
@@ -399,7 +420,12 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const { past, project, future } = get();
       const previous = past[past.length - 1];
       if (!previous) return;
-      set({ project: previous, past: past.slice(0, -1), future: [project, ...future] });
+      set({
+        project: previous,
+        past: past.slice(0, -1),
+        future: [project, ...future],
+        ...validSelection(get(), previous),
+      });
       getAudioEngine().syncTracks(previous.tracks, previous.buses);
       getAudioEngine().syncMasterInserts(previous.masterInserts);
       lastPushWasCoalescible = false;
@@ -408,7 +434,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const { past, project, future } = get();
       const next = future[0];
       if (!next) return;
-      set({ project: next, past: [...past, project], future: future.slice(1) });
+      set({ project: next, past: [...past, project], future: future.slice(1), ...validSelection(get(), next) });
       getAudioEngine().syncTracks(next.tracks, next.buses);
       getAudioEngine().syncMasterInserts(next.masterInserts);
       lastPushWasCoalescible = false;
@@ -425,8 +451,9 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     removeTrack: (trackId) => {
       const project = get().project;
-      const selectedTrackId = get().selectedTrackId === trackId ? null : get().selectedTrackId;
-      setProject(touch({ ...project, tracks: project.tracks.filter((t) => t.id !== trackId) }), {
+      const remaining = project.tracks.filter((t) => t.id !== trackId);
+      const selectedTrackId = get().selectedTrackId === trackId ? defaultTrackId(remaining) : get().selectedTrackId;
+      setProject(touch({ ...project, tracks: remaining }), {
         extra: { selectedTrackId },
       });
     },
@@ -439,7 +466,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const selectedTrackId = get().selectedTrackId;
       const keepSelection = remaining.some((t) => t.id === selectedTrackId);
       setProject(touch({ ...project, tracks: remaining }), {
-        extra: { selectedTrackId: keepSelection ? selectedTrackId : null },
+        extra: { selectedTrackId: keepSelection ? selectedTrackId : defaultTrackId(remaining) },
       });
     },
 
@@ -778,7 +805,9 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       );
     },
 
-    selectTrack: (trackId) => set({ selectedTrackId: trackId }),
+    // Choosing "no track" isn't a state the track row can use: falls back to
+    // the armed / first one (null only when the project has no tracks).
+    selectTrack: (trackId) => set({ selectedTrackId: trackId ?? defaultTrackId(get().project.tracks) }),
 
     setAutomationLaneEnabled: (trackId, param, enabled) => {
       const project = get().project;
@@ -1129,7 +1158,9 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         projectOpen: true,
         currentTime: 0,
         isPlaying: false,
-        selectedTrackId: null,
+        selectedTrackId: defaultTrackId(normalized.tracks),
+        selectedClip: null,
+        clipEditMode: null,
         selectedBusId: null,
         past: [],
         future: [],

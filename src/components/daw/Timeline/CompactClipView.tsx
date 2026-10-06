@@ -140,6 +140,7 @@ export function CompactClipView({
       onClick={(e) => e.stopPropagation()}
       title={clip.name}
       data-no-pan={selected ? "" : undefined}
+      data-keep-region=""
       style={{
         position: "absolute",
         left: clip.startTime * pps,

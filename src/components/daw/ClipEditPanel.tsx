@@ -272,7 +272,7 @@ function PanelBody({ clip }: { clip: AudioClip }) {
   }
 
   return (
-    <div className="shrink-0 border-t border-line bg-ink px-4 pt-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}>
+    <div data-keep-region="" className="shrink-0 border-t border-line bg-ink px-4 pt-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}>
       {value && <div className="text-center text-xs tabular-nums text-bone-3">{value}</div>}
       {control}
       {error && <p className="pb-1 text-xs text-red-400">{error}</p>}

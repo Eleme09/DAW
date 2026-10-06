@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { Timeline } from "./Timeline/Timeline";
@@ -80,11 +80,29 @@ export function MobileStudio() {
   const setEffectsRackMode = useProjectStore((s) => s.setEffectsRackMode);
   const returnToStart = useReturnToStart();
 
+  // A tap anywhere outside the selected region and its tools (action bar, ⋯
+  // menu, the Transponer/Ganancia/... panel) dismisses them - before, the bar
+  // stayed up for the rest of the session. Capture phase, so it also fires
+  // when the tap lands on something that handles its own pointer events.
+  useEffect(() => {
+    function dismissOnOutsideTap(e: PointerEvent) {
+      const s = useProjectStore.getState();
+      if (!s.selectedClip && !s.clipEditMode) return;
+      if ((e.target as Element | null)?.closest?.("[data-keep-region]")) return;
+      s.selectClip(null);
+    }
+    window.addEventListener("pointerdown", dismissOnOutsideTap, true);
+    return () => window.removeEventListener("pointerdown", dismissOnOutsideTap, true);
+  }, []);
+
   const [addTrackOpen, setAddTrackOpen] = useState(false);
   // BandLab's three top tabs: Studio (waveform), lyrics/notes (quill), settings.
   const [tab, setTab] = useState<"studio" | "lyrics" | "settings">("studio");
   const [savedFlash, setSavedFlash] = useState(false);
 
+  // The track row (mic, +Fx, AutoPitch, arm, monitor) belongs to the SELECTED
+  // TRACK, not to a selected region. The store keeps a track selected whenever
+  // the project has any (see defaultTrackId), so the row is never greyed out.
   const selectedTrack = tracks.find((t) => t.id === selectedTrackId) ?? null;
   const panelOpen = mobileView === "effects";
   const overlay = mobileView === "mixer" || mobileView === "browser" ? mobileView : null;

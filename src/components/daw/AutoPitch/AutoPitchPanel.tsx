@@ -147,9 +147,12 @@ function PresetBrowser({ settings, onChange }: { settings: AutoPitchSettings; on
             <button
               key={r.id}
               data-preset={r.id}
-              onClick={() => onChange({ presetId: r.id, enabled: true })}
-              title={r.description}
-              aria-pressed={selected}
+              // BandLab: tapping the effect that is already selected turns
+              // AutoPitch OFF (knob goes grey, "Off"); tapping it again, or
+              // another effect, turns it back on.
+              onClick={() => onChange(selected ? { enabled: !settings.enabled } : { presetId: r.id, enabled: true })}
+              title={selected && settings.enabled ? `${r.description} — toca otra vez para apagar AutoPitch` : r.description}
+              aria-pressed={selected && settings.enabled}
               className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
             >
               <span className={`flex h-16 w-16 items-center justify-center rounded-full ${circle}`}>

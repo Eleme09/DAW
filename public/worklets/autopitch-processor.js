@@ -275,6 +275,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.lpRing = new Float32Array(RING);
     this.lpFilter = makeBiquad();
     setBiquad(this.lpFilter, "lp", 1000, 0.707, sr);
+
     this.n = 0; // absolute index of the next input sample
 
     // decimated analysis ring. The YIN frame is as short as the lowest pitch
@@ -295,6 +296,13 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.histC0 = 0;
     this.histT1 = 0;
     this.histC1 = 0;
+    // the pitch the tuned voice should have (detected + correction) at the same
+    // two frame centres: output marks are spaced from THIS, not from the
+    // input's own period jitter (see deposit)
+    this.histO0 = 0;
+    this.histO1 = 0;
+    this.histOK0 = false;
+    this.histOK1 = false;
 
     // detection state
     this.voiced = false;
@@ -303,7 +311,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.detMidi = null; // accepted detected pitch (MIDI, float)
     this.prev1 = null;
     this.prev2 = null;
-    this.heldOnce = false;
+    this.suspect = null;
+    this.suspectHops = 0;
     this.pendingJump = null;
     this.period = sr / 200; // smoothed input period, samples
 
@@ -324,6 +333,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.epochPer = new Float32Array(512);
     this.epochCount = 0;
     this.lastEpoch = 0;
+    this.epochLocked = false;
+    this.alignScores = new Float64Array(2048);
 
     // synthesis streams
     this.ola = [];
@@ -455,6 +466,27 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       tauEstimate = minTau;
       for (let tau = minTau + 1; tau <= maxTau; tau++) if (d[tau] < d[tauEstimate]) tauEstimate = tau;
     }
+    // Subharmonic guard: the first dip under the threshold can be a multiple of
+    // the true period (a noisy cycle misses the threshold, the next-but-one
+    // matches it). When a half/third/quarter of that lag is nearly as good a
+    // match, that shorter lag is the pitch - an octave-down detection makes
+    // the tuner correct towards a note an octave away from what is sung.
+    for (let div = 4; div >= 2; div--) {
+      const t0 = Math.round(tauEstimate / div);
+      if (t0 < minTau) continue;
+      let bestT = -1;
+      let bestD = Infinity;
+      for (let t = Math.max(minTau, t0 - 2); t <= Math.min(maxTau, t0 + 2); t++) {
+        if (d[t] < bestD) {
+          bestD = d[t];
+          bestT = t;
+        }
+      }
+      if (bestT > 0 && bestD < d[tauEstimate] + 0.1 && bestD < 0.5) {
+        tauEstimate = bestT;
+        break;
+      }
+    }
     const confidence = clamp(1 - d[tauEstimate], 0, 1);
     let better = tauEstimate;
     if (tauEstimate > minTau && tauEstimate < maxTau) {
@@ -500,19 +532,31 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       } else {
         this.pendingJump = null;
       }
-      // outlier rejection without the lag of a median filter: a reading that
-      // leaves two agreeing previous readings by more than half a semitone in
-      // one hop is held for one hop (real motion that fast keeps going and
-      // is accepted on the next one)
+      // outlier rejection without the lag of a median filter: while the pitch
+      // is steady, a reading that jumps more than half a semitone away is held
+      // back until later readings agree with it (3 in a row, ~17 ms). A real
+      // note change persists and gets through; a tracking error comes in runs
+      // of 1-3 hops that don't agree and never reach the tuner - one such run
+      // used to flip the target to the neighbouring note for a few ms, which
+      // is an audible blip in a hard-tuned voice.
       let m = raw;
-      if (this.prev1 !== null && this.prev2 !== null && Math.abs(this.prev1 - this.prev2) < 0.2 && Math.abs(raw - this.prev1) > 0.5 && !this.heldOnce) {
-        m = this.prev1;
-        this.heldOnce = true;
+      const steady = this.prev1 !== null && this.prev2 !== null && Math.abs(this.prev1 - this.prev2) < 0.25;
+      if (steady && Math.abs(raw - this.prev1) > 0.5) {
+        if (this.suspect !== null && Math.abs(raw - this.suspect) < 0.5) this.suspectHops++;
+        else {
+          this.suspect = raw;
+          this.suspectHops = 1;
+        }
+        if (this.suspectHops >= 3) {
+          this.suspect = null; // it persisted: a real change
+        } else {
+          m = this.prev1;
+        }
       } else {
-        this.heldOnce = false;
+        this.suspect = null;
       }
       this.prev2 = this.prev1;
-      this.prev1 = raw;
+      this.prev1 = m;
       this.detMidi = m;
       if (this.avgA === null) {
         this.avgA = m;
@@ -533,9 +577,10 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       if (!this.voiced) {
         this.prev1 = null;
         this.prev2 = null;
+        this.suspect = null;
         this.avgA = null;
       }
-      this.pushHistory();
+      this.pushHistory(false);
       return;
     }
 
@@ -586,7 +631,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     if (this.transitioning && Math.abs(wanted - this.correction) < 0.05) this.transitioning = false;
     this.heldSec += dt;
     this.outMidi = d + this.correction;
-    this.pushHistory();
+    this.pushHistory(true);
 
     // per-voice drift: two copies of a voice must not move identically
     for (let v = 0; v < MAX_VOICES; v++) {
@@ -595,13 +640,27 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     }
   }
 
-  pushHistory() {
+  pushHistory(voiced) {
     // centre of the frame just analysed, in input samples
     const center = this.n - (this.frameLen * DECIM) / 2;
     this.histT0 = this.histT1;
     this.histC0 = this.histC1;
+    this.histO0 = this.histO1;
+    this.histOK0 = this.histOK1;
     this.histT1 = center;
     this.histC1 = this.correction;
+    this.histO1 = this.outMidi === null ? 0 : this.outMidi;
+    this.histOK1 = voiced && this.outMidi !== null;
+  }
+
+  /** Pitch (MIDI) the tuned voice has at input instant `t`, interpolated
+   * between the last two voiced frames; null when either was unvoiced. */
+  outMidiAt(t) {
+    if (!this.histOK0 || !this.histOK1) return null;
+    const span = this.histT1 - this.histT0;
+    if (span <= 0) return this.histO1;
+    const a = clamp((t - this.histT0) / span, 0, 1);
+    return this.histO0 + (this.histO1 - this.histO0) * a;
   }
 
   /** Correction at input instant `t`: interpolated between the last two
@@ -640,27 +699,151 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     while (guard++ < 4) {
       const P = this.period;
       const cand = this.lastEpoch + P;
-      const reach = Math.ceil(cand + P / 4);
+      // alignEpoch compares one period of signal on each side of the
+      // candidate, so that period must already be in the history: wait for
+      // it (reading ahead of `now` would compare against audio from one
+      // ring length ago and bias every epoch early)
+      const reach = Math.ceil(cand + P / 4) + (this.voiced ? Math.floor(P * 0.5) + 1 : 0);
       if (reach > now) return;
-      let e = Math.round(cand);
+      let e = cand;
       if (this.voiced) {
-        const lo = Math.max(Math.ceil(cand - P / 4), Math.floor(this.lastEpoch + P * 0.5));
-        let best = -Infinity;
-        for (let i = lo; i <= reach; i++) {
-          const v = this.lpRing[i & RING_MASK];
-          if (v > best) {
-            best = v;
-            e = i;
-          }
-        }
+        e = this.epochLocked ? this.alignEpoch(cand, P) : this.firstEpoch(cand, P);
+        this.epochLocked = true;
+      } else {
+        this.epochLocked = false;
       }
-      if (now - e > RING / 2) e = now - Math.round(P); // resync after a long gap
+      if (now - e > RING / 2) {
+        e = now - Math.round(P); // resync after a long gap
+        this.epochLocked = false;
+      }
       const k = this.epochCount & 511;
       this.epochPos[k] = e;
       this.epochPer[k] = clamp(e - this.lastEpoch, this.sr / MAX_HZ, this.sr / MIN_HZ);
       this.epochCount++;
       this.lastEpoch = e;
     }
+  }
+
+  /** Fractional position of the loudest point of the signal within
+   * `centre` +- `reach`: the maximum of the energy (x squared) smoothed over
+   * ~P/8. In a voice that is the glottal pulse and the first ms of formant
+   * ringing after it - the one place per period where nearly all the energy is.
+   * Polarity-free, and a smoothed energy has one broad peak per period, so it
+   * does not hop between the 2-3 comparable peaks of the raw waveform. */
+  energyPeak(centre, reach, P) {
+    const ring = this.ring;
+    const w = Math.max(3, Math.round(P / 16));
+    const lo = Math.round(centre) - Math.floor(reach);
+    const hi = Math.round(centre) + Math.floor(reach);
+    let acc = 0;
+    for (let i = lo - w; i <= lo + w; i++) {
+      const v = ring[i & RING_MASK];
+      acc += v * v;
+    }
+    let bestI = lo;
+    let best = acc;
+    let prev = acc;
+    let next = acc;
+    const energies = this.alignScores;
+    const n = hi - lo + 1;
+    if (n >= 3 && n <= energies.length) {
+      energies[0] = acc;
+      for (let i = lo + 1; i <= hi; i++) {
+        const a = ring[(i + w) & RING_MASK];
+        const b = ring[(i - w - 1) & RING_MASK];
+        acc += a * a - b * b;
+        energies[i - lo] = acc;
+        if (acc > best) {
+          best = acc;
+          bestI = i;
+        }
+      }
+      const k = bestI - lo;
+      if (k > 0 && k < n - 1) {
+        prev = energies[k - 1];
+        next = energies[k + 1];
+        const den = prev - 2 * best + next;
+        if (den < 0) return bestI + clamp((0.5 * (prev - next)) / den, -0.5, 0.5);
+      }
+    }
+    return bestI;
+  }
+
+  /** First epoch of a voiced stretch: the energy peak nearest the period
+   * grid. Which landmark it lands on matters: a grain is two periods wide
+   * and weighted to zero at +-1 period, so with the epoch ON the glottal
+   * pulse each grain holds exactly one strong pulse; an epoch half a period
+   * off puts two pulses in every grain, and when the pitch is shifted they
+   * are overlapped twice at slightly different positions (a comb filter:
+   * level dips and a rough, hollow sound). */
+  firstEpoch(cand, P) {
+    return this.energyPeak(cand, P / 2, P);
+  }
+
+  /** Next epoch = where the waveform around the PREVIOUS epoch repeats best,
+   * searched within +-P/4 of the predicted position (normalized
+   * cross-correlation over one period, refined to a fraction of a sample).
+   * Following the waveform's own shape keeps the marks on one feature of
+   * the glottal pulse. The old picker took the highest low-passed sample
+   * near the prediction, which on a real voice hops between the two or three
+   * comparable peaks of a period: the output then glitched (period errors of
+   * 10-20 % every few dozen cycles) and sounded rough/hoarse. */
+  alignEpoch(cand, P) {
+    const ring = this.ring;
+    const half = Math.max(8, Math.floor(P * 0.5));
+    const prev = Math.round(this.lastEpoch);
+    const reach = Math.max(2, Math.floor(P / 4));
+    const centre = Math.round(cand);
+    const step = P > 400 ? 2 : 1;
+    let refEnergy = 0;
+    for (let i = -half; i <= half; i += step) {
+      const v = ring[(prev + i) & RING_MASK];
+      refEnergy += v * v;
+    }
+    if (refEnergy < 1e-9) return cand;
+    const scores = this.alignScores;
+    let bestIdx = 0;
+    let best = -Infinity;
+    const n = 2 * reach + 1;
+    for (let o = -reach; o <= reach; o++) {
+      const c = centre + o;
+      let cross = 0;
+      let energy = 0;
+      for (let i = -half; i <= half; i += step) {
+        const a = ring[(prev + i) & RING_MASK];
+        const b = ring[(c + i) & RING_MASK];
+        cross += a * b;
+        energy += b * b;
+      }
+      const score = energy > 1e-9 ? cross / Math.sqrt(energy * refEnergy) : -1;
+      scores[o + reach] = score;
+      if (score > best) {
+        best = score;
+        bestIdx = o + reach;
+      }
+    }
+    let frac = 0;
+    if (bestIdx > 0 && bestIdx < n - 1) {
+      const a = scores[bestIdx - 1];
+      const b = scores[bestIdx];
+      const c = scores[bestIdx + 1];
+      const den = a - 2 * b + c;
+      if (den < 0) frac = clamp((0.5 * (a - c)) / den, -0.5, 0.5);
+    }
+    const aligned = centre + (bestIdx - reach) + frac;
+    // The correlation keeps every epoch on the same feature as the one before
+    // but has no idea where on the period that is; a slow pull toward the
+    // energy peak keeps it on the pulse (see firstEpoch) instead of letting
+    // it wander off over many periods.
+    // The pull has a dead zone (a few % of a period): inside it the epoch is
+    // left exactly where the correlation put it, which is the most consistent
+    // position; the pull only acts when it has really wandered.
+    const peak = this.energyPeak(aligned, Math.max(3, P / 8), P);
+    const dev = peak - aligned;
+    const dead = P / 24;
+    if (dev > dead) return aligned + 0.2 * (dev - dead);
+    if (dev < -dead) return aligned + 0.2 * (dev + dead);
+    return aligned;
   }
 
   /** The stored epoch nearest to `u` whose grain is already fully in the
@@ -691,14 +874,22 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
 
   // ---------------------------------------------------------------- synthesis
 
-  streamRatio(s, t) {
+  /** Semitones the stream shifts the input by at input instant `t`, and the
+   * part of that which is NOT the tuner's correction (harmony interval,
+   * detune, drift, vibrato) - the second is what output marks need. */
+  streamSemis(s, t) {
     const p = this.p;
     const c = this.correctionAt(t);
-    if (s === 0) return clamp(Math.pow(2, c / 12), 0.5, 2);
+    if (s === 0) return { semis: c, extra: 0 };
     const v = s - 1;
     const vib = p.vibCents > 0 ? (p.vibCents / 100) * Math.sin(this.vibPhase) : 0;
-    const semis = c + this.voiceOffset[v] + this.vDetune[v] / 100 + this.voiceDrift[v] * 0.06 + vib;
-    return clamp(Math.pow(2, semis / 12), 0.25, 4);
+    const extra = this.voiceOffset[v] + this.vDetune[v] / 100 + this.voiceDrift[v] * 0.06 + vib;
+    return { semis: c + extra, extra };
+  }
+
+  streamRatio(s, t) {
+    const { semis } = this.streamSemis(s, t);
+    return s === 0 ? clamp(Math.pow(2, semis / 12), 0.5, 2) : clamp(Math.pow(2, semis / 12), 0.25, 4);
   }
 
   streamFormant(s, ratio) {
@@ -729,7 +920,25 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     // would drag the mark into the past and the scheduler would then spend
     // its whole time catching up)
     if (Math.abs(ratio - 1) < 0.0006 && s === 0 && Math.abs(e - (mark - this.delay[s])) < 0.5 * per) mark = e + this.delay[s];
-    const hop = Math.max(8, per / ratio);
+    // Output marks are spaced from the pitch the voice SHOULD have, not from
+    // the input epoch's own spacing: that carried the input's period jitter
+    // (and the epoch picker's +-1 sample noise) straight into the output, which
+    // a tuned voice must not have - cycle-to-cycle period noise above ~0.5 % is
+    // what reads as rough/hoarse. At 100 % hard tune the target is one fixed
+    // note, so the marks are exactly periodic.
+    let hop = Math.max(8, per / ratio);
+    const outMidi = this.outMidiAt(mark - this.delay[s]);
+    if (outMidi !== null) {
+      const { extra } = this.streamSemis(s, mark - this.delay[s]);
+      const regular = clamp(this.sr / midiToHz(outMidi + extra, this.p.referenceHz), this.sr / 2000, this.sr / 30);
+      // Cross-check against the input's own period: when the detector is wrong
+      // (an octave error makes the "target" an octave away from what is really
+      // being sung) the two disagree by far more than any correction does, and
+      // following the target would drop the voice an octave. Then keep the
+      // old behaviour (move the input by the correction), which stays close
+      // to the sung pitch whatever the detector believed.
+      if (Math.abs(regular / hop - 1) < 0.12) hop = regular;
+    }
     this.nextMark[s] = mark + hop;
     const hOut = grainHalfWidth(per, ratio, f, this.hMax[s]);
     if (hOut < 4) return;
@@ -1089,6 +1298,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.chorusL.fill(0);
     this.chorusR.fill(0);
     this.epochCount = 0;
+    this.epochLocked = false;
     this.lastEpoch = this.n;
     this.period = this.sr / 200;
     this.correction = 0;

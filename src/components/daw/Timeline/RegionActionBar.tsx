@@ -60,7 +60,7 @@ export function RegionActionBar({ rowTop, rowHeight, minTop }: RegionActionBarPr
   if (!selectedClip || !clip) {
     if (!clipboard || !selectedTrackId) return null;
     return (
-      <div className="pointer-events-none absolute right-2 z-40" style={{ top: Math.max(minTop, rowTop - 52) }}>
+      <div data-keep-region="" className="pointer-events-none absolute right-2 z-40" style={{ top: Math.max(minTop, rowTop - 52) }}>
         <button
           onClick={() => {
             useProjectStore.getState().pasteClip();
@@ -120,7 +120,7 @@ export function RegionActionBar({ rowTop, rowHeight, minTop }: RegionActionBarPr
   ];
 
   return (
-    <div className="absolute right-2 z-40 flex flex-col items-end gap-1.5" style={{ top }}>
+    <div data-keep-region="" className="absolute right-2 z-40 flex flex-col items-end gap-1.5" style={{ top }}>
       <div className="flex items-center gap-1.5">
         <div className="flex h-12 items-center rounded-full bg-[#1c1c1e] px-1 shadow-lg">
           <button
