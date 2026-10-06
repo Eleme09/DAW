@@ -137,11 +137,14 @@ export function resolveAutoPitch(settings: AutoPitchSettings): ResolvedAutoPitch
 }
 
 /** Constant delay of the AutoPitch output vs. its input, per algorithm - the
- * worklet's lead-voice latency (see its header). Used to start that track's
- * clips earlier on playback so the tuned voice stays on the beat. */
-export function autoPitchLatencySec(lowLatency: boolean): number {
-  return lowLatency ? AUTOPITCH_LOW_LATENCY_SEC : AUTOPITCH_LATENCY_SEC;
+ * worklet's lead-voice latency (configureLatency in the worklet: 26 ms plus
+ * two 256-sample analysis hops, or 14 ms for Low-Latency). Used to start that
+ * track's clips earlier on playback so the tuned voice stays on the beat. */
+export function autoPitchLatencySec(lowLatency: boolean, sampleRate = 44100): number {
+  const samples = lowLatency ? Math.round(sampleRate * 0.014) : Math.round(sampleRate * 0.026) + 2 * 256;
+  return samples / sampleRate;
 }
 
-export const AUTOPITCH_LATENCY_SEC = 0.026;
-export const AUTOPITCH_LOW_LATENCY_SEC = 0.014;
+/** Latency at 44.1 kHz (37.6 ms; 26 ms before the extra analysis margin). */
+export const AUTOPITCH_LATENCY_SEC = autoPitchLatencySec(false);
+export const AUTOPITCH_LOW_LATENCY_SEC = autoPitchLatencySec(true);

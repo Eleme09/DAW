@@ -1,0 +1,2532 @@
+{
+ "base": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "wait1": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "wait2": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "look1": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 287,
+  "engine_wrong_pct_of_checkable": 5.53,
+  "engine_wrong_seconds": 1.666,
+  "by_type": {
+   "harmonic": 93,
+   "subharmonic": 35,
+   "held": 91,
+   "other": 68
+  },
+  "at_attack_first_50ms": 33,
+  "mid_note": 254,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 4.5,
+  "mid_note_error_rate_pct": 5.7,
+  "runs": {
+   "count": 42,
+   "ms_median": 11.6,
+   "ms_p90": 40.6,
+   "ms_max": 568.9
+  },
+  "longest_runs": [
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 26.311,
+    "ms": 203.2,
+    "type": "subharmonic",
+    "engine_hz": 102.8,
+    "ref_hz": 203.5
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 204.8,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 10.904,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 2.649,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 70.318,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 188.1,
+    "ref_hz": 157.6
+   },
+   {
+    "t": 71.769,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 162.3
+   },
+   {
+    "t": 21.847,
+    "ms": 17.4,
+    "type": "held",
+    "engine_hz": 181.4,
+    "ref_hz": 210.2
+   }
+  ]
+ },
+ "look2": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 489,
+  "engine_wrong_pct_of_checkable": 9.41,
+  "engine_wrong_seconds": 2.839,
+  "by_type": {
+   "harmonic": 257,
+   "subharmonic": 0,
+   "held": 89,
+   "other": 143
+  },
+  "at_attack_first_50ms": 41,
+  "mid_note": 448,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.59,
+  "mid_note_error_rate_pct": 10.04,
+  "runs": {
+   "count": 41,
+   "ms_median": 11.6,
+   "ms_p90": 98.7,
+   "ms_max": 911.4
+  },
+  "longest_runs": [
+   {
+    "t": 2.638,
+    "ms": 911.4,
+    "type": "harmonic",
+    "engine_hz": 421.4,
+    "ref_hz": 210.8
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 12.054,
+    "ms": 476.0,
+    "type": "harmonic",
+    "engine_hz": 376.9,
+    "ref_hz": 193.3
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 204.8,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 10.904,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 9.999,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 143.9,
+    "ref_hz": 174.5
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   },
+   {
+    "t": 70.318,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 188.1,
+    "ref_hz": 157.6
+   },
+   {
+    "t": 71.769,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 162.3
+   }
+  ]
+ },
+ "look1s": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 287,
+  "engine_wrong_pct_of_checkable": 5.53,
+  "engine_wrong_seconds": 1.666,
+  "by_type": {
+   "harmonic": 93,
+   "subharmonic": 35,
+   "held": 91,
+   "other": 68
+  },
+  "at_attack_first_50ms": 33,
+  "mid_note": 254,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 4.5,
+  "mid_note_error_rate_pct": 5.7,
+  "runs": {
+   "count": 42,
+   "ms_median": 11.6,
+   "ms_p90": 40.6,
+   "ms_max": 568.9
+  },
+  "longest_runs": [
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 26.311,
+    "ms": 203.2,
+    "type": "subharmonic",
+    "engine_hz": 102.8,
+    "ref_hz": 203.5
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 204.8,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 10.904,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 2.649,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 70.318,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 188.1,
+    "ref_hz": 157.6
+   },
+   {
+    "t": 71.769,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 162.3
+   },
+   {
+    "t": 21.847,
+    "ms": 17.4,
+    "type": "held",
+    "engine_hz": 181.4,
+    "ref_hz": 210.2
+   }
+  ]
+ },
+ "look1n": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 372,
+  "engine_wrong_pct_of_checkable": 7.16,
+  "engine_wrong_seconds": 2.159,
+  "by_type": {
+   "harmonic": 166,
+   "subharmonic": 0,
+   "held": 91,
+   "other": 115
+  },
+  "at_attack_first_50ms": 42,
+  "mid_note": 330,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.72,
+  "mid_note_error_rate_pct": 7.4,
+  "runs": {
+   "count": 43,
+   "ms_median": 17.4,
+   "ms_p90": 77.8,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 712.6,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 435.7,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 204.8,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 10.904,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 2.649,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 70.318,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 188.1,
+    "ref_hz": 157.6
+   },
+   {
+    "t": 71.769,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 162.3
+   }
+  ]
+ },
+ "harm": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 376,
+  "engine_wrong_pct_of_checkable": 7.24,
+  "engine_wrong_seconds": 2.183,
+  "by_type": {
+   "harmonic": 152,
+   "subharmonic": 0,
+   "held": 95,
+   "other": 129
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 333,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.47,
+  "runs": {
+   "count": 42,
+   "ms_median": 17.4,
+   "ms_p90": 82.4,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "other",
+    "engine_hz": 677.3,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 620.6,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 435.7,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 204.8,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 13.859,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 202.3,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   },
+   {
+    "t": 70.318,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 188.1,
+    "ref_hz": 157.6
+   }
+  ]
+ },
+ "hguard": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 377,
+  "engine_wrong_pct_of_checkable": 7.26,
+  "engine_wrong_seconds": 2.188,
+  "by_type": {
+   "harmonic": 152,
+   "subharmonic": 0,
+   "held": 96,
+   "other": 129
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 334,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.49,
+  "runs": {
+   "count": 42,
+   "ms_median": 17.4,
+   "ms_p90": 82.4,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "other",
+    "engine_hz": 677.3,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 620.6,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 435.7,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 202.3,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 204.8,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   },
+   {
+    "t": 70.318,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 188.1,
+    "ref_hz": 157.6
+   }
+  ]
+ },
+ "jfix": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 674,
+  "engine_wrong_pct_of_checkable": 12.98,
+  "engine_wrong_seconds": 3.913,
+  "by_type": {
+   "harmonic": 568,
+   "subharmonic": 6,
+   "held": 79,
+   "other": 21
+  },
+  "at_attack_first_50ms": 70,
+  "mid_note": 604,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 9.54,
+  "mid_note_error_rate_pct": 13.54,
+  "runs": {
+   "count": 122,
+   "ms_median": 17.4,
+   "ms_p90": 80.1,
+   "ms_max": 174.1
+  },
+  "longest_runs": [
+   {
+    "t": 9.006,
+    "ms": 174.1,
+    "type": "harmonic",
+    "engine_hz": 665.6,
+    "ref_hz": 220.5
+   },
+   {
+    "t": 22.299,
+    "ms": 168.3,
+    "type": "harmonic",
+    "engine_hz": 456.7,
+    "ref_hz": 228.0
+   },
+   {
+    "t": 17.51,
+    "ms": 121.9,
+    "type": "harmonic",
+    "engine_hz": 655.6,
+    "ref_hz": 222.9
+   },
+   {
+    "t": 19.333,
+    "ms": 121.9,
+    "type": "harmonic",
+    "engine_hz": 421.8,
+    "ref_hz": 208.6
+   },
+   {
+    "t": 23.431,
+    "ms": 121.9,
+    "type": "harmonic",
+    "engine_hz": 645.7,
+    "ref_hz": 215.0
+   },
+   {
+    "t": 12.657,
+    "ms": 110.3,
+    "type": "harmonic",
+    "engine_hz": 399.0,
+    "ref_hz": 200.5
+   },
+   {
+    "t": 10.835,
+    "ms": 104.5,
+    "type": "harmonic",
+    "engine_hz": 650.0,
+    "ref_hz": 219.2
+   },
+   {
+    "t": 18.59,
+    "ms": 104.5,
+    "type": "harmonic",
+    "engine_hz": 635.4,
+    "ref_hz": 210.8
+   },
+   {
+    "t": 20.465,
+    "ms": 104.5,
+    "type": "harmonic",
+    "engine_hz": 636.0,
+    "ref_hz": 211.0
+   },
+   {
+    "t": 10.997,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 657.8,
+    "ref_hz": 219.2
+   },
+   {
+    "t": 57.28,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 646.2,
+    "ref_hz": 220.6
+   },
+   {
+    "t": 26.009,
+    "ms": 81.3,
+    "type": "harmonic",
+    "engine_hz": 415.6,
+    "ref_hz": 204.3
+   }
+  ]
+ },
+ "hj": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 319,
+  "engine_wrong_pct_of_checkable": 6.14,
+  "engine_wrong_seconds": 1.852,
+  "by_type": {
+   "harmonic": 197,
+   "subharmonic": 23,
+   "held": 79,
+   "other": 20
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 276,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 6.19,
+  "runs": {
+   "count": 92,
+   "ms_median": 17.4,
+   "ms_p90": 34.8,
+   "ms_max": 139.3
+  },
+  "longest_runs": [
+   {
+    "t": 9.035,
+    "ms": 139.3,
+    "type": "harmonic",
+    "engine_hz": 666.0,
+    "ref_hz": 220.1
+   },
+   {
+    "t": 18.596,
+    "ms": 63.9,
+    "type": "harmonic",
+    "engine_hz": 640.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.84,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 645.0,
+    "ref_hz": 217.5
+   },
+   {
+    "t": 21.707,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 422.2,
+    "ref_hz": 211.3
+   },
+   {
+    "t": 57.309,
+    "ms": 52.2,
+    "type": "harmonic",
+    "engine_hz": 680.9,
+    "ref_hz": 230.9
+   },
+   {
+    "t": 22.41,
+    "ms": 46.4,
+    "type": "harmonic",
+    "engine_hz": 443.5,
+    "ref_hz": 222.3
+   },
+   {
+    "t": 22.079,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 653.2,
+    "ref_hz": 216.4
+   },
+   {
+    "t": 25.301,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 648.6,
+    "ref_hz": 213.4
+   },
+   {
+    "t": 70.945,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 633.3,
+    "ref_hz": 211.0
+   },
+   {
+    "t": 22.653,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 637.2,
+    "ref_hz": 212.0
+   },
+   {
+    "t": 23.031,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 715.6,
+    "ref_hz": 242.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   }
+  ]
+ },
+ "hjd1": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 319,
+  "engine_wrong_pct_of_checkable": 6.14,
+  "engine_wrong_seconds": 1.852,
+  "by_type": {
+   "harmonic": 197,
+   "subharmonic": 23,
+   "held": 79,
+   "other": 20
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 276,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 6.19,
+  "runs": {
+   "count": 92,
+   "ms_median": 17.4,
+   "ms_p90": 34.8,
+   "ms_max": 139.3
+  },
+  "longest_runs": [
+   {
+    "t": 9.035,
+    "ms": 139.3,
+    "type": "harmonic",
+    "engine_hz": 666.0,
+    "ref_hz": 220.1
+   },
+   {
+    "t": 18.596,
+    "ms": 63.9,
+    "type": "harmonic",
+    "engine_hz": 640.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.84,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 645.0,
+    "ref_hz": 217.5
+   },
+   {
+    "t": 21.707,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 422.2,
+    "ref_hz": 211.3
+   },
+   {
+    "t": 57.309,
+    "ms": 52.2,
+    "type": "harmonic",
+    "engine_hz": 680.9,
+    "ref_hz": 230.9
+   },
+   {
+    "t": 22.41,
+    "ms": 46.4,
+    "type": "harmonic",
+    "engine_hz": 443.5,
+    "ref_hz": 222.3
+   },
+   {
+    "t": 22.079,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 653.2,
+    "ref_hz": 216.4
+   },
+   {
+    "t": 25.301,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 648.6,
+    "ref_hz": 213.4
+   },
+   {
+    "t": 70.945,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 633.3,
+    "ref_hz": 211.0
+   },
+   {
+    "t": 22.653,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 637.2,
+    "ref_hz": 212.0
+   },
+   {
+    "t": 23.031,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 715.6,
+    "ref_hz": 242.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   }
+  ]
+ },
+ "hjd2": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 319,
+  "engine_wrong_pct_of_checkable": 6.14,
+  "engine_wrong_seconds": 1.852,
+  "by_type": {
+   "harmonic": 197,
+   "subharmonic": 23,
+   "held": 79,
+   "other": 20
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 276,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 6.19,
+  "runs": {
+   "count": 92,
+   "ms_median": 17.4,
+   "ms_p90": 34.8,
+   "ms_max": 139.3
+  },
+  "longest_runs": [
+   {
+    "t": 9.035,
+    "ms": 139.3,
+    "type": "harmonic",
+    "engine_hz": 666.0,
+    "ref_hz": 220.1
+   },
+   {
+    "t": 18.596,
+    "ms": 63.9,
+    "type": "harmonic",
+    "engine_hz": 640.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.84,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 645.0,
+    "ref_hz": 217.5
+   },
+   {
+    "t": 21.707,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 422.2,
+    "ref_hz": 211.3
+   },
+   {
+    "t": 57.309,
+    "ms": 52.2,
+    "type": "harmonic",
+    "engine_hz": 680.9,
+    "ref_hz": 230.9
+   },
+   {
+    "t": 22.41,
+    "ms": 46.4,
+    "type": "harmonic",
+    "engine_hz": 443.5,
+    "ref_hz": 222.3
+   },
+   {
+    "t": 22.079,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 653.2,
+    "ref_hz": 216.4
+   },
+   {
+    "t": 25.301,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 648.6,
+    "ref_hz": 213.4
+   },
+   {
+    "t": 70.945,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 633.3,
+    "ref_hz": 211.0
+   },
+   {
+    "t": 22.653,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 637.2,
+    "ref_hz": 212.0
+   },
+   {
+    "t": 23.031,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 715.6,
+    "ref_hz": 242.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   }
+  ]
+ },
+ "hjl1s": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 304,
+  "engine_wrong_pct_of_checkable": 5.85,
+  "engine_wrong_seconds": 1.765,
+  "by_type": {
+   "harmonic": 193,
+   "subharmonic": 26,
+   "held": 66,
+   "other": 19
+  },
+  "at_attack_first_50ms": 41,
+  "mid_note": 263,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.59,
+  "mid_note_error_rate_pct": 5.9,
+  "runs": {
+   "count": 88,
+   "ms_median": 17.4,
+   "ms_p90": 36.6,
+   "ms_max": 139.3
+  },
+  "longest_runs": [
+   {
+    "t": 9.035,
+    "ms": 139.3,
+    "type": "harmonic",
+    "engine_hz": 666.0,
+    "ref_hz": 220.1
+   },
+   {
+    "t": 18.596,
+    "ms": 63.9,
+    "type": "harmonic",
+    "engine_hz": 640.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 21.707,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 422.2,
+    "ref_hz": 211.3
+   },
+   {
+    "t": 10.84,
+    "ms": 52.2,
+    "type": "harmonic",
+    "engine_hz": 641.6,
+    "ref_hz": 216.6
+   },
+   {
+    "t": 57.309,
+    "ms": 52.2,
+    "type": "harmonic",
+    "engine_hz": 680.9,
+    "ref_hz": 230.9
+   },
+   {
+    "t": 22.41,
+    "ms": 46.4,
+    "type": "harmonic",
+    "engine_hz": 447.6,
+    "ref_hz": 222.3
+   },
+   {
+    "t": 22.079,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 653.2,
+    "ref_hz": 216.4
+   },
+   {
+    "t": 25.301,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 645.6,
+    "ref_hz": 213.4
+   },
+   {
+    "t": 70.945,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 634.4,
+    "ref_hz": 211.0
+   },
+   {
+    "t": 22.653,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 636.6,
+    "ref_hz": 212.0
+   },
+   {
+    "t": 23.031,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 715.6,
+    "ref_hz": 242.5
+   },
+   {
+    "t": 13.824,
+    "ms": 29.0,
+    "type": "harmonic",
+    "engine_hz": 597.2,
+    "ref_hz": 193.7
+   }
+  ]
+ },
+ "hjl1": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 304,
+  "engine_wrong_pct_of_checkable": 5.85,
+  "engine_wrong_seconds": 1.765,
+  "by_type": {
+   "harmonic": 193,
+   "subharmonic": 26,
+   "held": 66,
+   "other": 19
+  },
+  "at_attack_first_50ms": 41,
+  "mid_note": 263,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.59,
+  "mid_note_error_rate_pct": 5.9,
+  "runs": {
+   "count": 88,
+   "ms_median": 17.4,
+   "ms_p90": 36.6,
+   "ms_max": 139.3
+  },
+  "longest_runs": [
+   {
+    "t": 9.035,
+    "ms": 139.3,
+    "type": "harmonic",
+    "engine_hz": 666.0,
+    "ref_hz": 220.1
+   },
+   {
+    "t": 18.596,
+    "ms": 63.9,
+    "type": "harmonic",
+    "engine_hz": 640.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 21.707,
+    "ms": 58.0,
+    "type": "harmonic",
+    "engine_hz": 422.2,
+    "ref_hz": 211.3
+   },
+   {
+    "t": 10.84,
+    "ms": 52.2,
+    "type": "harmonic",
+    "engine_hz": 641.6,
+    "ref_hz": 216.6
+   },
+   {
+    "t": 57.309,
+    "ms": 52.2,
+    "type": "harmonic",
+    "engine_hz": 680.9,
+    "ref_hz": 230.9
+   },
+   {
+    "t": 22.41,
+    "ms": 46.4,
+    "type": "harmonic",
+    "engine_hz": 447.6,
+    "ref_hz": 222.3
+   },
+   {
+    "t": 22.079,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 653.2,
+    "ref_hz": 216.4
+   },
+   {
+    "t": 25.301,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 645.6,
+    "ref_hz": 213.4
+   },
+   {
+    "t": 70.945,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 634.4,
+    "ref_hz": 211.0
+   },
+   {
+    "t": 22.653,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 636.6,
+    "ref_hz": 212.0
+   },
+   {
+    "t": 23.031,
+    "ms": 34.8,
+    "type": "harmonic",
+    "engine_hz": 715.6,
+    "ref_hz": 242.5
+   },
+   {
+    "t": 13.824,
+    "ms": 29.0,
+    "type": "harmonic",
+    "engine_hz": 597.2,
+    "ref_hz": 193.7
+   }
+  ]
+ },
+ "reg": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "tr1": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "tr2": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "tr3": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "tr5": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "fade4": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "fade12": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ },
+ "fade16": {
+  "voiced_frames_with_both_refs": 5409,
+  "refs_agree_frames": 5194,
+  "engine_wrong_frames": 386,
+  "engine_wrong_pct_of_checkable": 7.43,
+  "engine_wrong_seconds": 2.241,
+  "by_type": {
+   "harmonic": 171,
+   "subharmonic": 0,
+   "held": 105,
+   "other": 110
+  },
+  "at_attack_first_50ms": 43,
+  "mid_note": 343,
+  "attack_frames_total": 734,
+  "attack_error_rate_pct": 5.86,
+  "mid_note_error_rate_pct": 7.69,
+  "runs": {
+   "count": 45,
+   "ms_median": 17.4,
+   "ms_p90": 68.5,
+   "ms_max": 603.7
+  },
+  "longest_runs": [
+   {
+    "t": 58.784,
+    "ms": 603.7,
+    "type": "harmonic",
+    "engine_hz": 713.5,
+    "ref_hz": 244.5
+   },
+   {
+    "t": 57.785,
+    "ms": 568.9,
+    "type": "harmonic",
+    "engine_hz": 650.8,
+    "ref_hz": 210.2
+   },
+   {
+    "t": 25.451,
+    "ms": 226.4,
+    "type": "harmonic",
+    "engine_hz": 1002.3,
+    "ref_hz": 203.6
+   },
+   {
+    "t": 57.28,
+    "ms": 98.7,
+    "type": "harmonic",
+    "engine_hz": 662.2,
+    "ref_hz": 225.6
+   },
+   {
+    "t": 28.511,
+    "ms": 87.1,
+    "type": "harmonic",
+    "engine_hz": 424.1,
+    "ref_hz": 213.7
+   },
+   {
+    "t": 10.904,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 198.6,
+    "ref_hz": 222.5
+   },
+   {
+    "t": 13.859,
+    "ms": 40.6,
+    "type": "held",
+    "engine_hz": 201.7,
+    "ref_hz": 162.7
+   },
+   {
+    "t": 76.506,
+    "ms": 40.6,
+    "type": "harmonic",
+    "engine_hz": 207.4,
+    "ref_hz": 101.5
+   },
+   {
+    "t": 71.769,
+    "ms": 34.8,
+    "type": "held",
+    "engine_hz": 201.6,
+    "ref_hz": 158.0
+   },
+   {
+    "t": 2.649,
+    "ms": 29.0,
+    "type": "held",
+    "engine_hz": 140.1,
+    "ref_hz": 175.1
+   },
+   {
+    "t": 12.506,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 197.9,
+    "ref_hz": 150.1
+   },
+   {
+    "t": 22.543,
+    "ms": 23.2,
+    "type": "held",
+    "engine_hz": 212.5,
+    "ref_hz": 178.3
+   }
+  ]
+ }
+}

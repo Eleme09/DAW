@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderAutoPitch, loadAutoPitchHelpers } from "./workletHarness";
 import { sungVowel } from "./testVoice";
-import { resolveAutoPitch } from "./resolveAutoPitch";
+import { resolveAutoPitch, AUTOPITCH_LATENCY_SEC } from "./resolveAutoPitch";
 import { createAutoPitchSettings } from "@/types/autoPitch";
 
 /**
@@ -240,7 +240,7 @@ describe("AutoPitch on the failures measured on a real vocal (82 s, user's take)
     // was 6-8 dB at ZERO shift.
     const { data } = sungVowel({ seconds: 3, hz: 200, cents: 35, vibratoCents: 25, jitter: 0.004 });
     const out = renderAutoPitch(data, { ...classic(), amount: 0 });
-    const D = Math.round(0.026 * SR);
+    const D = Math.round(AUTOPITCH_LATENCY_SEC * SR);
     let err = 0;
     let sig = 0;
     for (let i = Math.floor(0.5 * SR); i < Math.floor(2.8 * SR); i++) {
@@ -331,7 +331,7 @@ describe("AutoPitch on the failures measured on a real vocal (82 s, user's take)
       for (let i = a; i < b; i++) s += x[i] * x[i];
       return Math.sqrt(s / (b - a));
     };
-    const D = Math.round(0.026 * SR);
+    const D = Math.round(AUTOPITCH_LATENCY_SEC * SR);
     const a = Math.floor(0.5 * SR);
     const b = Math.floor(1.9 * SR);
     const db = 20 * Math.log10(rms(out.left, a + D, b + D) / rms(data, a, b));

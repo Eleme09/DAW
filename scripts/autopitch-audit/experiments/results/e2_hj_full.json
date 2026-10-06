@@ -1,0 +1,139 @@
+{
+ "window_s": null,
+ "duration_s": 82.07,
+ "output_events": 172,
+ "per_s": 2.096,
+ "input_events_per_s": 1.158,
+ "categories_first_match": {
+  "inherited": {
+   "count": 53,
+   "pct": 30.8,
+   "per_s": 0.646,
+   "strength_x_local_med": 9.2,
+   "abs_d2_med": 0.19935
+  },
+  "detector": {
+   "count": 24,
+   "pct": 14.0,
+   "per_s": 0.292,
+   "strength_x_local_med": 8.5,
+   "abs_d2_med": 0.18938
+  },
+  "note": {
+   "count": 7,
+   "pct": 4.1,
+   "per_s": 0.085,
+   "strength_x_local_med": 8.3,
+   "abs_d2_med": 0.17757
+  },
+  "dry->tuned": {
+   "count": 8,
+   "pct": 4.7,
+   "per_s": 0.097,
+   "strength_x_local_med": 8.2,
+   "abs_d2_med": 0.16021
+  },
+  "tuned->dry": {
+   "count": 1,
+   "pct": 0.6,
+   "per_s": 0.012,
+   "strength_x_local_med": 8.0,
+   "abs_d2_med": 0.06191
+  },
+  "voicing": {
+   "count": 0,
+   "pct": 0.0,
+   "per_s": 0.0,
+   "strength_x_local_med": null,
+   "abs_d2_med": null
+  },
+  "attack": {
+   "count": 7,
+   "pct": 4.1,
+   "per_s": 0.085,
+   "strength_x_local_med": 8.3,
+   "abs_d2_med": 0.19988
+  },
+  "epoch": {
+   "count": 1,
+   "pct": 0.6,
+   "per_s": 0.012,
+   "strength_x_local_med": 8.4,
+   "abs_d2_med": 0.24286
+  },
+  "grain_edge": {
+   "count": 42,
+   "pct": 24.4,
+   "per_s": 0.512,
+   "strength_x_local_med": 8.4,
+   "abs_d2_med": 0.2039
+  },
+  "other": {
+   "count": 29,
+   "pct": 16.9,
+   "per_s": 0.353,
+   "strength_x_local_med": 8.3,
+   "abs_d2_med": 0.16198
+  }
+ },
+ "categories_multilabel": {
+  "inherited": {
+   "count": 53,
+   "per_s": 0.646
+  },
+  "detector": {
+   "count": 34,
+   "per_s": 0.414
+  },
+  "note": {
+   "count": 28,
+   "per_s": 0.341
+  },
+  "dry->tuned": {
+   "count": 15,
+   "per_s": 0.183
+  },
+  "tuned->dry": {
+   "count": 5,
+   "per_s": 0.061
+  },
+  "voicing": {
+   "count": 7,
+   "per_s": 0.085
+  },
+  "attack": {
+   "count": 19,
+   "per_s": 0.232
+  },
+  "epoch": {
+   "count": 2,
+   "per_s": 0.024
+  },
+  "grain_edge": {
+   "count": 87,
+   "per_s": 1.06
+  },
+  "other": {
+   "count": 29,
+   "per_s": 0.353
+  }
+ },
+ "per_10s_bin": {
+  "0-10s": 26,
+  "10-20s": 65,
+  "20-30s": 47,
+  "50-60s": 11,
+  "70-80s": 21,
+  "80-90s": 2
+ },
+ "chance_in_tuned_stretches_pct": {
+  "grain_edge_0.25ms": 16.0,
+  "epoch_1ms": 1.2,
+  "note_5ms": 13.1
+ },
+ "events_in_tuned_stretches": {
+  "count": 156,
+  "near_grain_edge_pct": 53.8,
+  "inherited_pct": 26.9
+ }
+}

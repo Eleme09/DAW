@@ -20,7 +20,8 @@
  *    Nothing ever blends the dry voice with the delayed corrected one - that
  *    blend is a comb filter (the old tuner's `mix`).
  *  - Choosy detection (Auto-Tune Tracking / Waves Range): YIN plus an energy
- *    gate, voicing hysteresis, a median of three, and octave-jump
+ *    gate, voicing hysteresis, a centred median of three (one analysis of
+ *    lookahead), and octave-jump
  *    confirmation (a jump of more than 7 semitones has to repeat before it is
  *    believed - a single octave error no longer becomes an audible jump).
  *
@@ -40,9 +41,11 @@
  *  - Because D is constant, the dry input delayed by D lines up sample-exact
  *    with the tuned voice: unvoiced sounds (s, sh, t, breaths) crossfade to
  *    that clean dry signal instead of going through the grain machinery.
- *  - D = 26 ms (lead), 14 ms with "Low-Latency" - grains can be up to D/2
- *    per side, so a voice down to ~77 Hz (14 ms: ~143 Hz) keeps full grains;
- *    lower ones get shorter grains (the documented Low-Latency trade-off).
+ *  - D = 26 ms + 2 analysis hops (37.6 ms at 44.1 kHz) for the lead, 14 ms
+ *    with "Low-Latency" - grains can be up to D/2 per side, so a voice down
+ *    to ~53 Hz (14 ms: ~143 Hz) keeps full grains; lower ones get shorter
+ *    grains (the documented Low-Latency trade-off). The two hops pay for a
+ *    one-analysis lookahead in the pitch decision (configureLatency).
  *    Harmony voices use D + 16 ms: they need longer grains to go an octave
  *    down, and a few ms of offset behind the lead reads as a double, not an
  *    echo.
@@ -374,6 +377,14 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       this.ola.push(new Float32Array(OLA));
       this.olaW.push(new Float32Array(OLA));
     }
+    // the last 3 detector readings, for the one-analysis lookahead (analyze)
+    this.lookHz = new Float64Array(3);
+    this.lookConf = new Float64Array(3);
+    this.lookRms = new Float64Array(3);
+    this.lookAt = new Float64Array(3);
+    this.lookLog = new Float64Array(3);
+    this.lookCount = 0;
+    this.lookAhead = 1;
     this.configureLatency(0);
 
     // voicing crossfade (lead: dry <-> tuned; voices: gate)
@@ -434,7 +445,18 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const sr = this.sr;
     this.delay = new Float64Array(STREAMS);
     this.hMax = new Float64Array(STREAMS);
-    const leadD = Math.round(sr * (lowLatency ? 0.014 : 0.026));
+    // D = 26 ms + 2 analysis hops (37.6 ms at 44.1 kHz): one hop pays for the
+    // one-analysis lookahead (see analyze), the other is synthesis margin - a
+    // grain for output instant t is read around input t - D/2, and with the
+    // lookahead's later decisions and no extra margin it ran ~8 ms past the
+    // newest decided frame (worse attacks than without lookahead). Measured
+    // with both hops (VozAudio_3, 6 runs with the input shifted 0-300
+    // samples, Classic): output frames with no readable pitch in the first
+    // 50 ms of notes 14.9 % -> 9.6 %. Low-Latency keeps its 14 ms and decides
+    // without lookahead (its trade-off; not re-measured).
+    this.lookAhead = lowLatency ? 0 : 1;
+    this.lookCount = 0;
+    const leadD = lowLatency ? Math.round(sr * 0.014) : Math.round(sr * 0.026) + 2 * HOP;
     const voiceD = leadD + Math.round(sr * 0.016);
     for (let s = 0; s < STREAMS; s++) {
       this.delay[s] = s === 0 ? leadD : voiceD;
@@ -522,10 +544,62 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
   }
 
   analyze() {
+    // One analysis of lookahead: the reading of the frame one hop back is
+    // decided on the median of it and its two neighbours (the lower one when
+    // only two are usable), so a one-frame misreading - the 2nd/3rd harmonic
+    // for a frame, common at note starts - doesn't reach the tuner and its
+    // grains. Measured on the real vocal (6 runs, input shifted 0-300
+    // samples): detector wrong vs Praat+Harvest 11.0 % -> 8.2 % of frames,
+    // harmonic misreadings 260 -> 144 frames, output distance to the note
+    // 9.8 -> 9.2 cents.
+    const m = this.yin();
+    const H = this.lookHz;
+    const C = this.lookConf;
+    const R = this.lookRms;
+    const A = this.lookAt;
+    H[0] = H[1];
+    H[1] = H[2];
+    H[2] = m.hz;
+    C[0] = C[1];
+    C[1] = C[2];
+    C[2] = m.confidence;
+    R[0] = R[1];
+    R[1] = R[2];
+    R[2] = m.rms;
+    A[0] = A[1];
+    A[1] = A[2];
+    A[2] = this.n;
+    this.lookCount++;
+    if (this.lookAhead === 0) {
+      this.decide(m, this.n);
+      return;
+    }
+    if (this.lookCount < 2) return;
+    const L = this.lookLog;
+    let count = 0;
+    for (let i = this.lookCount >= 3 ? 0 : 1; i < 3; i++) {
+      if (R[i] >= GATE_RMS && C[i] >= MIN_CONFIDENCE && H[i] > 0 && H[i] < Infinity) {
+        // insertion into the sorted list of usable log-pitches
+        const v = Math.log(H[i]);
+        let j = count++;
+        while (j > 0 && L[j - 1] > v) {
+          L[j] = L[j - 1];
+          j--;
+        }
+        L[j] = v;
+      }
+    }
+    let hz = H[1];
+    if (count >= 2 && hz > 0) hz = Math.exp(L[(count - 1) >> 1]);
+    this.decide({ hz, confidence: C[1], rms: R[1] }, A[1]);
+  }
+
+  /** Voicing, pitch and correction for the analysis frame read at input
+   * sample `at` (one hop behind the newest analysis, see analyze). */
+  decide(det, at) {
     const p = this.p;
     const ref = p.referenceHz;
     const dt = HOP / this.sr;
-    const det = this.yin();
     const goodFrame = det.rms >= GATE_RMS && det.confidence >= MIN_CONFIDENCE && det.hz > 0 && det.hz < Infinity;
 
     // voicing with hysteresis: on after 1 good frame, off after 2 bad ones
@@ -539,7 +613,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const wasVoiced = this.voiced;
     if (!this.voiced && this.voicedHops >= 1) {
       this.voiced = true;
-      this.voicedAt = this.n;
+      this.voicedAt = at;
     }
     if (this.voiced && this.unvoicedHops >= 2) this.voiced = false;
 
@@ -616,7 +690,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         this.avgA = null;
       }
       this.followGain = 0;
-      this.pushHistory();
+      this.pushHistory(at);
       return;
     }
 
@@ -677,7 +751,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     if (this.transitioning && Math.abs(wanted - this.correction) < 0.05) this.transitioning = false;
     this.heldSec += dt;
     this.outMidi = d + this.correction;
-    this.pushHistory();
+    this.pushHistory(at);
 
     // per-voice drift: two copies of a voice must not move identically
     for (let v = 0; v < MAX_VOICES; v++) {
@@ -686,9 +760,9 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     }
   }
 
-  pushHistory() {
-    // centre of the frame just analysed, in input samples
-    const center = this.n - (this.frameLen * DECIM) / 2;
+  pushHistory(at) {
+    // centre of the frame just decided, in input samples
+    const center = at - (this.frameLen * DECIM) / 2;
     this.histT0 = this.histT1;
     this.histC0 = this.histC1;
     this.histT1 = center;
@@ -1251,7 +1325,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         }
       }
 
-      this.trackEpochs(n);
+      // (epochs follow the decided pitch, so they run the same hop behind)
+      this.trackEpochs(n - this.lookAhead * HOP);
       if (vibInc > 0) {
         this.vibPhase += vibInc;
         if (this.vibPhase > TWO_PI) this.vibPhase -= TWO_PI;

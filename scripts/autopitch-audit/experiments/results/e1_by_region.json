@@ -1,0 +1,90 @@
+{
+ "A ours": {
+  "decision_right": {
+   "frames": 2794,
+   "unvoiced_or_weak_pct": 1.5,
+   "dist_to_intended_cents_med": 7.45,
+   "within_10c_of_intended_pct": 57.28,
+   "octave_off_pct": 0.07,
+   "frame_to_frame_change_cents_med": 6.13,
+   "frame_to_frame_change_cents_p95": 98.02,
+   "hnr_db_med": 16.48
+  },
+  "decision_wrong": {
+   "frames": 224,
+   "unvoiced_or_weak_pct": 3.57,
+   "dist_to_intended_cents_med": 1900.04,
+   "within_10c_of_intended_pct": 0.0,
+   "octave_off_pct": 69.55,
+   "frame_to_frame_change_cents_med": 18.08,
+   "frame_to_frame_change_cents_p95": 137.09,
+   "hnr_db_med": 9.9
+  }
+ },
+ "B1 Praat": {
+  "decision_right": {
+   "frames": 2794,
+   "unvoiced_or_weak_pct": 0.64,
+   "dist_to_intended_cents_med": 1.08,
+   "within_10c_of_intended_pct": 87.46,
+   "octave_off_pct": 0.04,
+   "frame_to_frame_change_cents_med": 1.57,
+   "frame_to_frame_change_cents_p95": 95.87,
+   "hnr_db_med": 17.21
+  },
+  "decision_wrong": {
+   "frames": 224,
+   "unvoiced_or_weak_pct": 7.14,
+   "dist_to_intended_cents_med": 2.32,
+   "within_10c_of_intended_pct": 69.05,
+   "octave_off_pct": 10.95,
+   "frame_to_frame_change_cents_med": 1.53,
+   "frame_to_frame_change_cents_p95": 58.3,
+   "hnr_db_med": 19.07
+  }
+ },
+ "B2 WORLD": {
+  "decision_right": {
+   "frames": 2794,
+   "unvoiced_or_weak_pct": 2.86,
+   "dist_to_intended_cents_med": 3.54,
+   "within_10c_of_intended_pct": 75.99,
+   "octave_off_pct": 0.0,
+   "frame_to_frame_change_cents_med": 2.69,
+   "frame_to_frame_change_cents_p95": 86.5,
+   "hnr_db_med": 19.13
+  },
+  "decision_wrong": {
+   "frames": 224,
+   "unvoiced_or_weak_pct": 25.45,
+   "dist_to_intended_cents_med": 5.92,
+   "within_10c_of_intended_pct": 59.76,
+   "octave_off_pct": 10.06,
+   "frame_to_frame_change_cents_med": 2.59,
+   "frame_to_frame_change_cents_p95": 71.84,
+   "hnr_db_med": 21.96
+  }
+ },
+ "ORIGINAL": {
+  "decision_right": {
+   "frames": 2794,
+   "unvoiced_or_weak_pct": 0.11,
+   "dist_to_intended_cents_med": 33.76,
+   "within_10c_of_intended_pct": 17.29,
+   "octave_off_pct": 0.47,
+   "frame_to_frame_change_cents_med": 10.73,
+   "frame_to_frame_change_cents_p95": 65.05,
+   "hnr_db_med": 16.45
+  },
+  "decision_wrong": {
+   "frames": 224,
+   "unvoiced_or_weak_pct": 0.45,
+   "dist_to_intended_cents_med": 1963.01,
+   "within_10c_of_intended_pct": 0.0,
+   "octave_off_pct": 73.54,
+   "frame_to_frame_change_cents_med": 13.77,
+   "frame_to_frame_change_cents_p95": 103.33,
+   "hnr_db_med": 14.58
+  }
+ }
+}

@@ -47,7 +47,7 @@ export class AutoPitchEffect {
 
   /** Output delay vs. input, for clip-scheduling compensation. */
   get latencySec(): number {
-    return autoPitchLatencySec(this.lowLatency);
+    return autoPitchLatencySec(this.lowLatency, this.ctx.sampleRate);
   }
 
   setSettings(settings: AutoPitchSettings): void {

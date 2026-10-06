@@ -321,3 +321,96 @@ describe("AutoPitch on a phone-recorded voice (regression)", () => {
     expect(rms(out.left, a, voice.length)).toBeGreaterThan(rms(voice, a, voice.length) * 0.2);
   });
 });
+
+// KNOWN BUGS (it.fails: these pass while the bug is there, and go red when it
+// is fixed - then turn them into plain its). Both fixes were measured on the
+// real vocal (scripts/autopitch-audit/EXPERIMENTOS-2026-10-06.md, "F"): they
+// cut detector errors 11 -> 6 % and the longest wrong lock 673 -> 137 ms, but
+// every faster lock release also lets real octave jumps through (a creaky,
+// period-doubled onset at 7.1 s read an octave low), and after any big
+// detector jump the synthesis marks take ~0.5 s to line up with the dry path
+// again: with correction 0 the output stopped matching the input (null test
+// 32 -> 6 dB). They need the synthesis to re-align after a jump first.
+describe("AutoPitch detector: octave locks (known bugs, real vocal 2026-10-06)", () => {
+  /** Steady 220 Hz tone with the given harmonic amplitudes (k = 1, 2, 3...). */
+  function tone(amps: number[], seconds: number, phase0 = 0): Float32Array {
+    const n = Math.floor(seconds * SR);
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      let s = 0;
+      for (let k = 0; k < amps.length; k++) s += amps[k] * Math.sin((2 * Math.PI * 220 * (k + 1) * (i + phase0)) / SR + k);
+      out[i] = 0.2 * s;
+    }
+    return out;
+  }
+
+  /** The detector's pitch (Hz) every 10 blocks from `from` seconds on. */
+  function detected(input: Float32Array, from: number): number[] {
+    const { worklet } = resolveAutoPitch(settings({ presetId: "classic" }));
+    const hz: number[] = [];
+    renderAutoPitch(input, worklet, SR, (node, start) => {
+      if (start >= from * SR && start % (128 * 10) === 0) {
+        const d = node.detMidi as number | null;
+        hz.push(d === null ? 0 : 440 * Math.pow(2, (d - 69) / 12));
+      }
+    });
+    return hz;
+  }
+
+  it.fails("reads a voice whose 3rd harmonic dominates at its real pitch, not 3x higher", () => {
+    // F1 on the 3rd harmonic (an "ah" at A3): YIN's first dip under its
+    // threshold is a third of the period, the true period's dip is far deeper.
+    // The detector reads 663 Hz for the whole note.
+    const hz = detected(tone([0.3, 0.15, 1], 0.6), 0.05);
+    for (const v of hz) expect(Math.abs(cents(v, 220))).toBeLessThan(30);
+  });
+
+  it.fails("lets go of a wrong octave lock as soon as the readings agree", () => {
+    // 100 ms the detector can't read right (locks on 662 Hz), then a plain A3:
+    // every reading says 220 Hz, but the octave-jump confirmation and the
+    // outlier hold take turns rejecting them and the lock sticks for the rest
+    // of the note (604 ms on the real vocal, 58.8 s).
+    const a = tone([0.2, 0.1, 1], 0.1);
+    const b = tone([1, 0.5, 0.3], 0.5, a.length);
+    const input = new Float32Array(a.length + b.length);
+    input.set(a);
+    input.set(b, a.length);
+    const hz = detected(input, 0.14);
+    expect(hz.length).toBeGreaterThan(10);
+    for (const v of hz) expect(Math.abs(cents(v, 220))).toBeLessThan(30);
+  });
+});
+
+describe("AutoPitch lookahead (regression, real vocal 2026-10-06)", () => {
+  /** detMidi (as Hz) after each scripted detector reading, on a fresh node. */
+  function decisions(readings: number[]): number[] {
+    let node: (Record<string, unknown> & { analyze(): void; yin(): unknown }) | null = null;
+    const { worklet } = resolveAutoPitch(settings({ presetId: "classic" }));
+    renderAutoPitch(new Float32Array(SR / 10), worklet, SR, (n) => {
+      node = n as typeof node;
+    });
+    const n = node!;
+    let k = 0;
+    n.yin = () => ({ hz: readings[Math.min(k++, readings.length - 1)], confidence: 0.9, rms: 0.1 });
+    const out: number[] = [];
+    for (let i = 0; i < readings.length + 1; i++) {
+      n.analyze();
+      const d = n.detMidi as number | null;
+      out.push(d === null ? 0 : 440 * Math.pow(2, (d - 69) / 12));
+    }
+    return out;
+  }
+
+  it("a harmonic misreading on the first frame of a note never reaches the tuner", () => {
+    // The first voiced frame of a note read on the 3rd harmonic: with nothing
+    // before it to compare against, the old detector took it and the octave
+    // confirmation then held it for two more frames.
+    const hz = decisions([663, 221, 220, 221, 220, 221, 220]);
+    for (const v of hz) if (v > 0) expect(Math.abs(cents(v, 220))).toBeLessThan(30);
+  });
+
+  it("a real note change still gets through, one analysis later", () => {
+    const hz = decisions([220, 220, 220, 220, 247, 247, 247, 247, 247]);
+    expect(Math.abs(cents(hz[hz.length - 1], 247))).toBeLessThan(10);
+  });
+});

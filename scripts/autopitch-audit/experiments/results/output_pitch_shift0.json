@@ -1,0 +1,853 @@
+{
+ "base": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 3.217,
+   "unvoiced_out_pct": 0.032,
+   "note_err_c_med": 9.11,
+   "within_10c_pct": 51.84
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.146,
+   "octave_off_frames": 1,
+   "broken_pct": 15.931,
+   "unvoiced_out_pct": 0.245,
+   "note_err_c_med": 23.27,
+   "within_10c_pct": 28.28
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.274,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.96,
+   "within_10c_pct": 54.9
+  },
+  "jumps_1st_per_s": 1.309,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.168,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.78
+ },
+ "wait1": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.453,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.57,
+   "within_10c_pct": 50.98
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.14,
+   "octave_off_frames": 1,
+   "broken_pct": 12.377,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 23.55,
+   "within_10c_pct": 26.01
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.937,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.38,
+   "within_10c_pct": 54.36
+  },
+  "jumps_1st_per_s": 1.066,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.1,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 30.02
+ },
+ "wait2": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.957,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.37,
+   "within_10c_pct": 51.52
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.141,
+   "octave_off_frames": 1,
+   "broken_pct": 13.235,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 25.57,
+   "within_10c_pct": 27.68
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.386,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.29,
+   "within_10c_pct": 54.72
+  },
+  "jumps_1st_per_s": 1.406,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.301,
+  "attack_jumps_1st": 4,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.86
+ },
+ "look1": {
+  "delay_ms": 37.62,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 3.022,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.7,
+   "within_10c_pct": 52.97
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 10.294,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 22.4,
+   "within_10c_pct": 31.56
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.91,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.67,
+   "within_10c_pct": 55.97
+  },
+  "jumps_1st_per_s": 1.206,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.101,
+  "attack_jumps_1st": 4,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.84
+ },
+ "look2": {
+  "delay_ms": 49.23,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.518,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.32,
+   "within_10c_pct": 51.62
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.136,
+   "octave_off_frames": 1,
+   "broken_pct": 9.559,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 21.57,
+   "within_10c_pct": 33.47
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.442,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.31,
+   "within_10c_pct": 54.16
+  },
+  "jumps_1st_per_s": 1.267,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.067,
+  "attack_jumps_1st": 2,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 30.0
+ },
+ "look1s": {
+  "delay_ms": 31.81,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 3.136,
+   "unvoiced_out_pct": 0.097,
+   "note_err_c_med": 9.1,
+   "within_10c_pct": 51.98
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.149,
+   "octave_off_frames": 1,
+   "broken_pct": 17.525,
+   "unvoiced_out_pct": 0.735,
+   "note_err_c_med": 23.22,
+   "within_10c_pct": 28.68
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.937,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.1,
+   "within_10c_pct": 54.94
+  },
+  "jumps_1st_per_s": 1.442,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.067,
+  "attack_jumps_1st": 3,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.81
+ },
+ "look1n": {
+  "delay_ms": 37.62,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 2.811,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.98,
+   "within_10c_pct": 52.57
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 8.211,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 21.26,
+   "within_10c_pct": 30.31
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.985,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.85,
+   "within_10c_pct": 55.76
+  },
+  "jumps_1st_per_s": 1.204,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.1,
+  "attack_jumps_1st": 5,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 1,
+  "voiced_out_s": 29.91
+ },
+ "harm": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.778,
+   "unvoiced_out_pct": 0.032,
+   "note_err_c_med": 8.84,
+   "within_10c_pct": 52.59
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.144,
+   "octave_off_frames": 1,
+   "broken_pct": 14.828,
+   "unvoiced_out_pct": 0.245,
+   "note_err_c_med": 22.77,
+   "within_10c_pct": 28.63
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.937,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.66,
+   "within_10c_pct": 55.74
+  },
+  "jumps_1st_per_s": 1.471,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.134,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.92
+ },
+ "hguard": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.778,
+   "unvoiced_out_pct": 0.032,
+   "note_err_c_med": 8.85,
+   "within_10c_pct": 52.54
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.144,
+   "octave_off_frames": 1,
+   "broken_pct": 14.828,
+   "unvoiced_out_pct": 0.245,
+   "note_err_c_med": 22.86,
+   "within_10c_pct": 28.35
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.937,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.67,
+   "within_10c_pct": 55.72
+  },
+  "jumps_1st_per_s": 1.471,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.134,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.92
+ },
+ "jfix": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.218,
+   "octave_off_frames": 13,
+   "broken_pct": 3.103,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 11.02,
+   "within_10c_pct": 47.38
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 1.857,
+   "octave_off_frames": 13,
+   "broken_pct": 14.216,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 22.58,
+   "within_10c_pct": 28.14
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.405,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 10.03,
+   "within_10c_pct": 49.94
+  },
+  "jumps_1st_per_s": 1.476,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.134,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.82
+ },
+ "hj": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.101,
+   "octave_off_frames": 6,
+   "broken_pct": 3.347,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.13,
+   "within_10c_pct": 51.77
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.867,
+   "octave_off_frames": 6,
+   "broken_pct": 15.196,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 22.1,
+   "within_10c_pct": 29.19
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.536,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.03,
+   "within_10c_pct": 54.75
+  },
+  "jumps_1st_per_s": 1.614,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.168,
+  "attack_jumps_1st": 0,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.74
+ },
+ "hjd1": {
+  "delay_ms": 31.81,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 3.526,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.44,
+   "within_10c_pct": 51.5
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.141,
+   "octave_off_frames": 1,
+   "broken_pct": 13.358,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 21.52,
+   "within_10c_pct": 28.43
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 2.023,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.21,
+   "within_10c_pct": 54.62
+  },
+  "jumps_1st_per_s": 1.28,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.168,
+  "attack_jumps_1st": 3,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.69
+ },
+ "hjd2": {
+  "delay_ms": 37.62,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 3.201,
+   "unvoiced_out_pct": 0.032,
+   "note_err_c_med": 10.26,
+   "within_10c_pct": 49.36
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 8.456,
+   "unvoiced_out_pct": 0.245,
+   "note_err_c_med": 18.32,
+   "within_10c_pct": 32.8
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 2.397,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.35,
+   "within_10c_pct": 51.74
+  },
+  "jumps_1st_per_s": 0.906,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.0,
+  "attack_jumps_1st": 6,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.79
+ },
+ "hjl1s": {
+  "delay_ms": 31.81,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 3.266,
+   "unvoiced_out_pct": 0.114,
+   "note_err_c_med": 9.43,
+   "within_10c_pct": 51.28
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.147,
+   "octave_off_frames": 1,
+   "broken_pct": 16.544,
+   "unvoiced_out_pct": 0.858,
+   "note_err_c_med": 23.83,
+   "within_10c_pct": 28.34
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.236,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.38,
+   "within_10c_pct": 54.24
+  },
+  "jumps_1st_per_s": 1.612,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.101,
+  "attack_jumps_1st": 4,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.77
+ },
+ "hjl1": {
+  "delay_ms": 37.62,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 3.119,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.82,
+   "within_10c_pct": 52.59
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.135,
+   "octave_off_frames": 1,
+   "broken_pct": 9.069,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 20.45,
+   "within_10c_pct": 32.75
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 2.21,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.86,
+   "within_10c_pct": 55.41
+  },
+  "jumps_1st_per_s": 1.342,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.134,
+  "attack_jumps_1st": 7,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.82
+ },
+ "reg": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.133,
+   "octave_off_frames": 8,
+   "broken_pct": 2.112,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.7,
+   "within_10c_pct": 53.74
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 1.099,
+   "octave_off_frames": 8,
+   "broken_pct": 10.784,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 23.88,
+   "within_10c_pct": 28.98
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.787,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.69,
+   "within_10c_pct": 57.15
+  },
+  "jumps_1st_per_s": 1.66,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.299,
+  "attack_jumps_1st": 4,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 1,
+  "voiced_out_s": 30.12
+ },
+ "tr1": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.033,
+   "octave_off_frames": 2,
+   "broken_pct": 2.665,
+   "unvoiced_out_pct": 0.114,
+   "note_err_c_med": 9.28,
+   "within_10c_pct": 51.56
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.283,
+   "octave_off_frames": 2,
+   "broken_pct": 13.358,
+   "unvoiced_out_pct": 0.123,
+   "note_err_c_med": 22.92,
+   "within_10c_pct": 29.56
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.03,
+   "unvoiced_out_pct": 0.112,
+   "note_err_c_med": 8.07,
+   "within_10c_pct": 54.5
+  },
+  "jumps_1st_per_s": 1.435,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.167,
+  "attack_jumps_1st": 2,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.96
+ },
+ "tr2": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.486,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.36,
+   "within_10c_pct": 51.52
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.14,
+   "octave_off_frames": 1,
+   "broken_pct": 12.745,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 23.49,
+   "within_10c_pct": 29.21
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.918,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.21,
+   "within_10c_pct": 54.52
+  },
+  "jumps_1st_per_s": 1.4,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.133,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 30.01
+ },
+ "tr3": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.193,
+   "unvoiced_out_pct": 0.016,
+   "note_err_c_med": 9.57,
+   "within_10c_pct": 50.91
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.14,
+   "octave_off_frames": 1,
+   "broken_pct": 12.5,
+   "unvoiced_out_pct": 0.123,
+   "note_err_c_med": 23.18,
+   "within_10c_pct": 26.61
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.618,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.34,
+   "within_10c_pct": 54.18
+  },
+  "jumps_1st_per_s": 1.495,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.199,
+  "attack_jumps_1st": 2,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 30.1
+ },
+ "tr5": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.177,
+   "unvoiced_out_pct": 0.016,
+   "note_err_c_med": 9.88,
+   "within_10c_pct": 50.21
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.14,
+   "octave_off_frames": 1,
+   "broken_pct": 12.377,
+   "unvoiced_out_pct": 0.123,
+   "note_err_c_med": 24.04,
+   "within_10c_pct": 27.27
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.618,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.59,
+   "within_10c_pct": 53.3
+  },
+  "jumps_1st_per_s": 1.096,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.1,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 30.1
+ },
+ "fade4": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.778,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.17,
+   "within_10c_pct": 51.8
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.143,
+   "octave_off_frames": 1,
+   "broken_pct": 14.216,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 24.31,
+   "within_10c_pct": 28.14
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.03,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.95,
+   "within_10c_pct": 54.94
+  },
+  "jumps_1st_per_s": 1.337,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.167,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.92
+ },
+ "fade12": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 3.071,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.02,
+   "within_10c_pct": 52.06
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.146,
+   "octave_off_frames": 1,
+   "broken_pct": 15.931,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 22.47,
+   "within_10c_pct": 30.61
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 1.105,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 7.99,
+   "within_10c_pct": 54.85
+  },
+  "jumps_1st_per_s": 1.374,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.168,
+  "attack_jumps_1st": 1,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.83
+ },
+ "fade16": {
+  "delay_ms": 26.01,
+  "all": {
+   "sung_frames": 6155,
+   "octave_off_pct": 0.017,
+   "octave_off_frames": 1,
+   "broken_pct": 2.908,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 9.21,
+   "within_10c_pct": 51.67
+  },
+  "attack": {
+   "sung_frames": 816,
+   "octave_off_pct": 0.145,
+   "octave_off_frames": 1,
+   "broken_pct": 15.441,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 23.17,
+   "within_10c_pct": 28.55
+  },
+  "mid": {
+   "sung_frames": 5339,
+   "octave_off_pct": 0.0,
+   "octave_off_frames": 0,
+   "broken_pct": 0.993,
+   "unvoiced_out_pct": 0.0,
+   "note_err_c_med": 8.03,
+   "within_10c_pct": 54.69
+  },
+  "jumps_1st_per_s": 1.473,
+  "jumps_7st_per_s": 0.0,
+  "flip_backs_per_s": 0.167,
+  "attack_jumps_1st": 3,
+  "attack_jumps_7st": 0,
+  "attack_flip_backs": 0,
+  "voiced_out_s": 29.88
+ }
+}

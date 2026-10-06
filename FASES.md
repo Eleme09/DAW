@@ -24,6 +24,8 @@ Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BA
 - Tema 4 (tercera tanda): aspereza del motor medida y bajada (jitter de periodo 2.17 % → ~0.1 %), AutoPitch se apaga tocando el preset activo, barra de región se cierra al tocar fuera, fila mic/+Fx/AutoPitch por pista. Comparado contra BandLab con la misma voz (espectro): el motor viejo emborronaba los armónicos agudos, el nuevo queda a nivel de BandLab arriba de 1.5 kHz. NO se pudo oír. Pendiente: nivel de varios presets con voz real, ~3 dB de ruido entre armónicos en graves: ver PROGRESS.
 - Tema 4 (auditoría con la voz real del usuario): la degradación estaba en el motor (decisión de nota que saltaba 37 veces/s, marcas de síntesis que no seguían a la voz, NaN a los 72 s, −3 dB, interpolación lineal) y en la exportación a 48 kHz en teléfonos; todo arreglado y medido contra BandLab con la misma voz. Reporte: `scripts/autopitch-audit/REPORTE-2026-10-06.md`. Falta la escucha del usuario.
 
+- Tema 4 (experimentos E1–E6): adoptado solo el lookahead de un análisis + 2 hops de margen (latencia 37.6 ms); detector con dos bugs conocidos medidos y reproducidos (lectura de armónico, octava pegada) cuyo arreglo necesita antes realinear las marcas de síntesis. Reporte: `scripts/autopitch-audit/EXPERIMENTOS-2026-10-06.md`. Falta la escucha del usuario.
+
 - Tema 1: selección múltiple con pulsación larga, arrastrar el ícono de loop, Fusionar.
 - Tema 1: no se puede escuchar el resultado de transponer/estirar/armonizar (solo medido con pruebas); procesar 20 s tarda 1–2.5 s.
 - Tema 2: el gesto con el dedo y la grabación con ciclo no se han probado en un iPhone real (solo Chromium).
