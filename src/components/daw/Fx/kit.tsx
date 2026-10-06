@@ -92,11 +92,13 @@ interface KnobProps {
   /** Arc grows from the centre (pan, gain +-). */
   bipolar?: boolean;
   step?: number;
+  /** Name for screen readers when the visible label is elsewhere (a Box title). */
+  ariaLabel?: string;
 }
 
 /** Rotary knob. Drag in any direction (up/right = more), long throw so
  * small moves are fine; double tap resets. */
-export function FxKnob({ label, value, min, max, onChange, skin, format, defaultValue, scale = "lin", size = 64, bipolar = false, step }: KnobProps) {
+export function FxKnob({ label, value, min, max, onChange, skin, format, defaultValue, scale = "lin", size = 64, bipolar = false, step, ariaLabel }: KnobProps) {
   const drag = useRef<{ x: number; y: number; n: number } | null>(null);
   const lastTap = useRef(0);
   const norm = toNorm(Math.min(max, Math.max(min, value)), min, max, scale);
@@ -121,7 +123,7 @@ export function FxKnob({ label, value, min, max, onChange, skin, format, default
       </span>
       <div
         role="slider"
-        aria-label={label}
+        aria-label={label || ariaLabel}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}

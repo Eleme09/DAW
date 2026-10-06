@@ -30,7 +30,7 @@ export class SaturationEffect implements Effect<SaturationParams> {
     this.output = ctx.createGain();
     this.drive = ctx.createGain();
     this.shaper = ctx.createWaveShaper();
-    this.shaper.oversample = "4x";
+    this.shaper.oversample = "2x"; // full-band soft saturation: 2x keeps it clean at half the cost of 4x
     this.postGain = ctx.createGain();
     this.postGain.gain.value = POST_GAIN_COMPENSATION;
     this.dryGain = ctx.createGain();

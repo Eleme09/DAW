@@ -68,6 +68,13 @@ const MAX_HZ = 1000;
 const YIN_THRESHOLD = 0.2;
 const MIN_CONFIDENCE = 0.55;
 const GATE_RMS = 0.0018; // ~ -55 dBFS: quieter frames are treated as unvoiced
+// Nothing playing on the track (exact digital silence at the input) for this
+// long: everything inside has rung out (lead D + grains + voice delays +
+// chorus < 0.15 s), so the node sleeps - zeros out, no analysis, no
+// synthesis - until sound comes back. A phone runs out of audio-thread time
+// with a few tuned tracks; a track is silent most of the song when parts
+// alternate between tracks.
+const SLEEP_AFTER_SEC = 0.4;
 const MAX_VOICES = 4;
 const STREAMS = MAX_VOICES + 1; // stream 0 = lead
 const VOC_BANDS = 16;
@@ -297,6 +304,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const sr = sampleRate;
     this.sr = sr;
     this.p = {};
+    this.silentSamples = 0;
+    this.asleep = false;
 
     // input history + a low-passed copy for epoch peak picking
     this.ring = new Float32Array(RING);
@@ -496,6 +505,9 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       energy += v * v;
     }
     const rms = Math.sqrt(energy / FRAME);
+    // too quiet to be voiced (decide/analyze reject it on rms alone): skip the
+    // difference function, the costliest part of the whole node
+    if (rms < GATE_RMS) return { hz: 0, confidence: 0, rms };
     const maxTau = Math.min(Math.floor(FRAME / 2), Math.floor(sr / MIN_HZ));
     const minTau = Math.max(2, Math.floor(sr / MAX_HZ));
     const w = FRAME - maxTau;
@@ -1278,6 +1290,32 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const outR = out && out[1];
     if (!outL) return true;
     const blockLen = outL.length;
+    let silent = true;
+    if (input) {
+      for (let i = 0; i < input.length; i++) {
+        if (input[i] !== 0) {
+          silent = false;
+          break;
+        }
+      }
+    }
+    if (silent) {
+      this.silentSamples += blockLen;
+      if (this.silentSamples >= SLEEP_AFTER_SEC * this.sr) {
+        if (!this.asleep) this.asleep = true;
+        outL.fill(0);
+        if (outR) outR.fill(0);
+        return true;
+      }
+    } else {
+      this.silentSamples = 0;
+      if (this.asleep) {
+        // waking: start clean, like a new phrase (the ring holds the
+        // silence that came before, so the delayed dry path is silent too)
+        this.asleep = false;
+        this.hardReset();
+      }
+    }
     this.readParams(parameters);
     const p = this.p;
     const sr = this.sr;

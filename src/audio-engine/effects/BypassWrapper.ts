@@ -36,6 +36,8 @@ export class BypassWrapper {
   private smoothedDryMs = 0;
   private smoothedWetMs = 0;
   private bypassed = false;
+  private dryWired = false;
+  private unwireTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(ctx: BaseAudioContext, effectInput: AudioNode, effectOutput: AudioNode) {
     this.inputNode = ctx.createGain();
@@ -49,16 +51,19 @@ export class BypassWrapper {
     this.dryTimeData = new Float32Array(this.dryAnalyser.fftSize);
     this.wetTimeData = new Float32Array(this.wetAnalyser.fftSize);
 
-    // Dry path: tapped straight off the input, untouched by the effect.
+    // Level taps on the side (not in series): they only need to read.
     this.inputNode.connect(this.dryAnalyser);
-    this.dryAnalyser.connect(this.dryGain);
-    this.dryGain.connect(this.outputNode);
-
-    // Wet path: through the real effect, tapped on its way out.
-    this.inputNode.connect(effectInput);
     effectOutput.connect(this.wetAnalyser);
-    this.wetAnalyser.connect(this.wetGain);
+
+    // Wet path: through the real effect.
+    this.inputNode.connect(effectInput);
+    effectOutput.connect(this.wetGain);
     this.wetGain.connect(this.outputNode);
+
+    // Dry path: only wired while the effect is bypassed (or fading) - a
+    // silent dry branch on every effect of every track was audio-thread
+    // work for nothing (phones ran out of it with a few chains).
+    this.dryGain.connect(this.outputNode);
 
     // Starts fully wet - matches `EffectInstance.bypassed`'s own default (false).
     this.dryGain.gain.value = 0;
@@ -69,12 +74,29 @@ export class BypassWrapper {
     if (this.bypassed === bypassed) return;
     this.bypassed = bypassed;
     const now = ctx.currentTime;
+    if (this.unwireTimer !== null) clearTimeout(this.unwireTimer);
+    this.unwireTimer = null;
     if (bypassed) {
+      if (!this.dryWired) {
+        this.inputNode.connect(this.dryGain);
+        this.dryWired = true;
+      }
       this.wetGain.gain.setTargetAtTime(0, now, RAMP_SEC);
       this.dryGain.gain.setTargetAtTime(this.compensationGain(), now, RAMP_SEC);
     } else {
       this.dryGain.gain.setTargetAtTime(0, now, RAMP_SEC);
       this.wetGain.gain.setTargetAtTime(1, now, RAMP_SEC);
+      // unwire the dry branch once its fade is over
+      this.unwireTimer = setTimeout(() => {
+        this.unwireTimer = null;
+        if (this.bypassed || !this.dryWired) return;
+        try {
+          this.inputNode.disconnect(this.dryGain);
+        } catch {
+          // already gone
+        }
+        this.dryWired = false;
+      }, RAMP_SEC * 8 * 1000);
     }
   }
 
@@ -110,6 +132,7 @@ export class BypassWrapper {
   }
 
   dispose(): void {
+    if (this.unwireTimer !== null) clearTimeout(this.unwireTimer);
     this.inputNode.disconnect();
     this.outputNode.disconnect();
     this.dryGain.disconnect();

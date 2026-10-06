@@ -159,6 +159,15 @@ export class EffectChain {
     return this.output;
   }
 
+  /** What the last setInserts() applied, so a knob move only touches the
+   * one effect that changed. Rewiring the whole chain (disconnect + connect
+   * every node) on each call - ~60 times a second while a knob turns, for
+   * every track, since a project change re-syncs them all - cut and
+   * crackled the audio. */
+  private appliedParams = new Map<string, unknown>();
+  private appliedBypass = new Map<string, boolean>();
+  private wiredKey = "";
+
   setInserts(inserts: EffectInstance[]): void {
     this.lastInserts = inserts;
 
@@ -167,6 +176,8 @@ export class EffectChain {
       if (!nextIds.has(id)) {
         entry.instance.dispose();
         this.effects.delete(id);
+        this.appliedParams.delete(id);
+        this.appliedBypass.delete(id);
       }
     }
 
@@ -177,11 +188,24 @@ export class EffectChain {
     for (const ins of inserts) {
       const entry = this.effects.get(ins.id);
       if (!entry) continue;
-      entry.instance.setParams(ins.params);
-      entry.wrapper.setBypassed(ins.bypassed, this.ctx);
+      if (this.appliedParams.get(ins.id) !== ins.params) {
+        entry.instance.setParams(ins.params);
+        this.appliedParams.set(ins.id, ins.params);
+      }
+      if (this.appliedBypass.get(ins.id) !== ins.bypassed) {
+        entry.wrapper.setBypassed(ins.bypassed, this.ctx);
+        this.appliedBypass.set(ins.id, ins.bypassed);
+      }
     }
 
-    this.rewire(inserts);
+    // only when the order or the set of live nodes changed
+    const key = inserts.map((i) => (this.effects.has(i.id) ? i.id : "")).join("|");
+    if (key !== this.wiredKey) {
+      this.rewire(inserts);
+      this.wiredKey = key;
+    } else {
+      this.updateDryLatency(inserts);
+    }
   }
 
   private instantiate(ins: EffectInstance): void {
@@ -201,8 +225,11 @@ export class EffectChain {
         if (current) {
           real.setParams(current.params);
           realWrapper.setBypassed(current.bypassed, this.ctx);
+          this.appliedParams.set(ins.id, current.params);
+          this.appliedBypass.set(ins.id, current.bypassed);
         }
         this.rewire(this.lastInserts);
+        this.wiredKey = this.lastInserts.map((i) => (this.effects.has(i.id) ? i.id : "")).join("|");
       });
       return;
     }
@@ -233,6 +260,17 @@ export class EffectChain {
     node.connect(this.wet);
     this.input.connect(this.dryDelay);
     this.dryDelay.delayTime.value = Math.min(0.2, latency);
+  }
+
+  /** Blend's dry path delay follows which latent effects are on (bypass
+   * changes it) without touching the wiring. */
+  private updateDryLatency(inserts: EffectInstance[]): void {
+    let latency = 0;
+    for (const ins of inserts) {
+      if (this.effects.has(ins.id) && !ins.bypassed && LATENT_TYPES.has(ins.type)) latency += compressorLatencySec(this.ctx.sampleRate);
+    }
+    const next = Math.min(0.2, latency);
+    if (Math.abs(this.dryDelay.delayTime.value - next) > 1e-9) this.dryDelay.delayTime.value = next;
   }
 
   /** Called continuously by AudioEngine's own maintenance loop (not tied to

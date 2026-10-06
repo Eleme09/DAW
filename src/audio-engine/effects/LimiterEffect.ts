@@ -22,7 +22,7 @@ export class LimiterEffect implements Effect<LimiterParams> {
 
     this.clipper = ctx.createWaveShaper();
     this.clipper.curve = makeHardClipCurve();
-    this.clipper.oversample = "4x";
+    this.clipper.oversample = "2x"; // only catches overs after the compressor: 2x is plenty, half the cost
     this.makeupGain = ctx.createGain();
 
     this.compressor.connect(this.clipper);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { FX_CATALOG } from "@/lib/fx/catalog";
 import type { EffectInstance } from "@/types/effects";
@@ -38,16 +38,47 @@ export function ChainEditor({
   const removeEffect = useProjectStore((s) => s.removeEffect);
   const moveEffect = useProjectStore((s) => s.moveEffect);
   const [info, setInfo] = useState(false);
+  // A knob drag fires pointer events faster than the screen (120 Hz on recent
+  // iPhones); each store update re-renders and re-syncs the audio graph.
+  // Coalesce them: at most one update per animation frame, the latest wins.
+  const pendingParams = useRef<{ id: string; params: EffectInstance["params"] } | null>(null);
+  const frame = useRef(0);
+  const sendParams = useCallback(
+    (id: string, params: EffectInstance["params"]) => {
+      if (pendingParams.current && pendingParams.current.id !== id) updateEffectParams(ctx.target, pendingParams.current.id, pendingParams.current.params);
+      pendingParams.current = { id, params };
+      if (frame.current) return;
+      frame.current = requestAnimationFrame(() => {
+        frame.current = 0;
+        const p = pendingParams.current;
+        pendingParams.current = null;
+        if (p) updateEffectParams(ctx.target, p.id, p.params);
+      });
+    },
+    [ctx.target, updateEffectParams]
+  );
+  useEffect(
+    () => () => {
+      // flush on unmount so the last knob position is never lost
+      if (frame.current) cancelAnimationFrame(frame.current);
+      const p = pendingParams.current;
+      if (p) updateEffectParams(ctx.target, p.id, p.params);
+    },
+    [ctx.target, updateEffectParams]
+  );
   const strip = useRef<HTMLDivElement>(null);
 
   const { inserts, target, preset, dirty, isTrack } = ctx;
   const current: EffectInstance | null = inserts.find((e) => e.id === selected) ?? inserts[0] ?? null;
   const index = current ? inserts.indexOf(current) : -1;
   const entry = current && current.type !== "pitchCorrection" ? FX_CATALOG[current.type] : null;
+  // only when another effect is selected - not on every knob move (the effect
+  // object changes with each param update)
+  const currentId = current?.id;
   useEffect(() => {
-    if (!current) return;
-    strip.current?.querySelector(`[data-fx="${current.id}"]`)?.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
-  }, [current]);
+    if (!currentId) return;
+    strip.current?.querySelector(`[data-fx="${currentId}"]`)?.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+  }, [currentId]);
   const name = isTrack ? (preset ? `${preset.name}${dirty ? "*" : ""}` : "Personalizado") : ctx.title;
 
   return (
@@ -156,7 +187,7 @@ export function ChainEditor({
               </p>
             )}
             <div className={`p-3 pt-4 ${current.bypassed ? "opacity-50" : ""}`}>
-              <EffectFace effect={current} target={target} onParams={(p) => updateEffectParams(target, current.id, p)} />
+              <EffectFace effect={current} target={target} onParams={(p) => sendParams(current.id, p)} />
             </div>
           </div>
         )}

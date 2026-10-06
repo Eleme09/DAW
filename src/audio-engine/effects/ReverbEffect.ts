@@ -3,11 +3,24 @@ import type { ReverbParams } from "@/types/effects";
 import { generateImpulseResponseSamples } from "./impulseResponse";
 import { BUTTERWORTH_Q_DB } from "./latency";
 
+/** A new tail is built this long after the last Decay/Size change (not on
+ * every knob step: building a 3 s stereo tail and swapping it into a
+ * convolver on each move froze the UI and clicked)... */
+const REBUILD_DELAY_MS = 140;
+/** ...and faded in against the old one, so the swap is never heard as a cut. */
+const SWAP_FADE_SEC = 0.08;
+
 export class ReverbEffect implements Effect<ReverbParams> {
   private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
+  /** Two convolvers: the live tail and the one the next tail is built into. */
   private convolver: ConvolverNode;
+  private convolverB: ConvolverNode;
+  private tailGain: GainNode;
+  private tailGainB: GainNode;
+  private live: 0 | 1 = 0;
+  private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
   private predelay: DelayNode;
   private lowCut: BiquadFilterNode;
   private highCut: BiquadFilterNode;
@@ -26,6 +39,11 @@ export class ReverbEffect implements Effect<ReverbParams> {
     this.output = ctx.createGain();
     this.convolver = ctx.createConvolver();
     this.convolver.normalize = true;
+    this.convolverB = ctx.createConvolver();
+    this.convolverB.normalize = true;
+    this.tailGain = ctx.createGain();
+    this.tailGainB = ctx.createGain();
+    this.tailGainB.gain.value = 0;
     this.predelay = ctx.createDelay(0.25);
     this.lowCut = ctx.createBiquadFilter();
     this.lowCut.type = "highpass";
@@ -48,7 +66,12 @@ export class ReverbEffect implements Effect<ReverbParams> {
     this.predelay.connect(this.lowCut);
     this.lowCut.connect(this.highCut);
     this.highCut.connect(this.convolver);
-    this.convolver.connect(this.wetGain);
+    this.convolver.connect(this.tailGain);
+    this.tailGain.connect(this.wetGain);
+    // B is fed only while it is (or is becoming) the live tail: an idle
+    // convolver still convolves, which would double the reverb's cost
+    this.convolverB.connect(this.tailGainB);
+    this.tailGainB.connect(this.wetGain);
     this.wetGain.connect(this.wetAnalyser);
     this.wetAnalyser.connect(this.output);
   }
@@ -67,7 +90,17 @@ export class ReverbEffect implements Effect<ReverbParams> {
   setParams(params: ReverbParams): void {
     const key = `${params.decaySec}:${params.sizeType}`;
     if (key !== this.irKey) {
-      this.convolver.buffer = this.buildImpulseResponse(params.decaySec, params.sizeType);
+      if (this.irKey === null) {
+        // first tail (and the only one an offline render ever sets): at once
+        this.convolver.buffer = this.buildImpulseResponse(params.decaySec, params.sizeType);
+      } else {
+        if (this.rebuildTimer !== null) clearTimeout(this.rebuildTimer);
+        const { decaySec, sizeType } = params;
+        this.rebuildTimer = setTimeout(() => {
+          this.rebuildTimer = null;
+          this.swapTail(decaySec, sizeType);
+        }, REBUILD_DELAY_MS);
+      }
       this.irKey = key;
     }
     const t = this.ctx.currentTime;
@@ -77,6 +110,33 @@ export class ReverbEffect implements Effect<ReverbParams> {
     this.highCut.frequency.setTargetAtTime(Math.max(1000, Math.min(nyquist, params.highCutHz ?? 20000)), t, 0.01);
     this.dryGain.gain.setTargetAtTime(1 - params.mix, t, 0.01);
     this.wetGain.gain.setTargetAtTime(params.mix, t, 0.01);
+  }
+
+  private swapTail(decaySec: number, sizeType: ReverbParams["sizeType"]): void {
+    const next = this.live === 0 ? this.convolverB : this.convolver;
+    const old = this.live === 0 ? this.convolver : this.convolverB;
+    const nextGain = this.live === 0 ? this.tailGainB : this.tailGain;
+    const oldGain = this.live === 0 ? this.tailGain : this.tailGainB;
+    next.buffer = this.buildImpulseResponse(decaySec, sizeType);
+    this.highCut.connect(next);
+    const t = this.ctx.currentTime;
+    nextGain.gain.cancelScheduledValues(t);
+    oldGain.gain.cancelScheduledValues(t);
+    nextGain.gain.setValueAtTime(nextGain.gain.value, t);
+    oldGain.gain.setValueAtTime(oldGain.gain.value, t);
+    nextGain.gain.linearRampToValueAtTime(1, t + SWAP_FADE_SEC);
+    oldGain.gain.linearRampToValueAtTime(0, t + SWAP_FADE_SEC);
+    this.live = this.live === 0 ? 1 : 0;
+    const live = this.live;
+    setTimeout(() => {
+      // still the old one (no newer swap brought it back): stop feeding it
+      if ((live === 1 ? this.convolver : this.convolverB) !== old) return;
+      try {
+        this.highCut.disconnect(old);
+      } catch {
+        // already disconnected
+      }
+    }, SWAP_FADE_SEC * 1000 + 60);
   }
 
   private buildImpulseResponse(decaySec: number, sizeType: ReverbParams["sizeType"]): AudioBuffer {
@@ -90,6 +150,10 @@ export class ReverbEffect implements Effect<ReverbParams> {
   }
 
   dispose(): void {
+    if (this.rebuildTimer !== null) clearTimeout(this.rebuildTimer);
+    this.convolverB.disconnect();
+    this.tailGain.disconnect();
+    this.tailGainB.disconnect();
     this.input.disconnect();
     this.predelay.disconnect();
     this.lowCut.disconnect();

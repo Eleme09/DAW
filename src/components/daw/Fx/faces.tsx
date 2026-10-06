@@ -266,25 +266,25 @@ export function EffectFace({ effect, target, onParams }: { effect: EffectInstanc
           <div className="mt-3 grid grid-cols-2 gap-2">
             <Box skin={skin} title="Mezcla">
               <div className="flex justify-center">
-                <FxKnob label="" value={p.mix} min={0} max={1} onChange={(v) => set({ mix: v })} skin={skin} format={fmt.pct} defaultValue={0.2} size={84} />
+                <FxKnob label="" ariaLabel="Mezcla" value={p.mix} min={0} max={1} onChange={(v) => set({ mix: v })} skin={skin} format={fmt.pct} defaultValue={0.2} size={84} />
               </div>
             </Box>
             <Box skin={skin} title="Decay">
               <div className="flex justify-center">
-                <FxKnob label="" value={p.decaySec} min={0.2} max={8} scale="log" onChange={(v) => set({ decaySec: Math.round(v * 10) / 10 })} skin={skin} format={fmt.sec} defaultValue={1.8} size={84} />
+                <FxKnob label="" ariaLabel="Decay" value={p.decaySec} min={0.2} max={8} scale="log" onChange={(v) => set({ decaySec: Math.round(v * 10) / 10 })} skin={skin} format={fmt.sec} defaultValue={1.8} size={84} />
               </div>
             </Box>
           </div>
           <Advanced skin={skin}>
             <div className="grid grid-cols-3 gap-2">
               <Box skin={skin} title="Pre-delay">
-                <FxKnob label="" value={p.predelayMs ?? 0} min={0} max={200} onChange={(v) => set({ predelayMs: Math.round(v) })} skin={skin} format={fmt.ms} defaultValue={20} size={54} />
+                <FxKnob label="" ariaLabel="Pre-delay" value={p.predelayMs ?? 0} min={0} max={200} onChange={(v) => set({ predelayMs: Math.round(v) })} skin={skin} format={fmt.ms} defaultValue={20} size={54} />
               </Box>
               <Box skin={skin} title="Graves">
-                <FxKnob label="" value={p.lowCutHz ?? 20} min={20} max={1000} scale="log" onChange={(v) => set({ lowCutHz: Math.round(v) })} skin={skin} format={fmt.hz} defaultValue={250} size={54} />
+                <FxKnob label="" ariaLabel="Graves" value={p.lowCutHz ?? 20} min={20} max={1000} scale="log" onChange={(v) => set({ lowCutHz: Math.round(v) })} skin={skin} format={fmt.hz} defaultValue={250} size={54} />
               </Box>
               <Box skin={skin} title="Agudos">
-                <FxKnob label="" value={p.highCutHz ?? 20000} min={1500} max={20000} scale="log" onChange={(v) => set({ highCutHz: Math.round(v) })} skin={skin} format={fmt.hz} defaultValue={9000} size={54} />
+                <FxKnob label="" ariaLabel="Agudos" value={p.highCutHz ?? 20000} min={1500} max={20000} scale="log" onChange={(v) => set({ highCutHz: Math.round(v) })} skin={skin} format={fmt.hz} defaultValue={9000} size={54} />
               </Box>
             </div>
           </Advanced>
