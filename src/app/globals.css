@@ -104,3 +104,66 @@ body {
     transform: translateX(0);
   }
 }
+
+/* Portadas animadas de los efectos (components/daw/Fx/scenes.tsx): lentas,
+   solo transform/opacity, apagadas con .fxa-still y con reduced-motion. */
+.fxa * {
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+.fxa .fxa-tw { animation-name: fxa-tw; }
+.fxa .fxa-glow { animation-name: fxa-glow; }
+.fxa .fxa-spin { animation-name: fxa-spin; animation-timing-function: linear; }
+.fxa .fxa-fall { animation-name: fxa-fall; animation-timing-function: ease-in; }
+.fxa .fxa-breathe { animation-name: fxa-breathe; animation-direction: alternate; }
+.fxa .fxa-meter { animation-name: fxa-meter; }
+.fxa .fxa-sweep { animation-name: fxa-sweep; }
+.fxa .fxa-doorL { animation-name: fxa-doorL; }
+.fxa .fxa-doorR { animation-name: fxa-doorR; }
+.fxa .fxa-hiss { animation-name: fxa-hiss; animation-timing-function: linear; }
+.fxa .fxa-rise { animation-name: fxa-rise; animation-timing-function: linear; }
+.fxa .fxa-sway { animation-name: fxa-sway; animation-direction: alternate; }
+.fxa .fxa-comet { animation-name: fxa-comet; animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+.fxa .fxa-pan { animation-name: fxa-pan; animation-direction: alternate; }
+.fxa .fxa-expand { animation-name: fxa-expand; animation-timing-function: ease-out; }
+.fxa .fxa-morphA { animation-name: fxa-morphA; animation-direction: alternate; }
+.fxa .fxa-morphB { animation-name: fxa-morphB; animation-direction: alternate; }
+.fxa-still * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .fxa * { animation: none !important; }
+}
+@keyframes fxa-tw { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+@keyframes fxa-glow { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+@keyframes fxa-spin { to { transform: rotate(360deg); } }
+@keyframes fxa-fall {
+  0% { transform: translate(var(--fx), var(--fy)); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translate(calc(var(--fx) * 0.12), calc(var(--fy) * 0.12)) scale(0.4); opacity: 0; }
+}
+@keyframes fxa-breathe { from { transform: translateY(2px); } to { transform: translateY(-4px); } }
+@keyframes fxa-meter {
+  0%, 100% { transform: scaleY(0.25); }
+  30% { transform: scaleY(1); }
+  42% { transform: scaleY(0.97); }
+  70% { transform: scaleY(0.5); }
+}
+@keyframes fxa-sweep { 0% { transform: translateX(-130px); } 55%, 100% { transform: translateX(130px); } }
+@keyframes fxa-doorL { 0%, 18% { transform: translateX(0); } 40%, 68% { transform: translateX(-31px); } 88%, 100% { transform: translateX(0); } }
+@keyframes fxa-doorR { 0%, 18% { transform: translateX(0); } 40%, 68% { transform: translateX(31px); } 88%, 100% { transform: translateX(0); } }
+@keyframes fxa-hiss { 0% { transform: translateX(0); opacity: 0.9; } 100% { transform: translateX(22px); opacity: 0; } }
+@keyframes fxa-rise {
+  0% { transform: translateY(40px) scale(0.6); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 0.9; }
+  100% { transform: translateY(-40px) scale(1.05); opacity: 0; }
+}
+@keyframes fxa-sway { from { transform: translateX(-9px) skewX(5deg); } to { transform: translateX(9px) skewX(-5deg); } }
+@keyframes fxa-comet {
+  0% { transform: translate(-70px, -26px); opacity: 0; }
+  15%, 80% { opacity: 1; }
+  100% { transform: translate(62px, 23px); opacity: 0; }
+}
+@keyframes fxa-pan { from { transform: translateX(-16px); } to { transform: translateX(16px); } }
+@keyframes fxa-expand { 0% { transform: scale(0.08); opacity: 0; } 15% { opacity: 0.9; } 100% { transform: scale(1.2); opacity: 0; } }
+@keyframes fxa-morphA { from { opacity: 1; } to { opacity: 0.08; } }
+@keyframes fxa-morphB { from { opacity: 0.08; } to { opacity: 1; } }

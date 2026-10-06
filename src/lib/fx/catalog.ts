@@ -54,7 +54,7 @@ const DARK_INK = "#f2ede4";
 export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalogEntry> = {
   eq: {
     type: "eq",
-    name: "Prisma EQ",
+    name: "Prisma",
     kind: "Ecualizador",
     description: "Curva visual con espectro en vivo: quita barro, suma presencia y aire.",
     category: "eq",
@@ -62,7 +62,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   compressor: {
     type: "compressor",
-    name: "Opto Comp",
+    name: "Gravedad",
     kind: "Compresor",
     description: "Compresor óptico: dos perillas y la voz queda pareja y al frente.",
     category: "dinamica",
@@ -78,7 +78,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   multibandCompressor: {
     type: "multibandCompressor",
-    name: "Tri-Band",
+    name: "Estratos",
     kind: "Compresor multibanda",
     description: "Controla graves, medios y agudos por separado.",
     category: "dinamica",
@@ -86,7 +86,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   limiter: {
     type: "limiter",
-    name: "Techo",
+    name: "Horizonte",
     kind: "Limitador",
     description: "Nada pasa del techo: más volumen sin clips.",
     category: "dinamica",
@@ -94,7 +94,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   clipper: {
     type: "clipper",
-    name: "Clip",
+    name: "Filo",
     kind: "Clipper",
     description: "Recorta los picos en seco: ataque agresivo, más fuerte.",
     category: "dinamica",
@@ -102,7 +102,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   noiseGate: {
     type: "noiseGate",
-    name: "Puerta",
+    name: "Esclusa",
     kind: "Gate",
     description: "Silencia el ruido entre frases.",
     category: "limpieza",
@@ -118,7 +118,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   saturation: {
     type: "saturation",
-    name: "Tubo",
+    name: "Magma",
     kind: "Saturación",
     description: "Calor de válvula o grit de rage: cuerpo y armónicos.",
     category: "color",
@@ -126,7 +126,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   exciter: {
     type: "exciter",
-    name: "Aire",
+    name: "Aurora",
     kind: "Excitador",
     description: "Brillo y aire arriba sin subir el siseo.",
     category: "color",
@@ -134,7 +134,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   reverb: {
     type: "reverb",
-    name: "Espacio",
+    name: "Nebulosa",
     kind: "Reverb",
     description: "Cuarto, sala o placa, con pre-delay y cola filtrada.",
     category: "espacio",
@@ -142,7 +142,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   delay: {
     type: "delay",
-    name: "Eco",
+    name: "Órbita",
     kind: "Delay",
     description: "Ecos al tempo, ping-pong y repeticiones filtradas.",
     category: "espacio",
@@ -150,7 +150,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   chorus: {
     type: "chorus",
-    name: "Doble",
+    name: "Gemelos",
     kind: "Chorus / doblaje",
     description: "Engrosa la voz como si la hubieras doblado.",
     category: "modulacion",
@@ -158,7 +158,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   flanger: {
     type: "flanger",
-    name: "Jet",
+    name: "Cometa",
     kind: "Flanger",
     description: "Barrido metálico de avión.",
     category: "modulacion",
@@ -166,7 +166,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   autoPan: {
     type: "autoPan",
-    name: "Péndulo",
+    name: "Marea",
     kind: "Auto-pan",
     description: "Mueve la voz de un lado a otro.",
     category: "modulacion",
@@ -174,7 +174,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   stereoWidth: {
     type: "stereoWidth",
-    name: "Ancho",
+    name: "Expansión",
     kind: "Imagen estéreo",
     description: "Abre o cierra el estéreo (en coros y dobles).",
     category: "modulacion",
@@ -182,7 +182,7 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
   },
   vocoder: {
     type: "vocoder",
-    name: "Robot",
+    name: "Androide",
     kind: "Vocoder",
     description: "La voz convertida en sintetizador.",
     category: "creativos",

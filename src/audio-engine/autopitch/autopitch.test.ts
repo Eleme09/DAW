@@ -241,6 +241,27 @@ describe("AutoPitch presets (real worklet)", () => {
   });
 });
 
+describe("AutoPitch preset loudness vs recording level (regression 2026-10-06)", () => {
+  // A fixed compressor makeup only fits one input level: with the user's hot
+  // phone takes (-8 LUFS) Play Card came out 9 LU quieter than the voice,
+  // Telephone 6.5, Gorgon 6. The colour stage now matches its own loudness.
+  const sliding = vowel((t) => 196 * Math.pow(2, (t * 5) / 12), 2);
+  const from = Math.floor(0.8 * SR);
+  const gainDb = (input: Float32Array, presetId: AutoPitchSettings["presetId"]) => {
+    const out = renderAutoPitch(input, resolveAutoPitch(settings({ presetId })).worklet);
+    const outRms = Math.sqrt((rms(out.left, from) ** 2 + rms(out.right, from) ** 2) / 2);
+    return 20 * Math.log10(outRms / rms(input, from));
+  };
+  it.each(["playCard", "telephone", "gorgon", "modernRap", "yummy", "natural", "hyper"] as const)("%s: same gain for a hot take and one 18 dB quieter", (presetId) => {
+    const hot = sliding.map((v) => v * 3); // peaks near 0 dBFS
+    const quiet = sliding.map((v) => v * 3 * 10 ** (-18 / 20));
+    const a = gainDb(hot, presetId);
+    const b = gainDb(quiet, presetId);
+    expect(Math.abs(a - b)).toBeLessThan(1.5);
+    expect(a).toBeGreaterThan(-3);
+  });
+});
+
 describe("resolveAutoPitch Level knob", () => {
   it("full Level = the preset's own speed; lower Level glides slower and stops correcting fully below 50%", () => {
     const full = resolveAutoPitch(settings({ presetId: "classic", level: 1 })).worklet;

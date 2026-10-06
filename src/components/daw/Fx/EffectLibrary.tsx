@@ -79,10 +79,12 @@ export function EffectLibrary({
           return (
             <div key={t} className="flex items-center gap-3 rounded-2xl bg-surf-2 p-3">
               <button onClick={() => onPick(t)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                <FxTile type={t} size={52} />
+                <FxTile type={t} size={60} animated />
                 <div className="min-w-0 flex-1">
-                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-bone-2">{e.kind}</span>
-                  <div className="mt-0.5 truncate text-[15px] font-semibold text-bone">{e.name}</div>
+                  <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: e.skin.light ? "#ff8a7d" : e.skin.accent, background: `${e.skin.light ? "#ff8a7d" : e.skin.accent}1f` }}>
+                    {e.kind}
+                  </span>
+                  <div className="mt-1 truncate text-[16px] font-bold tracking-tight text-bone">{e.name}</div>
                   <div className="line-clamp-2 text-[12px] leading-snug text-bone-3">{e.description}</div>
                 </div>
               </button>

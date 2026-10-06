@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { AutoPitchCategory } from "@/types/autoPitch";
 import { autoPitchLevelLabel } from "@/types/autoPitch";
 
@@ -11,7 +11,7 @@ const START = 135; // degrees, SVG frame (0 = right, clockwise): 7:30 o'clock
 const SWEEP = 270;
 const INACTIVE = "#33363d";
 
-const COLORS: Record<AutoPitchCategory, string> = {
+export const AUTOPITCH_COLORS: Record<AutoPitchCategory, string> = {
   essentials: "#2f80f6",
   hipHop: "#f2342a",
   hyperpop: "#ff5b1f",
@@ -54,7 +54,7 @@ function tonguePath(t: { v: number; len: number; w: number; lean: number }): str
 }
 
 function Ring({ category, level, enabled }: { category: AutoPitchCategory; level: number; enabled: boolean }) {
-  const color = COLORS[category];
+  const color = AUTOPITCH_COLORS[category];
   const lit = (v: number) => enabled && v <= level + 1e-6;
 
   if (category === "hipHop") {
@@ -137,6 +137,8 @@ interface Props {
   level: number;
   enabled: boolean;
   onChange: (level: number) => void;
+  /** Rendered size in px (the panel shrinks it on short screens). */
+  size?: number;
 }
 
 /**
@@ -146,7 +148,7 @@ interface Props {
  * it; while touched it shows the value in a "NN %" box, otherwise the label
  * ("Lo más intenso" at the top, "Off" when AutoPitch is off).
  */
-export function AutoPitchKnob({ category, level, enabled, onChange }: Props) {
+export function AutoPitchKnob({ category, level, enabled, onChange, size = 216 }: Props) {
   const drag = useRef<{ y: number; x: number; start: number } | null>(null);
   const [showValue, setShowValue] = useState(false);
   const hideTimer = useRef<number | null>(null);
@@ -196,6 +198,18 @@ export function AutoPitchKnob({ category, level, enabled, onChange }: Props) {
     flashValue();
   }
 
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const color = AUTOPITCH_COLORS[category];
+  const grip = useMemo(
+    () =>
+      Array.from({ length: 40 }, (_, i) => {
+        const [x1, y1] = polar(BODY_R - 9, i * 9);
+        const [x2, y2] = polar(BODY_R - 4, i * 9);
+        return { x1, y1, x2, y2 };
+      }),
+    []
+  );
+
   return (
     <div className="flex flex-col items-center">
       <div
@@ -212,22 +226,43 @@ export function AutoPitchKnob({ category, level, enabled, onChange }: Props) {
         onPointerCancel={onPointerUp}
         onKeyDown={onKeyDown}
         className="touch-none select-none outline-none"
-        style={{ width: 200, height: 200 }}
+        style={{ width: size, height: size }}
       >
-        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={200} height={200}>
+        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width="100%" height="100%">
+          <defs>
+            <radialGradient id={`${uid}body`} cx="0.42" cy="0.3" r="0.8">
+              <stop offset="0" stopColor="#4a4f5a" />
+              <stop offset="0.55" stopColor="#262930" />
+              <stop offset="1" stopColor="#14161a" />
+            </radialGradient>
+            <radialGradient id={`${uid}glow`}>
+              <stop offset="0.45" stopColor={color} stopOpacity={0.32} />
+              <stop offset="1" stopColor={color} stopOpacity={0} />
+            </radialGradient>
+          </defs>
+          {enabled && <circle cx={C} cy={C} r={118} fill={`url(#${uid}glow)`} opacity={0.3 + 0.7 * level} />}
           <Ring category={category} level={level} enabled={enabled} />
-          <circle cx={C} cy={C} r={BODY_R} fill="#24272e" />
-          <circle cx={C} cy={C} r={BODY_R - 1} fill="none" stroke="#2e3139" strokeWidth={2} />
-          <line {...pointer} stroke="#f4f4f5" strokeWidth={5} strokeLinecap="round" />
+          <circle cx={C} cy={C} r={BODY_R + 5} fill="#0c0d10" />
+          <circle cx={C} cy={C} r={BODY_R} fill={`url(#${uid}body)`} />
+          <circle cx={C} cy={C} r={BODY_R - 0.75} fill="none" stroke="#ffffff" strokeOpacity={0.14} strokeWidth={1.5} />
+          {grip.map((g, i) => (
+            <line key={i} {...g} stroke="#000" strokeOpacity={0.28} strokeWidth={1.4} strokeLinecap="round" />
+          ))}
+          {enabled && <line {...pointer} stroke={color} strokeOpacity={0.45} strokeWidth={11} strokeLinecap="round" />}
+          <line {...pointer} stroke={enabled ? "#f8f8f9" : "#8a8d94"} strokeWidth={5} strokeLinecap="round" />
+          <circle cx={C} cy={C} r={7} fill="#1b1d22" stroke="#ffffff" strokeOpacity={0.08} />
         </svg>
       </div>
-      <div className="mt-1 flex h-8 items-center justify-center">
+      <div className="mt-0.5 flex h-7 items-center justify-center">
         {showValue && enabled ? (
-          <span className="rounded-md bg-[#15171b] px-2.5 py-1 text-sm tabular-nums text-bone">
-            {Math.round(level * 100)} <span className="text-bone-3">%</span>
+          <span className="rounded-full px-3 py-0.5 text-[13px] font-semibold tabular-nums text-white" style={{ background: color }}>
+            {Math.round(level * 100)} %
           </span>
         ) : (
-          <span className="text-[15px] text-bone-3">{autoPitchLevelLabel(level, enabled)}</span>
+          <span className="text-[13px] tracking-wide text-bone-3">
+            {autoPitchLevelLabel(level, enabled)}
+            {enabled && <span className="tabular-nums text-bone-2"> · {Math.round(level * 100)} %</span>}
+          </span>
         )}
       </div>
     </div>

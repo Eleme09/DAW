@@ -447,6 +447,16 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.hpHz = -1;
     this.lpHz = -1;
     this.compEnv = 0;
+    // Loudness compensation of the colour stage (drive, filters, compressor):
+    // slow mean squares of the signal going in and coming out, and the gain
+    // that makes them match - so a squashed or band-limited preset is as loud
+    // as the voice whatever level it was recorded at (a fixed makeup only fits
+    // one input level: a hot phone take came out 5-9 dB quieter).
+    this.colPre = 0;
+    this.colPost = 0;
+    this.colGain = 1;
+    this.colA = 1 - Math.exp(-1 / (0.4 * sr));
+    this.colGainA = 1 - Math.exp(-1 / (0.25 * sr));
     this.compAtk = 1 - Math.exp(-1 / (0.005 * sr));
     this.compRel = 1 - Math.exp(-1 / (0.12 * sr));
     this.chorusL = new Float32Array(4096);
@@ -1386,7 +1396,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const crushDown = Math.max(1, Math.round(p.crushDown));
     const compThr = -6 - 22 * p.comp;
     const compRatio = 1.5 + 6 * p.comp;
-    const compMakeup = -compThr * (1 - 1 / compRatio) * 0.3;
+    const useColour = useDrive || useHp || useLp || useComp;
     const gateA = 1 - Math.exp(-1 / (0.008 * sr));
     const vibInc = (TWO_PI * p.vibRate) / sr;
     const wahInc = (TWO_PI * p.wahRate) / sr;
@@ -1508,6 +1518,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         R += (this.crushR - R) * p.crushMix;
       }
 
+      const preMs = (L * L + R * R) * 0.5;
+
       if (useDrive) {
         L += (Math.tanh(driveK * L) * driveNorm - L) * p.driveMix;
         R += (Math.tanh(driveK * R) * driveNorm - R) * p.driveMix;
@@ -1528,9 +1540,24 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         const db = 20 * Math.log10(this.compEnv + 1e-9);
         const over = db - compThr;
         const gr = over > 0 ? over * (1 - 1 / compRatio) : 0;
-        const g = Math.pow(10, (compMakeup - gr) / 20);
+        const g = Math.pow(10, -gr / 20);
         L *= g;
         R *= g;
+      }
+
+      if (useColour) {
+        // only while there is signal: silence must not wind the gain up
+        if (preMs > 1e-7) {
+          this.colPre += (preMs - this.colPre) * this.colA;
+          this.colPost += ((L * L + R * R) * 0.5 - this.colPost) * this.colA;
+          if (this.colPre > 1e-6) {
+            const want = Math.sqrt(this.colPre / (this.colPost + 1e-12));
+            const target = want < 0.25 ? 0.25 : want > 8 ? 8 : want;
+            this.colGain += (target - this.colGain) * this.colGainA;
+          }
+        }
+        L *= this.colGain;
+        R *= this.colGain;
       }
 
       if (useChorus) {
@@ -1594,6 +1621,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.avgA = null;
     this.voicedGain = 0;
     this.voiceGate = 0;
+    this.colPre = this.colPost = 0;
+    this.colGain = 1;
   }
 
   resetFilters() {

@@ -18,7 +18,7 @@
 export type AutoPitchCategory = "essentials" | "hipHop" | "hyperpop" | "sciFi";
 
 export const AUTOPITCH_CATEGORIES: { id: AutoPitchCategory; label: string }[] = [
-  { id: "essentials", label: "Essentials" },
+  { id: "essentials", label: "Esenciales" },
   { id: "hipHop", label: "Hip Hop" },
   { id: "hyperpop", label: "Hyperpop" },
   { id: "sciFi", label: "Sci-Fi" },
@@ -48,12 +48,12 @@ export const AUTOPITCH_ALGORITHMS: { id: AutoPitchAlgorithm; label: string; help
   },
   {
     id: "lowLatency",
-    label: "Low-Latency",
+    label: "Baja latencia",
     help: "La mitad de retardo para escucharte mientras grabas. Las voces muy graves pierden algo de calidad.",
   },
   {
     id: "formant",
-    label: "Formant-Preserving",
+    label: "Conserva el timbre",
     help: "Cambia el tono sin cambiar los formantes: las armonías conservan el timbre natural de tu voz.",
   },
 ];
@@ -241,7 +241,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     voices: [],
     compress: 0.3,
     reverb: { mix: 0.07, decaySec: 1.1, sizeType: "room" },
-    trimDb: -2.5,
+    trimDb: 0,
   },
   {
     id: "third",
@@ -276,7 +276,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     lead: { gain: 1 },
     voices: [{ interval: -12, diatonic: false, gain: 0.6, pan: 0 }],
     compress: 0.35,
-    trimDb: -4.5,
+    trimDb: -1,
   },
   {
     id: "stone",
@@ -297,7 +297,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     lead: { gain: 1 },
     voices: stereoPair(-4, true, 0.5, 0.3),
     compress: 0.3,
-    trimDb: -4.5,
+    trimDb: -1.4,
   },
   {
     id: "playCard",
@@ -324,7 +324,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     lowpassHz: 7000,
     chorus: { mix: 0.35, depthMs: 4, rateHz: 0.35 },
     reverb: { mix: 0.28, decaySec: 2.6, sizeType: "hall" },
-    trimDb: -2,
+    trimDb: -1.6,
   },
   {
     id: "telephone",
@@ -338,7 +338,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     lowpassHz: 3200,
     drive: { amount: 0.35, mix: 0.6 },
     compress: 0.5,
-    trimDb: -2.5,
+    trimDb: 0,
   },
   // --- Hyperpop ---
   {
@@ -381,7 +381,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     voices: stereoPair(2, true, 0.5, 0.6),
     drive: { amount: 0.65, mix: 0.7 },
     highpassHz: 120,
-    trimDb: -0.5,
+    trimDb: -1.6,
   },
   {
     id: "bitz",
@@ -468,7 +468,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     compress: 0.4,
     lowpassHz: 8000,
     reverb: { mix: 0.1, decaySec: 1.4, sizeType: "room" },
-    trimDb: -4,
+    trimDb: 1,
   },
   {
     id: "halo",
@@ -492,6 +492,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     voices: [],
     vocoder: { mix: 0.55, carrier: "drone" },
     reverb: { mix: 0.35, decaySec: 3.5, sizeType: "hall" },
+    trimDb: -0.6,
   },
 ];
 export const AUTOPITCH_RECIPE_BY_ID: Record<AutoPitchPresetId, AutoPitchRecipe> = Object.fromEntries(

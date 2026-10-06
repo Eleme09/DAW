@@ -6,6 +6,7 @@ import { FX_CATALOG } from "@/lib/fx/catalog";
 import type { EffectInstance } from "@/types/effects";
 import type { FxContext } from "./FxPanel";
 import { CoverArt, FxTile } from "./art";
+import { FxArt } from "./scenes";
 import { BlendSlider } from "./BlendSlider";
 import { EffectFace } from "./faces";
 import { KnobDefs } from "./kit";
@@ -136,53 +137,48 @@ export function ChainEditor({
           </div>
         ) : (
           <div className="overflow-hidden rounded-3xl" style={{ background: entry?.skin.panel ?? "#18181a", boxShadow: "0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08)" }}>
-            {/* encabezado del plugin */}
-            <div className="flex items-center gap-2 px-3 pt-3">
-              <Switch on={!current.bypassed} onClick={() => toggleEffectBypass(target, current.id)} color={entry?.skin.accent ?? "#f2ede4"} light={entry?.skin.light} />
-              <button onClick={() => setInfo((v) => !v)} aria-label="Qué hace" className="flex h-8 w-8 items-center justify-center rounded-full text-[13px] font-bold" style={{ color: entry?.skin.ink2 }}>
-                ⓘ
-              </button>
-              <div className="min-w-0 flex-1 text-center">
-                <div className="truncate text-[15px] font-bold tracking-wide" style={{ color: entry?.skin.ink }}>
-                  {entry?.name ?? "Efecto"}
+            {/* encabezado del plugin: su portada animada, nombre y controles encima */}
+            <div className="relative h-[116px] overflow-hidden">
+              {current.type !== "pitchCorrection" && (
+                <FxArt type={current.type} animated={!current.bypassed} className={`absolute inset-0 h-full w-full transition-[filter,opacity] ${current.bypassed ? "opacity-60 grayscale" : ""}`} />
+              )}
+              <div className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0) 50%, rgba(0,0,0,.62) 100%)" }} />
+              <div className="relative flex items-center gap-1.5 px-3 pt-3">
+                <Switch on={!current.bypassed} onClick={() => toggleEffectBypass(target, current.id)} color={entry?.skin.accent ?? "#f2ede4"} />
+                <HeroButton onClick={() => setInfo((v) => !v)} label="Qué hace" active={info}>
+                  <span className="text-[13px] font-bold">i</span>
+                </HeroButton>
+                <div className="flex-1" />
+                <HeroButton onClick={() => moveEffect(target, current.id, -1)} disabled={index <= 0} label="Mover antes">
+                  ‹
+                </HeroButton>
+                <HeroButton onClick={() => moveEffect(target, current.id, 1)} disabled={index >= inserts.length - 1} label="Mover después">
+                  ›
+                </HeroButton>
+                <HeroButton
+                  onClick={() => {
+                    const next = inserts[index + 1] ?? inserts[index - 1] ?? null;
+                    removeEffect(target, current.id);
+                    onSelect(next?.id ?? null);
+                  }}
+                  label="Quitar efecto"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </HeroButton>
+              </div>
+              <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/75" style={{ textShadow: "0 1px 6px rgba(0,0,0,.6)" }}>
+                  {entry?.kind ?? "Efecto"}
+                  {current.bypassed && <span className="ml-2 rounded bg-white/20 px-1.5 py-px tracking-[0.12em]">Apagado</span>}
                 </div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: entry?.skin.ink2 }}>
-                  {entry?.kind}
+                <div className="truncate text-[26px] font-extrabold leading-tight tracking-tight text-white" style={{ textShadow: "0 2px 14px rgba(0,0,0,.55)" }}>
+                  {entry?.name ?? "Afinación"}
                 </div>
               </div>
-              <button
-                onClick={() => moveEffect(target, current.id, -1)}
-                disabled={index <= 0}
-                aria-label="Mover antes"
-                className="flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-25"
-                style={{ color: entry?.skin.ink2 }}
-              >
-                ‹
-              </button>
-              <button
-                onClick={() => moveEffect(target, current.id, 1)}
-                disabled={index >= inserts.length - 1}
-                aria-label="Mover después"
-                className="flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-25"
-                style={{ color: entry?.skin.ink2 }}
-              >
-                ›
-              </button>
-              <button
-                onClick={() => {
-                  const next = inserts[index + 1] ?? inserts[index - 1] ?? null;
-                  removeEffect(target, current.id);
-                  onSelect(next?.id ?? null);
-                }}
-                aria-label="Quitar efecto"
-                className="flex h-8 w-8 items-center justify-center rounded-full"
-                style={{ color: entry?.skin.ink2 }}
-              >
-                <TrashIcon className="h-4 w-4" />
-              </button>
             </div>
+            <div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${entry?.skin.accent ?? "#f2ede4"}, transparent)` }} />
             {info && entry && (
-              <p className="px-4 pt-2 text-[12px]" style={{ color: entry.skin.ink2 }}>
+              <p className="px-4 pt-3 text-[13px] leading-snug" style={{ color: entry.skin.ink }}>
                 {entry.description}
               </p>
             )}
@@ -196,7 +192,7 @@ export function ChainEditor({
   );
 }
 
-function Switch({ on, onClick, color, light }: { on: boolean; onClick: () => void; color: string; light?: boolean }) {
+function Switch({ on, onClick, color }: { on: boolean; onClick: () => void; color: string }) {
   return (
     <button
       onClick={onClick}
@@ -204,9 +200,23 @@ function Switch({ on, onClick, color, light }: { on: boolean; onClick: () => voi
       aria-checked={on}
       aria-label={on ? "Apagar efecto" : "Encender efecto"}
       className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
-      style={{ background: on ? color : light ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.18)" }}
+      style={{ background: on ? color : "rgba(0,0,0,0.45)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.25)" }}
     >
       <span className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all" style={{ left: on ? 22 : 2 }} />
+    </button>
+  );
+}
+
+function HeroButton({ onClick, label, disabled, active, children }: { onClick: () => void; label: string; disabled?: boolean; active?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={`flex h-8 w-8 items-center justify-center rounded-full text-[17px] leading-none text-white disabled:opacity-30 ${active ? "bg-white/35" : "bg-black/35"}`}
+      style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,.18)" }}
+    >
+      {children}
     </button>
   );
 }

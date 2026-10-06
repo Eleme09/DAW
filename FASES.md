@@ -18,7 +18,7 @@ Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BA
 
 ## Pendientes conocidos de fases hechas
 
-- Tema 3 (segunda tanda): Hard Tune y preajustes rehechos para tomas de celular; pendiente la escucha del usuario de las 3 versiones entregadas. Pendientes pedidos: arrastrar clips entre pistas, revisar bugs de cada efecto, Pitch Shifter, portadas/nombres premium, rediseño visual del AutoPitch, análisis de lo que falta (idea: venderla).
+- Tema 3 (segunda tanda): Hard Tune y preajustes rehechos para tomas de celular; pendiente la escucha del usuario. Hechos después: arrastrar clips entre pistas, bugs de perillas/cortes, Pitch Shifter (Metamorfo), nombres y portadas animadas de los efectos, rediseño visual del AutoPitch y nivel de sus presets con tomas calientes. Análisis de lo que falta para venderla: `ANALISIS-PRODUCTO.md`. Sin probar en iPhone real.
 - Tema 3: nadie escuchó los 22 preajustes; solo se midieron (nivel, picos). Los umbrales de compresión son fijos: con una voz grabada mucho más baja o más alta que la de prueba (−8.7 LUFS) comprimen distinto. Latencia del compresor medida solo en Chromium (Safari sin medir). El escritorio (DawShell) sigue con el rack viejo.
 
 - Tema 4: los presets premium no se pudieron escuchar en BandLab; su sonido sale de la descripción oficial de cada uno (FAQ de AutoPitch), no de una comparación de audio. Sin probar en un iPhone real: consumo de CPU (medido en Node: 7–16 % de un núcleo por pista según preset) y latencia al monitorear.

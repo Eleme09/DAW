@@ -111,7 +111,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     category: "voces",
     reference: "Yeat",
     autoPitchHint: "Hard Tune al 100 %",
-    cover: art("#ff3d7f", "#ffb800", "rings"),
+    cover: art("#ff3d7f", "#ffb800", "horizon"),
     blend: 1,
     factory: true,
     effects: [
@@ -148,7 +148,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     category: "voces",
     reference: "Travis Scott",
     autoPitchHint: "Hard Tune al 100 %",
-    cover: art("#3a1c71", "#d76d77", "waves"),
+    cover: art("#3a1c71", "#d76d77", "nebula"),
     blend: 1,
     factory: true,
     effects: [
@@ -166,7 +166,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     category: "voces",
     reference: "Future",
     autoPitchHint: "Hard Tune al 100 %",
-    cover: art("#0f2027", "#2c5364", "bars"),
+    cover: art("#0f2027", "#2c5364", "aurora"),
     blend: 1,
     factory: true,
     effects: [
@@ -183,7 +183,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     description: "Clara, pareja y con poco espacio. La de siempre.",
     category: "voces",
     autoPitchHint: "Hard Tune o Classic",
-    cover: art("#f2ede4", "#7fa8c9", "grid"),
+    cover: art("#7fa8c9", "#1d2a44", "prism"),
     blend: 1,
     factory: true,
     effects: [
@@ -198,7 +198,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     name: "Al Frente",
     description: "Rap seco y en tu cara, sin reverb.",
     category: "voces",
-    cover: art("#e8c15c", "#c97064", "diagonal"),
+    cover: art("#e8c15c", "#c97064", "dunes"),
     blend: 1,
     factory: true,
     effects: [
@@ -215,7 +215,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     description: "Aire arriba y cola de placa: para cantar.",
     category: "melodicas",
     autoPitchHint: "Classic o Natural",
-    cover: art("#a1c4fd", "#c2e9fb", "rings"),
+    cover: art("#4f7be8", "#a8dcff", "rings"),
     blend: 1,
     factory: true,
     effects: [
@@ -280,7 +280,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     name: "Ad-lib Lejano",
     description: "Ecos y cola larga: suena atrás y arriba.",
     category: "adlibs",
-    cover: art("#141e30", "#243b55", "rings"),
+    cover: art("#141e30", "#3d5a80", "orbit"),
     blend: 1,
     factory: true,
     effects: [
@@ -312,7 +312,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     name: "Brillo y Aire",
     description: "La limpieza más claridad y aire de estudio.",
     category: "pulido",
-    cover: art("#fceabb", "#f8b500", "dots"),
+    cover: art("#f8b500", "#ff6a3d", "aurora"),
     blend: 1,
     factory: true,
     effects: [
@@ -354,7 +354,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     name: "Sala Grande",
     description: "Voz limpia con cola larga y oscura detrás.",
     category: "espacio",
-    cover: art("#1d1f5c", "#6a3093", "waves"),
+    cover: art("#1d1f5c", "#6a3093", "nebula"),
     blend: 1,
     factory: true,
     effects: [...phoneBase({ comp: { makeupDb: 12.6 } }), reverb({ mix: 0.25, decaySec: 3.2, sizeType: "hall", predelayMs: 45, lowCutHz: 300, highCutHz: 7000 }), safety()],
@@ -364,7 +364,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     name: "Eco a Negra",
     description: "Voz limpia con eco en negras de lado a lado.",
     category: "espacio",
-    cover: art("#0f4a52", "#7ef0ff", "bars"),
+    cover: art("#0f4a52", "#7ef0ff", "orbit"),
     blend: 1,
     factory: true,
     effects: [...phoneBase({ comp: { makeupDb: 12.0 } }), delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.35, mix: 0.2, filterFreq: 4000, lowCutHz: 300 }), safety()],
@@ -402,7 +402,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     name: "Lo-Fi",
     description: "Opaca, cálida y con cuarto: suena a cinta.",
     category: "efectos",
-    cover: art("#d1913c", "#ffd194", "noise"),
+    cover: art("#d1913c", "#ffd194", "dunes"),
     blend: 1,
     factory: true,
     effects: [

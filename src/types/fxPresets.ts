@@ -19,7 +19,7 @@ export const FX_PRESET_CATEGORIES: { id: FxPresetCategory; label: string }[] = [
   { id: "efectos", label: "Efectos" },
 ];
 
-export type CoverPattern = "waves" | "rings" | "grid" | "diagonal" | "dots" | "bars" | "noise";
+export type CoverPattern = "waves" | "rings" | "grid" | "diagonal" | "dots" | "bars" | "noise" | "nebula" | "orbit" | "aurora" | "horizon" | "prism" | "dunes";
 
 export type FxCover =
   /** Two colours and a pattern, drawn as SVG (factory covers and the

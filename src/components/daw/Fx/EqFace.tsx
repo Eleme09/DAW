@@ -9,7 +9,7 @@ import type { EqBand, EqParams } from "@/types/effects";
 import { FxKnob, Pills, fmt } from "./kit";
 
 /**
- * Prisma EQ: Pro-Q's curve (one coloured node per band, the real combined
+ * Prisma (EQ): Pro-Q's curve (one coloured node per band, the real combined
  * response over a live spectrum) laid out like the phone EQ reference
  * (curve on top, band chips, the selected band's controls underneath).
  * Drag a node: left/right = frequency, up/down = gain. Tap empty space to
