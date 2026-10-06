@@ -5,9 +5,10 @@ const BASE_DELAY_SEC = 0.02; // ~20ms — classic chorus territory (vs. flanger'
 const MAX_DELAY_SEC = 0.05;
 
 /**
- * Single-voice modulated delay: an LFO drives the delay time around
- * BASE_DELAY_SEC, the delayed (wet) signal is blended with the dry
- * signal. The LFO oscillator starts once at construction and runs for
+ * Two-voice stereo chorus / doubler: one LFO drives two delay lines in
+ * opposite phase (the right one sits 6 ms longer), panned hard left and
+ * right, blended with the centred dry signal - a doubled voice that opens
+ * to the sides instead of a mono wobble. The LFO oscillator starts once at construction and runs for
  * the node's lifetime — same pattern used for every other continuously-
  * running LFO in this file family (Flanger, AutoPan).
  */
@@ -18,8 +19,11 @@ export class ChorusEffect implements Effect<ChorusParams> {
   private input: GainNode;
   private output: GainNode;
   private delay: DelayNode;
+  private delayR: DelayNode;
+  private merger: ChannelMergerNode;
   private lfo: OscillatorNode;
   private lfoDepth: GainNode;
+  private lfoDepthR: GainNode;
   private dryGain: GainNode;
   private wetGain: GainNode;
   private lfoStartTime: number;
@@ -31,9 +35,13 @@ export class ChorusEffect implements Effect<ChorusParams> {
     this.output = ctx.createGain();
     this.delay = ctx.createDelay(MAX_DELAY_SEC);
     this.delay.delayTime.value = BASE_DELAY_SEC;
+    this.delayR = ctx.createDelay(MAX_DELAY_SEC);
+    this.delayR.delayTime.value = BASE_DELAY_SEC + 0.006;
+    this.merger = ctx.createChannelMerger(2);
     this.lfo = ctx.createOscillator();
     this.lfo.type = "sine";
     this.lfoDepth = ctx.createGain();
+    this.lfoDepthR = ctx.createGain();
     this.dryGain = ctx.createGain();
     this.wetGain = ctx.createGain();
 
@@ -41,11 +49,16 @@ export class ChorusEffect implements Effect<ChorusParams> {
     this.dryGain.connect(this.output);
 
     this.input.connect(this.delay);
-    this.delay.connect(this.wetGain);
+    this.input.connect(this.delayR);
+    this.delay.connect(this.merger, 0, 0);
+    this.delayR.connect(this.merger, 0, 1);
+    this.merger.connect(this.wetGain);
     this.wetGain.connect(this.output);
 
     this.lfo.connect(this.lfoDepth);
     this.lfoDepth.connect(this.delay.delayTime);
+    this.lfo.connect(this.lfoDepthR);
+    this.lfoDepthR.connect(this.delayR.delayTime);
     this.lfoStartTime = ctx.currentTime;
     this.lfo.start();
   }
@@ -74,6 +87,7 @@ export class ChorusEffect implements Effect<ChorusParams> {
     this.lastRateHz = params.rateHz;
     this.lfo.frequency.setTargetAtTime(params.rateHz, t, 0.01);
     this.lfoDepth.gain.setTargetAtTime(params.depthMs / 1000, t, 0.01);
+    this.lfoDepthR.gain.setTargetAtTime(-params.depthMs / 1000, t, 0.01);
     this.dryGain.gain.setTargetAtTime(1 - params.mix, t, 0.01);
     this.wetGain.gain.setTargetAtTime(params.mix, t, 0.01);
   }
@@ -82,8 +96,11 @@ export class ChorusEffect implements Effect<ChorusParams> {
     this.lfo.stop();
     this.input.disconnect();
     this.delay.disconnect();
+    this.delayR.disconnect();
+    this.merger.disconnect();
     this.lfo.disconnect();
     this.lfoDepth.disconnect();
+    this.lfoDepthR.disconnect();
     this.dryGain.disconnect();
     this.wetGain.disconnect();
   }

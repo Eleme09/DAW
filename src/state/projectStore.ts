@@ -1,3 +1,5 @@
+import { TEMPO_DIVISIONS, divisionToMs } from "@/audio-engine/effects/tempoGrid";
+import { instantiateChain, serializeChain, type FxChainPreset, type TrackFxState } from "@/types/fxPresets";
 import { create } from "zustand";
 import { splitCyclePasses } from "@/lib/timeline/cyclePasses";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
@@ -33,6 +35,22 @@ import { DEFAULT_PIXELS_PER_SECOND, MIN_PIXELS_PER_SECOND, MAX_PIXELS_PER_SECOND
  * type union doesn't distinguish them structurally; `mutateInserts` below
  * resolves which one by actually looking it up in `project.tracks` then
  * `project.buses`. */
+/** Rewrites the time of every delay that follows a note value (params.sync)
+ * from `bpm` - the engine only reads timeMs. Unchanged chains keep identity. */
+export function syncDelaysToTempo(inserts: EffectInstance[], bpm: number): EffectInstance[] {
+  let changed = false;
+  const next = inserts.map((e) => {
+    if (e.type !== "delay" || !e.params.sync) return e;
+    const division = TEMPO_DIVISIONS.find((d) => d.label === e.params.sync);
+    if (!division) return e;
+    const timeMs = Math.min(4000, divisionToMs(division.beats, bpm));
+    if (Math.abs(timeMs - e.params.timeMs) < 0.01) return e;
+    changed = true;
+    return { ...e, params: { ...e.params, timeMs } };
+  });
+  return changed ? next : inserts;
+}
+
 export type EffectTarget = TrackId | BusId | "master";
 /** Which single pane is full-width on mobile - see DawShell. Unused at `md`+,
  * where every pane renders simultaneously. */
@@ -172,6 +190,13 @@ interface ProjectState {
 
   addEffect: (target: EffectTarget, type: EffectType) => void;
   setEffectChain: (target: EffectTarget, inserts: EffectInstance[]) => void;
+  /** Replaces a track's chain with a fresh copy of `preset` (BandLab: tap a
+   * preset tile). `null` clears the chain ("Ninguno"). */
+  applyFxPreset: (trackId: TrackId, preset: FxChainPreset | null) => void;
+  /** The chain's Blend (0 = dry, 1 = full chain). */
+  setFxBlend: (trackId: TrackId, blend: number) => void;
+  /** After saving: the track's chain now IS this preset (no unsaved edits). */
+  markFxSaved: (trackId: TrackId, preset: FxChainPreset) => void;
   removeEffect: (target: EffectTarget, effectId: string) => void;
   moveEffect: (target: EffectTarget, effectId: string, direction: -1 | 1) => void;
   updateEffectParams: (target: EffectTarget, effectId: string, params: EffectInstance["params"]) => void;
@@ -898,6 +923,43 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     setEffectChain: (target, inserts) => {
       mutateInserts(target, () => inserts);
     },
+    applyFxPreset: (trackId, preset) => {
+      const project = get().project;
+      const bpm = project.bpm;
+      const inserts = preset ? syncDelaysToTempo(instantiateChain(preset.effects), bpm) : [];
+      const fx: TrackFxState | undefined = preset
+        ? { presetId: preset.id, name: preset.name, blend: preset.blend, baseline: serializeChain(inserts) }
+        : undefined;
+      const nextProject = touch({
+        ...project,
+        tracks: project.tracks.map((t) => (t.id === trackId ? { ...t, inserts, fx } : t)),
+      });
+      setProject(nextProject);
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+    },
+    setFxBlend: (trackId, blend) => {
+      const project = get().project;
+      const nextProject = touch({
+        ...project,
+        tracks: project.tracks.map((t) =>
+          t.id === trackId ? { ...t, fx: { presetId: null, name: null, baseline: null, ...t.fx, blend } } : t
+        ),
+      });
+      setProject(nextProject, { coalesce: true });
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+    },
+    markFxSaved: (trackId, preset) => {
+      const project = get().project;
+      const nextProject = touch({
+        ...project,
+        tracks: project.tracks.map((t) =>
+          t.id === trackId
+            ? { ...t, fx: { presetId: preset.id, name: preset.name, blend: t.fx?.blend ?? preset.blend, baseline: serializeChain(t.inserts) } }
+            : t
+        ),
+      });
+      setProject(nextProject);
+    },
     removeEffect: (target, effectId) => {
       mutateInserts(target, (inserts) => inserts.filter((e) => e.id !== effectId));
     },
@@ -924,7 +986,20 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       );
     },
 
-    setBpm: (bpm) => setProject(touch({ ...get().project, bpm }), { coalesce: true }),
+    setBpm: (bpm) => {
+      const project = get().project;
+      // delays synced to a note value follow the new tempo
+      const nextProject = touch({
+        ...project,
+        bpm,
+        tracks: project.tracks.map((t) => ({ ...t, inserts: syncDelaysToTempo(t.inserts, bpm) })),
+        buses: project.buses.map((b) => ({ ...b, inserts: syncDelaysToTempo(b.inserts, bpm) })),
+        masterInserts: syncDelaysToTempo(project.masterInserts, bpm),
+      });
+      setProject(nextProject, { coalesce: true });
+      getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
+      getAudioEngine().syncMasterInserts(nextProject.masterInserts);
+    },
     setTimeSignature: (num, den) =>
       setProject(touch({ ...get().project, timeSignature: [num, den] }), { coalesce: true }),
     setLoop: (patch) =>

@@ -64,6 +64,12 @@ export interface ReverbParams {
   mix: number; // 0..1
   decaySec: number;
   sizeType: "room" | "hall" | "plate";
+  /** Gap before the tail starts - keeps the words in front of the room. */
+  predelayMs?: number;
+  /** Filters on the tail only (the dry voice is untouched): a vocal reverb
+   * without low end doesn't muddy the beat, without top end it sits behind. */
+  lowCutHz?: number;
+  highCutHz?: number;
 }
 
 export interface DelayParams {
@@ -71,13 +77,21 @@ export interface DelayParams {
   feedback: number; // 0..0.95
   mix: number; // 0..1
   filterFreq: number;
+  /** Tempo division the time follows (TEMPO_DIVISIONS label, e.g. "1/4"),
+   * or null/absent for free milliseconds. When set, `timeMs` is rewritten
+   * from the project tempo (store: syncTempoDelays), so the engine only
+   * ever reads `timeMs`. */
+  sync?: string | null;
+  /** Echoes alternate left/right. */
+  pingPong?: boolean;
+  /** High-pass on the echoes only - keeps the repeats out of the 808. */
+  lowCutHz?: number;
 }
 
 /**
- * 3-band split via standard 2nd-order (12dB/oct) filters, not a
- * phase-corrected Linkwitz-Riley crossover — a known simplification
- * (some band overlap/coloration right at the crossover points), named
- * here rather than hidden. Attack/release are shared across bands;
+ * 3-band split via a 4th-order Linkwitz-Riley crossover with allpass
+ * compensation on the low band (sums flat when not compressing; see
+ * MultibandCompressorEffect). Attack/release are shared across bands;
  * threshold/ratio/makeup are per-band.
  */
 export interface MultibandBandParams {

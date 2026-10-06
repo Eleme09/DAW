@@ -1,25 +1,25 @@
 import type { Effect } from "./Effect";
 import type { MultibandBandParams, MultibandCompressorParams } from "@/types/effects";
+import { BUTTERWORTH_Q_DB } from "./latency";
 
 /**
- * 3-band parallel crossover: each band is split off with standard 2nd-order
- * (12dB/oct) highpass/lowpass BiquadFilterNodes, not a phase-corrected
- * Linkwitz-Riley crossover — simpler, but leaves some band overlap/
- * coloration right at the crossover frequencies. A known simplification,
- * named in types/effects.ts's doc comment rather than presented as
- * mastering-grade band splitting. Each band gets its own
- * DynamicsCompressorNode + makeup gain; all three sum back together
- * (multiple connections into one GainNode is exactly that sum).
+ * 3-band Linkwitz-Riley (4th-order) crossover: input splits at lowMidFreq
+ * into low and rest, the rest splits at midHighFreq into mid and high. The
+ * low band also goes through the second crossover's allpass (its own LP+HP
+ * sum at midHighFreq) so its phase matches mid+high and the three bands sum
+ * flat when nothing is compressing. Butterworth sections use Web Audio's
+ * dB-valued Q (BUTTERWORTH_Q_DB). Each band gets its own
+ * DynamicsCompressorNode + makeup gain; the three compressors share the same
+ * look-ahead, so the bands stay aligned.
  */
 export class MultibandCompressorEffect implements Effect<MultibandCompressorParams> {
   private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
-
-  private lowLowpass: BiquadFilterNode;
-  private midHighpass: BiquadFilterNode;
-  private midLowpass: BiquadFilterNode;
-  private highHighpass: BiquadFilterNode;
+  /** Filters tuned to lowMidFreq / midHighFreq. */
+  private lowSplit: BiquadFilterNode[] = [];
+  private highSplit: BiquadFilterNode[] = [];
+  private nodes: AudioNode[] = [];
 
   private lowComp: DynamicsCompressorNode;
   private midComp: DynamicsCompressorNode;
@@ -33,14 +33,19 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     this.input = ctx.createGain();
     this.output = ctx.createGain();
 
-    this.lowLowpass = ctx.createBiquadFilter();
-    this.lowLowpass.type = "lowpass";
-    this.midHighpass = ctx.createBiquadFilter();
-    this.midHighpass.type = "highpass";
-    this.midLowpass = ctx.createBiquadFilter();
-    this.midLowpass.type = "lowpass";
-    this.highHighpass = ctx.createBiquadFilter();
-    this.highHighpass.type = "highpass";
+    /** Two Butterworth sections in series (LR4); returns [first, last]. */
+    const lr = (type: BiquadFilterType, group: BiquadFilterNode[]): [BiquadFilterNode, BiquadFilterNode] => {
+      const a = ctx.createBiquadFilter();
+      const b = ctx.createBiquadFilter();
+      for (const f of [a, b]) {
+        f.type = type;
+        f.Q.value = BUTTERWORTH_Q_DB;
+        group.push(f);
+        this.nodes.push(f);
+      }
+      a.connect(b);
+      return [a, b];
+    };
 
     this.lowComp = ctx.createDynamicsCompressor();
     this.midComp = ctx.createDynamicsCompressor();
@@ -49,20 +54,34 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     this.midMakeup = ctx.createGain();
     this.highMakeup = ctx.createGain();
 
-    this.input.connect(this.lowLowpass);
-    this.lowLowpass.connect(this.lowComp);
+    // low: LP @ lowMid, then the allpass @ midHigh (LP + HP summed)
+    const [lowIn, lowOut] = lr("lowpass", this.lowSplit);
+    const [apLpIn, apLpOut] = lr("lowpass", this.highSplit);
+    const [apHpIn, apHpOut] = lr("highpass", this.highSplit);
+    const lowSum = ctx.createGain();
+    this.nodes.push(lowSum);
+    this.input.connect(lowIn);
+    lowOut.connect(apLpIn);
+    lowOut.connect(apHpIn);
+    apLpOut.connect(lowSum);
+    apHpOut.connect(lowSum);
+    lowSum.connect(this.lowComp);
+
+    // rest: HP @ lowMid, then split @ midHigh
+    const [restIn, restOut] = lr("highpass", this.lowSplit);
+    const [midIn, midOut] = lr("lowpass", this.highSplit);
+    const [highIn, highOut] = lr("highpass", this.highSplit);
+    this.input.connect(restIn);
+    restOut.connect(midIn);
+    restOut.connect(highIn);
+    midOut.connect(this.midComp);
+    highOut.connect(this.highComp);
+
     this.lowComp.connect(this.lowMakeup);
-    this.lowMakeup.connect(this.output);
-
-    this.input.connect(this.midHighpass);
-    this.midHighpass.connect(this.midLowpass);
-    this.midLowpass.connect(this.midComp);
     this.midComp.connect(this.midMakeup);
-    this.midMakeup.connect(this.output);
-
-    this.input.connect(this.highHighpass);
-    this.highHighpass.connect(this.highComp);
     this.highComp.connect(this.highMakeup);
+    this.lowMakeup.connect(this.output);
+    this.midMakeup.connect(this.output);
     this.highMakeup.connect(this.output);
   }
 
@@ -83,10 +102,8 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
   setParams(params: MultibandCompressorParams): void {
     const t = this.ctx.currentTime;
 
-    this.lowLowpass.frequency.setTargetAtTime(params.lowMidFreq, t, 0.01);
-    this.midHighpass.frequency.setTargetAtTime(params.lowMidFreq, t, 0.01);
-    this.midLowpass.frequency.setTargetAtTime(params.midHighFreq, t, 0.01);
-    this.highHighpass.frequency.setTargetAtTime(params.midHighFreq, t, 0.01);
+    for (const f of this.lowSplit) f.frequency.setTargetAtTime(params.lowMidFreq, t, 0.01);
+    for (const f of this.highSplit) f.frequency.setTargetAtTime(params.midHighFreq, t, 0.01);
 
     this.applyBand(this.lowComp, this.lowMakeup, params.low, params);
     this.applyBand(this.midComp, this.midMakeup, params.mid, params);
@@ -109,10 +126,7 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
 
   dispose(): void {
     this.input.disconnect();
-    this.lowLowpass.disconnect();
-    this.midHighpass.disconnect();
-    this.midLowpass.disconnect();
-    this.highHighpass.disconnect();
+    for (const n of this.nodes) n.disconnect();
     this.lowComp.disconnect();
     this.midComp.disconnect();
     this.highComp.disconnect();

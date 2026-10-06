@@ -1,7 +1,7 @@
 "use client";
 
 import { useProjectStore } from "@/state/projectStore";
-import { EFFECT_LABELS } from "@/types/effects";
+import { fxChipLabel } from "@/lib/fx/catalog";
 import type { Track } from "@/types/project";
 import { MicIcon } from "../icons";
 import { TRACK_HEIGHT } from "./constants";
@@ -79,7 +79,7 @@ export function CompactTrackHeader({ track, width, collapsed, selected }: Compac
             {firstFx ? (
               <>
                 <span className="font-bold italic">Fx</span>
-                <span className="truncate">{EFFECT_LABELS[firstFx.type]}</span>
+                <span className="truncate">{fxChipLabel(track)}</span>
               </>
             ) : (
               <span className="font-semibold">

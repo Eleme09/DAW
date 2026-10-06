@@ -18,6 +18,7 @@ import { StereoWidthEffect } from "./StereoWidthEffect";
 import { PitchCorrectionEffect } from "./PitchCorrectionEffect";
 import { VocoderEffect } from "./VocoderEffect";
 import type { EffectInstance, EffectType } from "@/types/effects";
+import { compressorLatencySec } from "./latency";
 
 export interface EffectChainDeps {
   isNoiseGateWorkletLoaded: () => boolean;
@@ -91,6 +92,11 @@ function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unkno
   }
 }
 
+/** Effects built on DynamicsCompressorNode, whose fixed look-ahead delays
+ * the signal (see latency.ts). The chain's dry path for Blend is delayed by
+ * the same amount, or mixing it back in would comb-filter the voice. */
+const LATENT_TYPES = new Set<EffectType>(["compressor", "deesser", "limiter", "multibandCompressor"]);
+
 interface ChainEntry {
   instance: Effect<unknown>;
   type: EffectType;
@@ -107,6 +113,13 @@ export class EffectChain {
   private deps: EffectChainDeps;
   private input: GainNode;
   private output: GainNode;
+  /** Blend (BandLab's per-chain dry/wet): the processed chain ends in
+   * `wet`, the untouched input reaches the output through `dryDelay` +
+   * `dry`, latency-matched to the chain. */
+  private wet: GainNode;
+  private dry: GainNode;
+  private dryDelay: DelayNode;
+  private blend = 1;
   private effects = new Map<string, ChainEntry>();
   private lastInserts: EffectInstance[] = [];
 
@@ -115,7 +128,28 @@ export class EffectChain {
     this.deps = deps;
     this.input = ctx.createGain();
     this.output = ctx.createGain();
-    this.input.connect(this.output);
+    this.wet = ctx.createGain();
+    this.dry = ctx.createGain();
+    this.dry.gain.value = 0;
+    this.dryDelay = ctx.createDelay(0.2);
+    this.wet.connect(this.output);
+    this.dryDelay.connect(this.dry);
+    this.dry.connect(this.output);
+    this.input.connect(this.wet);
+    this.input.connect(this.dryDelay);
+  }
+
+  /** 0 = dry voice only, 1 = the full chain (default). */
+  setBlend(blend: number): void {
+    const b = Math.min(1, Math.max(0, Number.isFinite(blend) ? blend : 1));
+    this.blend = b;
+    const t = this.ctx.currentTime;
+    this.wet.gain.setTargetAtTime(b, t, 0.01);
+    this.dry.gain.setTargetAtTime(1 - b, t, 0.01);
+  }
+
+  getBlend(): number {
+    return this.blend;
   }
 
   get inputNode(): AudioNode {
@@ -188,13 +222,17 @@ export class EffectChain {
     for (const [, entry] of this.effects) entry.wrapper.outputNode.disconnect();
 
     let node: AudioNode = this.input;
+    let latency = 0;
     for (const ins of inserts) {
       const entry = this.effects.get(ins.id);
       if (!entry) continue; // still pending (e.g. worklet loading)
       node.connect(entry.wrapper.inputNode);
       node = entry.wrapper.outputNode;
+      if (!ins.bypassed && LATENT_TYPES.has(ins.type)) latency += compressorLatencySec(this.ctx.sampleRate);
     }
-    node.connect(this.output);
+    node.connect(this.wet);
+    this.input.connect(this.dryDelay);
+    this.dryDelay.delayTime.value = Math.min(0.2, latency);
   }
 
   /** Called continuously by AudioEngine's own maintenance loop (not tied to
@@ -227,6 +265,9 @@ export class EffectChain {
     }
     this.effects.clear();
     this.input.disconnect();
+    this.wet.disconnect();
+    this.dry.disconnect();
+    this.dryDelay.disconnect();
     this.output.disconnect();
   }
 }

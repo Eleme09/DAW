@@ -1,18 +1,31 @@
 import type { Effect } from "./Effect";
 import type { DeEsserParams } from "@/types/effects";
+import { BUTTERWORTH_Q_DB, compressorLatencySec } from "./latency";
 
 /**
  * Split-band de-esser: the signal above `freq` goes through a fast
  * compressor (ducking sibilance specifically), the signal below passes
  * untouched, and the two bands are summed back together. Standard technique,
  * built entirely from stock nodes — no custom DSP needed.
+ *
+ * The split is a 4th-order Linkwitz-Riley crossover (two Butterworth
+ * sections per side). Web Audio's lowpass/highpass Q is in dB, so
+ * Butterworth is BUTTERWORTH_Q_DB (-3.01), not 0.707. Measured in Chromium
+ * (steady tones, 44.1 kHz, not compressing): this sums flat (0.00 dB from
+ * 100 Hz to 14 kHz); the earlier single LP + HP sank -4.2 dB at 6.5 kHz on
+ * every voice, compressing or not. The low band is delayed by the
+ * compressor's look-ahead (whole samples, see compressorLatencySec) so the
+ * two bands line up again.
  */
 export class DeEsserEffect implements Effect<DeEsserParams> {
   private ctx: BaseAudioContext;
   private input: GainNode;
   private output: GainNode;
   private lowBand: BiquadFilterNode;
+  private lowBand2: BiquadFilterNode;
+  private lowDelay: DelayNode;
   private highBand: BiquadFilterNode;
+  private highBand2: BiquadFilterNode;
   private sibilanceCompressor: DynamicsCompressorNode;
   /** Sits inline right after `input` (input -> analyser -> low/high split),
    * same reasoning as NoiseGateEffect.inputAnalyser: a track/master
@@ -30,11 +43,18 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
     this.inputAnalyser = ctx.createAnalyser();
     this.inputAnalyser.fftSize = 2048;
 
-    this.lowBand = ctx.createBiquadFilter();
-    this.lowBand.type = "lowpass";
-
-    this.highBand = ctx.createBiquadFilter();
-    this.highBand.type = "highpass";
+    const butter = (type: BiquadFilterType) => {
+      const f = ctx.createBiquadFilter();
+      f.type = type;
+      f.Q.value = BUTTERWORTH_Q_DB;
+      return f;
+    };
+    this.lowBand = butter("lowpass");
+    this.lowBand2 = butter("lowpass");
+    this.highBand = butter("highpass");
+    this.highBand2 = butter("highpass");
+    this.lowDelay = ctx.createDelay(0.05);
+    this.lowDelay.delayTime.value = compressorLatencySec(ctx.sampleRate);
 
     this.sibilanceCompressor = ctx.createDynamicsCompressor();
     this.sibilanceCompressor.knee.value = 0;
@@ -44,8 +64,11 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
     this.input.connect(this.inputAnalyser);
     this.inputAnalyser.connect(this.lowBand);
     this.inputAnalyser.connect(this.highBand);
-    this.lowBand.connect(this.output);
-    this.highBand.connect(this.sibilanceCompressor);
+    this.lowBand.connect(this.lowBand2);
+    this.lowBand2.connect(this.lowDelay);
+    this.lowDelay.connect(this.output);
+    this.highBand.connect(this.highBand2);
+    this.highBand2.connect(this.sibilanceCompressor);
     this.sibilanceCompressor.connect(this.output);
   }
 
@@ -69,8 +92,7 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
 
   setParams(params: DeEsserParams): void {
     const t = this.ctx.currentTime;
-    this.lowBand.frequency.setTargetAtTime(params.freq, t, 0.01);
-    this.highBand.frequency.setTargetAtTime(params.freq, t, 0.01);
+    for (const f of [this.lowBand, this.lowBand2, this.highBand, this.highBand2]) f.frequency.setTargetAtTime(params.freq, t, 0.01);
     this.sibilanceCompressor.threshold.setTargetAtTime(params.thresholdDb, t, 0.01);
     this.sibilanceCompressor.ratio.setTargetAtTime(params.ratio, t, 0.01);
   }
@@ -78,7 +100,10 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
   dispose(): void {
     this.input.disconnect();
     this.lowBand.disconnect();
+    this.lowBand2.disconnect();
+    this.lowDelay.disconnect();
     this.highBand.disconnect();
+    this.highBand2.disconnect();
     this.sibilanceCompressor.disconnect();
   }
 }

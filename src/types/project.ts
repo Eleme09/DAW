@@ -1,4 +1,5 @@
 import type { EffectInstance } from "./effects";
+import type { TrackFxState } from "./fxPresets";
 import type { AutoPitchSettings } from "./autoPitch";
 
 export type TrackId = string;
@@ -101,6 +102,9 @@ export interface Track {
   /** Up to 2 auxiliary sends (PROMPT_MAESTRO FASE 3) - UI caps it there,
    * the array itself isn't hard-limited by the type. */
   sends: Send[];
+  /** Which Fx preset the chain came from, and the chain's Blend
+   * (types/fxPresets.ts). Absent = no preset, Blend 100 %. */
+  fx?: TrackFxState;
   /** BandLab AutoPitch (types/autoPitch.ts) - processed before the Fx chain,
    * live and on playback; the recording itself stays dry. Absent until the
    * track's AutoPitch is first opened. */

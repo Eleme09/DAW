@@ -5,7 +5,7 @@ import { useProjectStore } from "@/state/projectStore";
 import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { Timeline } from "./Timeline/Timeline";
 import { MobileMixView } from "./Mixer/MobileMixView";
-import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
+import { FxPanel } from "./Fx/FxPanel";
 import { BrowserPanel } from "./BrowserPanel";
 import { TrackEditorView } from "./TrackEditorView";
 import { AutomationEditor } from "./Automation/AutomationEditor";
@@ -209,21 +209,7 @@ export function MobileStudio() {
           </div>
         )}
 
-        {panelOpen && (
-          <div className="flex h-[46%] shrink-0 flex-col border-t border-line-2 bg-ink">
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-line px-3">
-              <span className="truncate text-xs font-semibold text-bone">
-                Efectos{selectedTrack ? ` · ${selectedTrack.name}` : ""}
-              </span>
-              <button onClick={() => setMobileView("timeline")} aria-label="Cerrar panel" title="Cerrar panel" className="flex h-9 w-9 items-center justify-center rounded-full text-bone-2">
-                <CloseIcon className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <EffectsRackPanel />
-            </div>
-          </div>
-        )}
+        {panelOpen && <FxPanel onClose={() => setMobileView("timeline")} />}
 
         {mobileView === "voz" && (
           <div className="absolute inset-0 z-30 flex flex-col bg-ink">

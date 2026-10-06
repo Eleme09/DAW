@@ -7,12 +7,14 @@
  */
 
 export const DB_NAME = "personal-daw";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 export const STORES = {
   samples: "samples",
   projects: "projects",
   sampleAssets: "sampleAssets",
+  /** The user's own Fx chain presets (types/fxPresets.ts), global to the app. */
+  fxPresets: "fxPresets",
 } as const;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -33,6 +35,9 @@ export function openDb(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains(STORES.sampleAssets)) {
           const store = db.createObjectStore(STORES.sampleAssets, { keyPath: "id" });
           store.createIndex("createdAt", "createdAt");
+        }
+        if (!db.objectStoreNames.contains(STORES.fxPresets)) {
+          db.createObjectStore(STORES.fxPresets, { keyPath: "id" });
         }
       };
       req.onsuccess = () => resolve(req.result);

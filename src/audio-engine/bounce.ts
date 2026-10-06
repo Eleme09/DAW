@@ -139,6 +139,7 @@ export async function bounceProject(
     muteGain.connect(master);
 
     effectChain.setInserts(track.inserts);
+    effectChain.setBlend(track.fx?.blend ?? 1);
     volume.gain.value = dbToGain(track.volumeDb);
     pan.pan.value = track.pan;
     // Anchored at time 0 (a bounce always starts from the top) - same

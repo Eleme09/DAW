@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
-import { EFFECT_LABELS } from "@/types/effects";
+import { fxChipLabel } from "@/lib/fx/catalog";
 import type { Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
 import { BottomSheet } from "../BottomSheet";
@@ -163,7 +163,7 @@ function TrackCard({
           {firstFx ? (
             <>
               <span className="font-bold italic">Fx</span>
-              <span className="truncate">{EFFECT_LABELS[firstFx.type]}</span>
+              <span className="truncate">{fxChipLabel(track)}</span>
             </>
           ) : (
             <span className="font-semibold">

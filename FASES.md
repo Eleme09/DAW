@@ -2,14 +2,14 @@
 
 Cómo se trabaja: el usuario manda videos/capturas de BandLab sobre UN tema → se copia distribución + funciones → se prueba en Chromium (390×844) → commit + push a `claude/personal-ai-daw-s9v97w` → se actualiza este archivo → el usuario hace `/clear` y manda el siguiente tema.
 
-Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BANDLAB_REFERENCE.md` (§13 clips, §14 grabar, §15 AutoPitch, §16 letra y ajustes).
+Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BANDLAB_REFERENCE.md` (§13 clips, §14 grabar, §15 AutoPitch, §16 letra y ajustes, §17 +Fx).
 
 | # | Tema | Estado | Commit |
 |---|------|--------|--------|
 | 0 | Estructura: pantalla de proyectos, Studio de una pantalla, Mezcla, línea fija al centro | Hecho | 3084494, 9dd8399 |
 | 1 | Clips: seleccionar, barra de acciones, menú ⋯, panel inferior, Armonizar | Hecho | d94f9eb |
 | 2 | Grabar + desplazamiento: eje bloqueado con inercia, toma en vivo, ciclo y tomas, editor de pista | Hecho | 09fcf9d |
-| 3 | Efectos (+Fx): librería de presets, agregar efecto, perillas | Pendiente — esperar videos |  |
+| 3 | Efectos (+Fx): librería de presets, agregar efecto, perillas | Hecho (sin escucha del usuario: ver PROGRESS) | PENDIENTE_COMMIT |
 | 4 | AutoPitch: panel, tonalidad, categorías, armonías (24 presets) + pestañas Letra y Ajustes | Hecho (con ajustes posteriores: ver PROGRESS) | 6369504, eb45d8e |
 | 5 | Masterización: Universal/Fire/Clarity/Tape, intensidad, EQ | Pendiente |  |
 | 6 | Automatización | Pendiente |  |
@@ -17,6 +17,8 @@ Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BA
 | 8 | Biblioteca de proyectos | Pendiente |  |
 
 ## Pendientes conocidos de fases hechas
+
+- Tema 3: nadie escuchó los 22 preajustes; solo se midieron (nivel, picos). Los umbrales de compresión son fijos: con una voz grabada mucho más baja o más alta que la de prueba (−8.7 LUFS) comprimen distinto. Latencia del compresor medida solo en Chromium (Safari sin medir). Falta saber a quién se refiere "topboy" para hacerle cadena. El escritorio (DawShell) sigue con el rack viejo.
 
 - Tema 4: los presets premium no se pudieron escuchar en BandLab; su sonido sale de la descripción oficial de cada uno (FAQ de AutoPitch), no de una comparación de audio. Sin probar en un iPhone real: consumo de CPU (medido en Node: 7–16 % de un núcleo por pista según preset) y latencia al monitorear.
 - Tema 4: se corrigió un fallo grave (la salida se disparaba y luego se quedaba muda con la perilla baja) pero NO se pudo comparar a oído contra BandLab; si el timbre sigue sin gustar, mandar un video corto con el MISMO fragmento en BandLab y en el DAW, con un solo preset (Classic) a la vez.

@@ -470,6 +470,7 @@ export class AudioEngine {
       }
       this.syncAutoPitch(track, graph);
       graph.effectChain.setInserts(track.inserts);
+      graph.effectChain.setBlend(track.fx?.blend ?? 1);
       graph.volume.gain.value = dbToGain(track.volumeDb);
       graph.pan.pan.value = track.pan;
       const audible = !track.muted && (this.soloedTracks.size === 0 || track.solo);

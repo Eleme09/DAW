@@ -185,3 +185,12 @@ pide un video/captura al usuario en vez de inventarla.
 
 - Selector superior de 3: **onda** (Studio), **pluma** (letra/notas: regla arriba y página en blanco "Añade aquí letra/notas..."), **engranaje** (página de ajustes, sin regla). Con letra o ajustes se oculta la fila de la pista; el transporte queda.
 - Ajustes de BandLab: Suscripción; **Ajustes del proyecto** (Tempo con − / número / + y "Pulsa Tempo", Marca de tiempo 4/4, Clave del proyecto); **Ajustes de Studio** (Mostrar acceso directo a los sonidos, Contar Off, Volumen de metrónomo 98 %, Overdub de MIDI, Cuantificar grabaciones MIDI, Dispositivo de entrada con rueda "Micrófono del iPhone", Canal de entrada); Captura de pantalla (marca de agua); Herramientas (Tuner); Ayuda. Por pedido del usuario se copió solo lo que este DAW usa (sin MIDI, sonidos, marca de agua, tuner ni ayuda) y se agregó Exportar.
+
+## 17. +Fx (preajustes y cadena) — 7 videos del usuario (tema 3)
+
+- **Hoja de preajustes** (debajo de la línea de tiempo, que sigue visible): encabezado con la pista; pestañas ☆ / Mis preajustes / categorías; cuadrícula de 3 columnas con portada y nombre; abajo la **tarjeta del preajuste activo** con portada, nombre, ☆, ícono de editar cadena y **Blend** (deslizador con %); botones **+ Crear** y buscar.
+- Al cambiar algo de la cadena el preajuste pasa a "personalizado" y aparece **Guardar**. Salir o cambiar de preajuste con cambios sin guardar abre un diálogo (Guardar / Descartar / Cancelar).
+- **Editor de cadena**: tira horizontal con los efectos en orden (tocar = abrir, + = añadir), debajo la cara del efecto seleccionado con encendido/apagado, mover y borrar.
+- **Librería de efectos**: lista con categorías en chips, buscador y favoritos; tocar añade el efecto a la cadena.
+- **Detalles del preajuste** al guardar: nombre, descripción de hasta 50 caracteres, portada (colores o foto).
+- En BandLab muchos preajustes son de otros usuarios (comunidad). Aquí no hay comunidad: se reemplazan por 22 preajustes de fábrica propios (ver PROGRESS, Tema 3).
