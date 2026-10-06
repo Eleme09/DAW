@@ -1,6 +1,7 @@
 import type { Effect } from "./Effect";
 import type { MultibandBandParams, MultibandCompressorParams } from "@/types/effects";
 import { BUTTERWORTH_Q_DB } from "./latency";
+import { nativeCompressorMakeupDb } from "./nativeCompressor";
 
 /**
  * 3-band Linkwitz-Riley (4th-order) crossover: input splits at lowMidFreq
@@ -121,7 +122,10 @@ export class MultibandCompressorEffect implements Effect<MultibandCompressorPara
     comp.ratio.setTargetAtTime(band.ratio, t, 0.01);
     comp.attack.setTargetAtTime(shared.attackMs / 1000, t, 0.005);
     comp.release.setTargetAtTime(shared.releaseMs / 1000, t, 0.01);
-    makeup.gain.setTargetAtTime(Math.pow(10, band.makeupDb / 20), t, 0.01);
+    // minus the node's automatic makeup (nativeCompressor.ts), which differs
+    // per band with each band's threshold/ratio and tilted the tone
+    const auto = nativeCompressorMakeupDb(band.thresholdDb, band.ratio, comp.knee.value);
+    makeup.gain.setTargetAtTime(Math.pow(10, (band.makeupDb - auto) / 20), t, 0.01);
   }
 
   dispose(): void {

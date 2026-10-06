@@ -1,7 +1,12 @@
 import type { Effect } from "./Effect";
 import type { CompressorParams } from "@/types/effects";
+import { nativeCompressorMakeupDb } from "./nativeCompressor";
 
-/** Thin wrapper around the native DynamicsCompressorNode + a makeup-gain stage. */
+/** Thin wrapper around the native DynamicsCompressorNode + a makeup-gain
+ * stage. The node's own automatic makeup (nativeCompressor.ts) is divided
+ * back out, so `makeupDb` is the real makeup: lowering the threshold
+ * compresses more and gets quieter, as on any hardware compressor, instead
+ * of getting louder by itself. */
 export class CompressorEffect implements Effect<CompressorParams> {
   private ctx: BaseAudioContext;
   private compressor: DynamicsCompressorNode;
@@ -36,7 +41,8 @@ export class CompressorEffect implements Effect<CompressorParams> {
     this.compressor.attack.setTargetAtTime(params.attackMs / 1000, t, 0.005);
     this.compressor.release.setTargetAtTime(params.releaseMs / 1000, t, 0.01);
     this.compressor.knee.setTargetAtTime(params.kneeDb, t, 0.01);
-    this.makeup.gain.setTargetAtTime(Math.pow(10, params.makeupDb / 20), t, 0.01);
+    const auto = nativeCompressorMakeupDb(params.thresholdDb, params.ratio, params.kneeDb);
+    this.makeup.gain.setTargetAtTime(Math.pow(10, (params.makeupDb - auto) / 20), t, 0.01);
   }
 
   dispose(): void {

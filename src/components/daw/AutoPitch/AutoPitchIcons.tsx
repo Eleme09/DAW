@@ -19,6 +19,12 @@ const PATHS: Record<AutoPitchPresetId, React.ReactNode> = {
       <circle cx="18.5" cy="5.5" r="1.8" />
     </>
   ),
+  hardTune: (
+    <>
+      <path d="M3 18h4.5v-4.5H12V9h4.5V4.5H21" />
+      <path d="M3 21h18" opacity="0.45" />
+    </>
+  ),
   duet: (
     <>
       <circle cx="7" cy="15" r="3.5" />

@@ -272,6 +272,9 @@ const PARAMS = [
   ["chorusDepth", 3, 0, 15],
   ["chorusRate", 0.5, 0.05, 8],
   ["outGain", 1, 0, 4],
+  // Hard Tune: output pitch locked to the note (see deposit) and note
+  // switching with a narrow tolerance (see decide).
+  ["hard", 0, 0, 1],
 ];
 for (let i = 0; i < MAX_VOICES; i++) {
   PARAMS.push([`v${i}Active`, 0, 0, 1]);
@@ -325,6 +328,9 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     // at the same two frame centres (see deposit: local period following)
     this.histD0 = 0;
     this.histD1 = 0;
+    // pitch the lead should sing (detected + correction), 0 = none (Hard Tune)
+    this.histO0 = 0;
+    this.histO1 = 0;
     this.histG0 = 0;
     this.histG1 = 0;
     this.followGain = 0;
@@ -722,7 +728,13 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       const rawMargin = Math.abs(d - this.targetNote) - Math.abs(d - nearest);
       const avgMargin = Math.abs(this.avgMidi - this.targetNote) - Math.abs(this.avgMidi - avgNearest);
       let next = null;
-      if (nearest !== this.targetNote && rawMargin > 0.5) next = nearest;
+      if (p.hard >= 0.5) {
+        // Hard Tune: the note flips as soon as the voice is 0.1 st past the
+        // midpoint, so a slide comes out as a staircase of scale notes (the
+        // effect people hear as "autotune"). A note is held at least 30 ms,
+        // so a vibrato riding the midpoint can't chatter between two notes.
+        if (nearest !== this.targetNote && rawMargin > 0.2 && this.heldSec >= 0.03) next = nearest;
+      } else if (nearest !== this.targetNote && rawMargin > 0.5) next = nearest;
       else if (nearest !== this.targetNote && avgNearest === nearest && avgMargin > 0.1) next = nearest;
       if (next !== null) {
         this.targetNote = next;
@@ -770,6 +782,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.histD0 = this.histD1;
     this.histG0 = this.histG1;
     this.histD1 = this.detMidi === null ? 0 : this.detMidi;
+    this.histO0 = this.histO1;
+    this.histO1 = this.voiced && this.targetNote !== null && this.detMidi !== null ? this.detMidi + this.correction : 0;
     this.histG1 = this.followGain;
   }
 
@@ -780,6 +794,17 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     if (span <= 0) return this.histD1;
     const a = clamp((t - this.histT0) / span, 0, 1);
     return this.histD0 + (this.histD1 - this.histD0) * a;
+  }
+
+  /** Pitch the lead should sing at input instant `t` (MIDI), interpolated
+   * between the last two frames and never extrapolated; 0 when there is no
+   * note. With an instant correction it is the note itself. */
+  wantedAt(t) {
+    if (this.histO0 <= 0 || this.histO1 <= 0) return 0;
+    const span = this.histT1 - this.histT0;
+    if (span <= 0) return this.histO1;
+    const a = clamp((t - this.histT0) / span, 0, 1);
+    return this.histO0 + (this.histO1 - this.histO0) * a;
   }
 
   /** Correction at input instant `t`: interpolated between the last two
@@ -1087,12 +1112,27 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       }
     }
     let hop = Math.max(8, after / r);
+    // Hard Tune: one period of the pitch the stream should sing (detected +
+    // correction + interval), not the input's local period - the voice's own
+    // cycle-to-cycle wobble, drift and vibrato are gone and the note is
+    // dead flat. That perfectly steady pitch is the hard-tune sound; the
+    // normal path keeps the wobble on purpose (a natural tuned voice).
+    let hardHop = false;
+    const lead = this.p.hard >= 0.5 && this.voiced ? this.wantedAt(mark - this.delay[s]) : 0;
+    if (lead > 0) {
+      const want = lead + (s === 0 ? 0 : this.streamSemis(s, mark - this.delay[s]).extra);
+      const outPer = this.sr / midiToHz(want, this.p.referenceHz);
+      if (outPer > 0.4 * after && outPer < 2.5 * after) {
+        hop = Math.max(8, outPer);
+        hardHop = true;
+      }
+    }
     // Nothing to correct (within a cent - the detector's own noise): steer the
     // marks back onto the epochs, at most half a sample per period (~4 cents
     // for one cycle, inaudible), so an in-tune voice comes out as the input
     // delayed by exactly D - in phase with the dry path it hands over to at
     // consonants - instead of drifting slowly away from it.
-    if (s === 0 && Math.abs(r - 1) < 0.0006) hop += clamp(0.25 * (e - (mark - this.delay[s])), -0.5, 0.5);
+    if (s === 0 && !hardHop && Math.abs(r - 1) < 0.0006) hop += clamp(0.25 * (e - (mark - this.delay[s])), -0.5, 0.5);
     this.nextMark[s] = mark + hop;
     const hOut = grainHalfWidth(per, ratio, f, this.hMax[s]);
     if (hOut < 4) return;

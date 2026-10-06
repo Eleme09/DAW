@@ -5,14 +5,14 @@
  * preset, harmony voices, a vocoder, and character effects. It processes
  * live while monitoring and on playback; the recorded take stays dry.
  *
- * The 24 presets, their names, categories and what each one does come from
+ * BandLab's 24 presets, their names, categories and what each one does come from
  * BandLab's official AutoPitch FAQ (help.bandlab.com, article
  * 29099155628953). BandLab does NOT publish the DSP behind them, so the
  * numbers in AUTOPITCH_RECIPES (retune speed, voice gains/pans, filter
  * corners...) are our own engineering of each official description - the
  * intervals named in the FAQ ("third-down", "fourth-up", "fifth-down",
  * "octave and perfect fourth-down", "perfect fifth-up and fourth-down",
- * "octave lower") are followed exactly.
+ * "octave lower") are followed exactly. "Hard Tune" is our own addition.
  */
 
 export type AutoPitchCategory = "essentials" | "hipHop" | "hyperpop" | "sciFi";
@@ -66,6 +66,7 @@ export const MAJOR_MASK = 0b101010110101; // C D E F G A B
 
 export type AutoPitchPresetId =
   | "classic"
+  | "hardTune"
   | "duet"
   | "bigHarmony"
   | "natural"
@@ -154,7 +155,7 @@ export interface AutoPitchRecipe {
    * "Note Transition"), `humanize` slows the correction only on the held part
    * of long notes (Auto-Tune "Humanize"), `flex` lets bends and slides
    * through and only corrects near the note (Auto-Tune "Flex-Tune"). */
-  tune: { speedMs: number; transitionMs: number; humanize: number; flex: number };
+  tune: { speedMs: number; transitionMs: number; humanize: number; flex: number; hard?: boolean };
   /** Level of the corrected lead voice (Robot and Gorgon replace it). */
   lead: { gain: number };
   voices: HarmonyVoice[];
@@ -187,6 +188,19 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     category: "essentials",
     description: "Inspirado en el efecto de corrección de tono popular que aparece en innumerables canciones.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
+    lead: { gain: 1 },
+    voices: [],
+  },
+  {
+    // Ours, not one of BandLab's 24: Classic with the pitch LOCKED to the
+    // note (no vibrato, drift or cycle-to-cycle wobble left) and a narrow
+    // note tolerance, so slides become steps and singing between two notes
+    // flips between them - the heavy, obvious autotune sound.
+    id: "hardTune",
+    label: "Hard Tune",
+    category: "essentials",
+    description: "Autotune pesado: la nota queda clavada, sin vibrato, y salta en escalones. Se nota que es autotune.",
+    tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0, hard: true },
     lead: { gain: 1 },
     voices: [],
   },

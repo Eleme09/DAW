@@ -63,6 +63,45 @@ const at140 = (beats: number) => beats * (60000 / 140);
 /** The usual safety limiter at the end of a vocal chain. */
 const safety = () => limiter({ thresholdDb: -3, releaseMs: 80, ceilingDb: -1 });
 
+interface BaseOpts {
+  hp?: number;
+  /** dB at 300 Hz (body), 520 Hz (box cut), 900 Hz, 1.7 kHz (clarity), 3.5 kHz (presence). */
+  body?: number;
+  box?: number;
+  mids?: number;
+  clarity?: number;
+  presence?: number;
+  /** dB of the 7 kHz shelf and the 12 kHz bell, after the compressor. */
+  air?: number;
+  top?: number;
+  comp?: Partial<CompressorParams>;
+  deess?: Partial<DeEsserParams>;
+}
+
+/**
+ * What a phone take needs before any style, measured on the user's own takes
+ * (phone earbud mic, a whole song): a boxy 400-630 Hz bump, little 1.5-5 kHz,
+ * 8-10 dB less presence and air than a mixed rap vocal, nothing above the
+ * codec's 16 kHz. Order as an engineer would: subtractive EQ -> compressor ->
+ * air EQ after it -> de-esser after the air, so the boost can't bring the
+ * esses back. On those takes (with Hard Tune) the defaults land within 2 dB
+ * of a smooth vocal tone curve (our engineering target, not a measured
+ * reference); the raw take was 4 dB off.
+ */
+const phoneBase = (o: BaseOpts = {}): EffectInstance[] => [
+  eq(
+    band("highpass", o.hp ?? 100),
+    band("peaking", 300, o.body ?? 1.5, 1),
+    band("peaking", 520, o.box ?? -5, 1.3),
+    band("peaking", 900, o.mids ?? -2.5, 0.8),
+    band("peaking", 1700, o.clarity ?? 2, 0.9),
+    band("peaking", 3500, o.presence ?? 3, 1)
+  ),
+  comp({ thresholdDb: -24, ratio: 4, attackMs: 8, releaseMs: 100, kneeDb: 6, makeupDb: 8, ...o.comp }),
+  eq(band("highshelf", 7000, o.air ?? 7), band("peaking", 12000, o.top ?? 2, 0.7)),
+  deess({ freq: 6000, thresholdDb: -30, ratio: 6, ...o.deess }),
+];
+
 export const FACTORY_FX_PRESETS: FxChainPreset[] = [
   // ------------------------------------------------------------ voz principal
   {
@@ -71,16 +110,14 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     description: "Al frente, brillante y apretada. Rage melódico.",
     category: "voces",
     reference: "Yeat",
-    autoPitchHint: "Classic al 100 %",
+    autoPitchHint: "Hard Tune al 100 %",
     cover: art("#ff3d7f", "#ffb800", "rings"),
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 110), band("peaking", 350, -3, 1), band("peaking", 3200, 4, 0.9), band("highshelf", 10000, 4)),
-      comp({ thresholdDb: -26, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 4, makeupDb: 6 }),
-      deess({ freq: 7000, thresholdDb: -32, ratio: 5 }),
+      ...phoneBase({ presence: 4, air: 9, top: 3, comp: { thresholdDb: -26, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 4, makeupDb: 11.6 } }),
       sat({ driveDb: 10, mix: 0.35, tone: "bright" }),
-      exciter({ freq: 5000, driveDb: 8, mix: 0.25 }),
+      exciter({ freq: 7000, driveDb: 6, mix: 0.2 }),
       delay({ timeMs: at140(0.5), sync: "1/8", feedback: 0.2, mix: 0.1, filterFreq: 4500, lowCutHz: 300 }),
       reverb({ mix: 0.12, decaySec: 1.0, sizeType: "plate", predelayMs: 20, lowCutHz: 250, highCutHz: 9000 }),
       safety(),
@@ -92,15 +129,13 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     description: "Saturada y cruda, medios al frente. Rage oscuro.",
     category: "voces",
     reference: "Ken Carson",
-    autoPitchHint: "Classic al 100 %",
+    autoPitchHint: "Hard Tune al 100 %",
     cover: art("#1a1a1a", "#e5243b", "diagonal"),
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 160), band("peaking", 300, -4, 1), band("peaking", 1600, 5, 0.8), band("highshelf", 8000, 2)),
-      comp({ thresholdDb: -28, ratio: 8, attackMs: 1, releaseMs: 60, kneeDb: 3, makeupDb: 4 }),
+      ...phoneBase({ hp: 140, box: -6, clarity: 5, presence: 2, air: 5, top: 0, comp: { thresholdDb: -28, ratio: 8, attackMs: 1, releaseMs: 60, kneeDb: 3, makeupDb: 4.8 } }),
       sat({ driveDb: 18, mix: 0.55, tone: "bright" }),
-      deess({ freq: 6500, thresholdDb: -30, ratio: 4 }),
       clipper({ ceilingDb: -2 }),
       reverb({ mix: 0.08, decaySec: 0.6, sizeType: "room", predelayMs: 10, lowCutHz: 300, highCutHz: 7000 }),
       safety(),
@@ -112,14 +147,12 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     description: "Ancha y lavada: doble, ping-pong y sala grande.",
     category: "voces",
     reference: "Travis Scott",
-    autoPitchHint: "Classic al 100 %",
+    autoPitchHint: "Hard Tune al 100 %",
     cover: art("#3a1c71", "#d76d77", "waves"),
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 90), band("peaking", 280, -3, 1), band("peaking", 2800, 3, 1), band("highshelf", 11000, 3)),
-      comp({ thresholdDb: -24, ratio: 4, attackMs: 8, releaseMs: 120, kneeDb: 6, makeupDb: 7 }),
-      deess({ freq: 6500, thresholdDb: -30, ratio: 4 }),
+      ...phoneBase({ comp: { makeupDb: 15.7 },  air: 8 }),
       chorus({ rateHz: 0.6, depthMs: 3, mix: 0.22 }),
       delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.35, mix: 0.18, filterFreq: 3500, lowCutHz: 350 }),
       reverb({ mix: 0.22, decaySec: 2.8, sizeType: "hall", predelayMs: 40, lowCutHz: 300, highCutHz: 7500 }),
@@ -132,15 +165,13 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     description: "Cálida y oscura, ecos con puntillo. Melódico.",
     category: "voces",
     reference: "Future",
-    autoPitchHint: "Classic al 100 %",
+    autoPitchHint: "Hard Tune al 100 %",
     cover: art("#0f2027", "#2c5364", "bars"),
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 95), band("peaking", 200, 2, 0.9), band("peaking", 500, -2, 1.2), band("peaking", 2500, 2.5, 1), band("highshelf", 12000, -1)),
-      comp({ thresholdDb: -25, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 5, makeupDb: 5 }),
+      ...phoneBase({ body: 3, presence: 2, air: 4, top: 0, comp: { thresholdDb: -25, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 5, makeupDb: 13.5 } }),
       sat({ driveDb: 6, mix: 0.3, tone: "warm" }),
-      deess({ freq: 6000, thresholdDb: -30, ratio: 4 }),
       delay({ timeMs: at140(0.75), sync: "1/8.", feedback: 0.3, mix: 0.15, filterFreq: 3000, lowCutHz: 300 }),
       reverb({ mix: 0.15, decaySec: 1.6, sizeType: "plate", predelayMs: 30, lowCutHz: 250, highCutHz: 8000 }),
       safety(),
@@ -151,14 +182,13 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     name: "Trap Limpia",
     description: "Clara, pareja y con poco espacio. La de siempre.",
     category: "voces",
-    autoPitchHint: "Classic o Natural",
+    autoPitchHint: "Hard Tune o Classic",
     cover: art("#f2ede4", "#7fa8c9", "grid"),
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 100), band("peaking", 300, -2.5, 1), band("peaking", 3000, 2.5, 1), band("highshelf", 10000, 2.5)),
-      comp({ thresholdDb: -24, ratio: 4, attackMs: 6, releaseMs: 100, kneeDb: 6, makeupDb: 4 }),
-      deess({ freq: 6500, thresholdDb: -30, ratio: 4 }),
+      ...phoneBase({ comp: { makeupDb: 11.8 } }),
+      delay({ timeMs: at140(0.5), sync: "1/8", feedback: 0.15, mix: 0.08, filterFreq: 4500, lowCutHz: 300 }),
       reverb({ mix: 0.1, decaySec: 1.2, sizeType: "plate", predelayMs: 25, lowCutHz: 250, highCutHz: 9000 }),
       safety(),
     ],
@@ -172,9 +202,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 120), band("peaking", 250, -3, 1), band("peaking", 4000, 3, 0.9), band("highshelf", 9000, 2)),
-      comp({ thresholdDb: -27, ratio: 7, attackMs: 2, releaseMs: 70, kneeDb: 3, makeupDb: 7 }),
-      deess({ freq: 7000, thresholdDb: -32, ratio: 5 }),
+      ...phoneBase({ hp: 120, presence: 4, comp: { thresholdDb: -27, ratio: 7, attackMs: 2, releaseMs: 70, kneeDb: 3, makeupDb: 15.7 } }),
       sat({ driveDb: 5, mix: 0.2, tone: "neutral" }),
       safety(),
     ],
@@ -191,10 +219,8 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 95), band("peaking", 320, -2, 1), band("peaking", 2600, 2, 1), band("highshelf", 12000, 4)),
-      comp({ thresholdDb: -24, ratio: 4, attackMs: 8, releaseMs: 120, kneeDb: 6, makeupDb: 4 }),
-      deess({ freq: 7000, thresholdDb: -30, ratio: 4 }),
-      exciter({ freq: 6000, driveDb: 6, mix: 0.2 }),
+      ...phoneBase({ comp: { makeupDb: 13.0 },  air: 9, top: 3 }),
+      exciter({ freq: 7000, driveDb: 6, mix: 0.2 }),
       delay({ timeMs: at140(1), sync: "1/4", feedback: 0.25, mix: 0.12, filterFreq: 4000, lowCutHz: 300 }),
       reverb({ mix: 0.2, decaySec: 2.0, sizeType: "plate", predelayMs: 35, lowCutHz: 250, highCutHz: 10000 }),
       safety(),
@@ -209,9 +235,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 80), band("peaking", 180, 2, 0.8), band("peaking", 3500, -1.5, 1), band("highshelf", 9000, 1.5)),
-      comp({ thresholdDb: -30, ratio: 3, attackMs: 12, releaseMs: 160, kneeDb: 10, makeupDb: 6 }),
-      deess({ freq: 6000, thresholdDb: -34, ratio: 5 }),
+      ...phoneBase({ hp: 80, body: 3, presence: 1, air: 5, top: 0, comp: { thresholdDb: -30, ratio: 3, attackMs: 12, releaseMs: 160, kneeDb: 10, makeupDb: 12.6 }, deess: { thresholdDb: -34 } }),
       sat({ driveDb: 4, mix: 0.25, tone: "warm" }),
       reverb({ mix: 0.12, decaySec: 0.9, sizeType: "room", predelayMs: 15, lowCutHz: 200, highCutHz: 7000 }),
       safety(),
@@ -230,7 +254,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     effects: [
       eq(band("highpass", 450, 0, 0.9), band("peaking", 1500, 6, 0.9), band("lowpass", 3500, 0, 0.9)),
       sat({ driveDb: 14, mix: 0.6, tone: "neutral" }),
-      comp({ thresholdDb: -24, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 3, makeupDb: 5 }),
+      comp({ thresholdDb: -24, ratio: 6, attackMs: 3, releaseMs: 80, kneeDb: 3, makeupDb: 11.1 }),
       delay({ timeMs: at140(0.5), sync: "1/8", pingPong: true, feedback: 0.3, mix: 0.25, filterFreq: 3000, lowCutHz: 500 }),
       safety(),
     ],
@@ -244,9 +268,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 200), band("peaking", 400, -3, 1), band("highshelf", 10000, 3)),
-      comp({ thresholdDb: -26, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 7 }),
-      deess({ freq: 6500, thresholdDb: -32, ratio: 5 }),
+      ...phoneBase({ hp: 200, air: 7, comp: { thresholdDb: -26, ratio: 5, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 17.1 } }),
       chorus({ rateHz: 0.8, depthMs: 4, mix: 0.4 }),
       width({ width: 1.6 }),
       reverb({ mix: 0.25, decaySec: 2.2, sizeType: "hall", predelayMs: 30, lowCutHz: 350, highCutHz: 8000 }),
@@ -262,8 +284,8 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 300), band("lowpass", 6000, 0, 0.7)),
-      comp({ thresholdDb: -24, ratio: 4, attackMs: 6, releaseMs: 120, kneeDb: 6, makeupDb: 8 }),
+      ...phoneBase({ hp: 300, air: 2, top: 0, comp: { makeupDb: 16.9 } }),
+      eq(band("lowpass", 6500, 0, 0.7)),
       delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.45, mix: 0.3, filterFreq: 2500, lowCutHz: 400 }),
       reverb({ mix: 0.35, decaySec: 3.5, sizeType: "hall", predelayMs: 50, lowCutHz: 400, highCutHz: 6000 }),
       safety(),
@@ -274,31 +296,28 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
   {
     id: "factory.solo-limpieza",
     name: "Solo Limpieza",
-    description: "Quita ruido, retumbe y eses. Nada de color.",
+    description: "Arregla la toma: sin caja, sin eses. Sin efectos.",
     category: "pulido",
     cover: art("#8fb89a", "#1f2d24", "grid"),
     blend: 1,
     factory: true,
     effects: [
       gate({ thresholdDb: -50, attackMs: 1, releaseMs: 180, holdMs: 60 }),
-      eq(band("highpass", 90), band("peaking", 250, -2, 1.2)),
-      deess({ freq: 6500, thresholdDb: -30, ratio: 3 }),
-      comp({ thresholdDb: -20, ratio: 2.5, attackMs: 15, releaseMs: 150, kneeDb: 8, makeupDb: 2 }),
+      ...phoneBase({ presence: 2, air: 4, top: 0, comp: { thresholdDb: -20, ratio: 2.5, attackMs: 15, releaseMs: 150, kneeDb: 8, makeupDb: 5.6 } }),
       safety(),
     ],
   },
   {
     id: "factory.brillo-aire",
     name: "Brillo y Aire",
-    description: "Más claridad y aire sin tocar el resto.",
+    description: "La limpieza más claridad y aire de estudio.",
     category: "pulido",
     cover: art("#fceabb", "#f8b500", "dots"),
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 80), band("peaking", 3500, 2, 1), band("highshelf", 11000, 4)),
-      exciter({ freq: 6000, driveDb: 8, mix: 0.25 }),
-      deess({ freq: 7500, thresholdDb: -30, ratio: 3 }),
+      ...phoneBase({ comp: { makeupDb: 9.9 },  presence: 4, air: 9, top: 4 }),
+      exciter({ freq: 7000, driveDb: 8, mix: 0.25 }),
       safety(),
     ],
   },
@@ -311,52 +330,54 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      comp({ thresholdDb: -22, ratio: 3, attackMs: 10, releaseMs: 120, kneeDb: 6, makeupDb: 3 }),
-      comp({ thresholdDb: -12, ratio: 6, attackMs: 2, releaseMs: 60, kneeDb: 2, makeupDb: 1 }),
+      ...phoneBase({ comp: { thresholdDb: -22, ratio: 3, attackMs: 10, releaseMs: 120, kneeDb: 6, makeupDb: 11.4 } }),
+      comp({ thresholdDb: -12, ratio: 6, attackMs: 2, releaseMs: 60, kneeDb: 2, makeupDb: 2 }),
       limiter({ thresholdDb: -2, releaseMs: 80, ceilingDb: -1 }),
     ],
   },
 
   // ------------------------------------------------------------ espacio
+  // (each one on top of the phone-take base: a preset is the whole chain,
+  // so "just a reverb" on a raw phone take still sounded like a phone)
   {
     id: "factory.placa-vocal",
     name: "Placa Vocal",
-    description: "La reverb de voz clásica: brillante y corta.",
+    description: "Voz limpia con placa clásica, corta y brillante.",
     category: "espacio",
     cover: art("#c7c9ff", "#2c2f86", "rings"),
     blend: 1,
     factory: true,
-    effects: [reverb({ mix: 0.18, decaySec: 1.4, sizeType: "plate", predelayMs: 25, lowCutHz: 250, highCutHz: 9000 })],
+    effects: [...phoneBase({ comp: { makeupDb: 11.9 } }), reverb({ mix: 0.18, decaySec: 1.4, sizeType: "plate", predelayMs: 25, lowCutHz: 250, highCutHz: 9000 }), safety()],
   },
   {
     id: "factory.sala-grande",
     name: "Sala Grande",
-    description: "Cola larga y oscura detrás de la voz.",
+    description: "Voz limpia con cola larga y oscura detrás.",
     category: "espacio",
     cover: art("#1d1f5c", "#6a3093", "waves"),
     blend: 1,
     factory: true,
-    effects: [reverb({ mix: 0.25, decaySec: 3.2, sizeType: "hall", predelayMs: 45, lowCutHz: 300, highCutHz: 7000 })],
+    effects: [...phoneBase({ comp: { makeupDb: 12.6 } }), reverb({ mix: 0.25, decaySec: 3.2, sizeType: "hall", predelayMs: 45, lowCutHz: 300, highCutHz: 7000 }), safety()],
   },
   {
     id: "factory.eco-negra",
     name: "Eco a Negra",
-    description: "Eco en negras que rebota de lado a lado.",
+    description: "Voz limpia con eco en negras de lado a lado.",
     category: "espacio",
     cover: art("#0f4a52", "#7ef0ff", "bars"),
     blend: 1,
     factory: true,
-    effects: [delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.35, mix: 0.2, filterFreq: 4000, lowCutHz: 300 })],
+    effects: [...phoneBase({ comp: { makeupDb: 12.0 } }), delay({ timeMs: at140(1), sync: "1/4", pingPong: true, feedback: 0.35, mix: 0.2, filterFreq: 4000, lowCutHz: 300 }), safety()],
   },
   {
     id: "factory.slap",
     name: "Slap",
-    description: "Un rebote corto que engorda sin alejar.",
+    description: "Voz limpia con un rebote corto que engorda.",
     category: "espacio",
     cover: art("#7ef0ff", "#0a2f35", "diagonal"),
     blend: 1,
     factory: true,
-    effects: [delay({ timeMs: 110, sync: null, feedback: 0.08, mix: 0.18, filterFreq: 5000, lowCutHz: 250 })],
+    effects: [...phoneBase({ comp: { makeupDb: 11.8 } }), delay({ timeMs: 110, sync: null, feedback: 0.08, mix: 0.18, filterFreq: 5000, lowCutHz: 250 }), safety()],
   },
 
   // ------------------------------------------------------------ efectos
@@ -371,6 +392,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     effects: [
       eq(band("highpass", 600, 0, 1), band("peaking", 1800, 5, 1), band("lowpass", 3000, 0, 1)),
       sat({ driveDb: 16, mix: 0.7, tone: "warm" }),
+      comp({ thresholdDb: -20, ratio: 4, attackMs: 5, releaseMs: 80, kneeDb: 4, makeupDb: 3.7 }),
       reverb({ mix: 0.1, decaySec: 0.5, sizeType: "room", predelayMs: 0, lowCutHz: 500, highCutHz: 4000 }),
       safety(),
     ],
@@ -384,11 +406,12 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      eq(band("highpass", 150), band("lowpass", 5500, 0, 0.7), band("peaking", 900, 2, 0.8)),
+      eq(band("highpass", 150), band("lowpass", 5500, 0, 0.7), band("peaking", 520, -3, 1.3), band("peaking", 900, 2, 0.8)),
       sat({ driveDb: 9, mix: 0.45, tone: "warm" }),
-      comp({ thresholdDb: -24, ratio: 4, attackMs: 10, releaseMs: 140, kneeDb: 8, makeupDb: 3 }),
+      comp({ thresholdDb: -24, ratio: 4, attackMs: 10, releaseMs: 140, kneeDb: 8, makeupDb: 10.3 }),
       chorus({ rateHz: 0.3, depthMs: 2, mix: 0.15 }),
       reverb({ mix: 0.18, decaySec: 0.9, sizeType: "room", predelayMs: 10, lowCutHz: 200, highCutHz: 5000 }),
+      safety(),
     ],
   },
   {
@@ -400,7 +423,7 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
-      comp({ thresholdDb: -24, ratio: 3, attackMs: 8, releaseMs: 120, kneeDb: 6, makeupDb: 5 }),
+      ...phoneBase({ comp: { makeupDb: 13.3 } }),
       flanger({ rateHz: 0.35, depthMs: 3, feedback: 0.55, mix: 0.45 }),
       reverb({ mix: 0.12, decaySec: 1.2, sizeType: "plate", predelayMs: 20, lowCutHz: 300, highCutHz: 9000 }),
       safety(),
@@ -415,9 +438,10 @@ export const FACTORY_FX_PRESETS: FxChainPreset[] = [
     blend: 1,
     factory: true,
     effects: [
+      eq(band("highpass", 100), band("peaking", 520, -4, 1.3), band("peaking", 3500, 3, 1)),
       vocoder({ carrierType: "sawtooth", carrierFreqHz: 110, mix: 0.8 }),
       // the vocoder comes out ~15 dB under the voice: bring it back up
-      comp({ thresholdDb: -36, ratio: 3, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 16 }),
+      comp({ thresholdDb: -36, ratio: 3, attackMs: 5, releaseMs: 100, kneeDb: 6, makeupDb: 23.4 }),
       reverb({ mix: 0.1, decaySec: 1, sizeType: "plate", predelayMs: 10, lowCutHz: 300, highCutHz: 8000 }),
       safety(),
     ],

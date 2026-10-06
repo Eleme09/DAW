@@ -1,6 +1,7 @@
 import type { Effect } from "./Effect";
 import type { DeEsserParams } from "@/types/effects";
 import { BUTTERWORTH_Q_DB, compressorLatencySec } from "./latency";
+import { nativeCompressorMakeupDb } from "./nativeCompressor";
 
 /**
  * Split-band de-esser: the signal above `freq` goes through a fast
@@ -27,6 +28,10 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
   private highBand: BiquadFilterNode;
   private highBand2: BiquadFilterNode;
   private sibilanceCompressor: DynamicsCompressorNode;
+  /** Divides out the node's automatic makeup gain: the band is unity
+   * until it compresses (it was +5-13 dB - a de-esser that BOOSTED the
+   * sibilance band whenever it was not reducing it). */
+  private highTrim: GainNode;
   /** Sits inline right after `input` (input -> analyser -> low/high split),
    * same reasoning as NoiseGateEffect.inputAnalyser: a track/master
    * analyser is post-chain, so it would already reflect the de-esser's own
@@ -60,6 +65,7 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
     this.sibilanceCompressor.knee.value = 0;
     this.sibilanceCompressor.attack.value = 0.001;
     this.sibilanceCompressor.release.value = 0.06;
+    this.highTrim = ctx.createGain();
 
     this.input.connect(this.inputAnalyser);
     this.inputAnalyser.connect(this.lowBand);
@@ -69,7 +75,8 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
     this.lowDelay.connect(this.output);
     this.highBand.connect(this.highBand2);
     this.highBand2.connect(this.sibilanceCompressor);
-    this.sibilanceCompressor.connect(this.output);
+    this.sibilanceCompressor.connect(this.highTrim);
+    this.highTrim.connect(this.output);
   }
 
   get inputNode(): AudioNode {
@@ -95,6 +102,7 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
     for (const f of [this.lowBand, this.lowBand2, this.highBand, this.highBand2]) f.frequency.setTargetAtTime(params.freq, t, 0.01);
     this.sibilanceCompressor.threshold.setTargetAtTime(params.thresholdDb, t, 0.01);
     this.sibilanceCompressor.ratio.setTargetAtTime(params.ratio, t, 0.01);
+    this.highTrim.gain.setTargetAtTime(Math.pow(10, -nativeCompressorMakeupDb(params.thresholdDb, params.ratio, 0) / 20), t, 0.01);
   }
 
   dispose(): void {
@@ -105,5 +113,6 @@ export class DeEsserEffect implements Effect<DeEsserParams> {
     this.highBand.disconnect();
     this.highBand2.disconnect();
     this.sibilanceCompressor.disconnect();
+    this.highTrim.disconnect();
   }
 }

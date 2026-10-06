@@ -43,6 +43,8 @@ export interface AutoPitchWorkletParams {
   chorusDepth: number;
   chorusRate: number;
   outGain: number;
+  /** 1 = Hard Tune (pitch locked to the note, narrow note tolerance). */
+  hard: number;
   [voiceParam: `v${number}${"Active" | "Interval" | "Diatonic" | "Gain" | "Pan" | "Formant" | "Detune" | "Delay"}`]: number;
 }
 
@@ -118,6 +120,7 @@ export function resolveAutoPitch(settings: AutoPitchSettings): ResolvedAutoPitch
     chorusDepth: recipe.chorus?.depthMs ?? 3,
     chorusRate: recipe.chorus?.rateHz ?? 0.5,
     outGain: Math.pow(10, ((recipe.trimDb ?? 0) * level) / 20),
+    hard: recipe.tune.hard ? 1 : 0,
   };
 
   for (let i = 0; i < AUTOPITCH_MAX_VOICES; i++) {

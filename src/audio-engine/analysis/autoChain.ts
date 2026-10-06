@@ -1,5 +1,6 @@
 import { createEffectInstance, type EffectInstance, type EqBand } from "@/types/effects";
 import type { VocalAnalysisResult } from "@/types/analysis";
+import { nativeCompressorMakeupDb } from "../effects/nativeCompressor";
 
 /**
  * Rule-based "Phone Mic Enhance" chain: analysis measurements -> concrete
@@ -87,7 +88,9 @@ export function buildPhoneMicEnhanceChain(analysis: VocalAnalysisResult): Effect
       compressor.params.attackMs = 8;
       compressor.params.releaseMs = 140;
       compressor.params.kneeDb = 6;
-      compressor.params.makeupDb = 3;
+      // + the native node's own makeup, which CompressorEffect now divides out
+      // (this chain was tuned with it in)
+      compressor.params.makeupDb = 3 + nativeCompressorMakeupDb(compressor.params.thresholdDb, compressor.params.ratio, compressor.params.kneeDb);
     }
     chain.push(compressor);
   }

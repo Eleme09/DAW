@@ -194,3 +194,5 @@ pide un video/captura al usuario en vez de inventarla.
 - **Librería de efectos**: lista con categorías en chips, buscador y favoritos; tocar añade el efecto a la cadena.
 - **Detalles del preajuste** al guardar: nombre, descripción de hasta 50 caracteres, portada (colores o foto).
 - En BandLab muchos preajustes son de otros usuarios (comunidad). Aquí no hay comunidad: se reemplazan por 22 preajustes de fábrica propios (ver PROGRESS, Tema 3).
+
+- Referencias del usuario para cadenas de voz: Yeat, Ken Carson, Travis Scott, Future y Topboy TGR (artista de Buenaventura, Colombia). El usuario no quiere que las referencias se copien al pie de la letra: son dirección, no plantilla.

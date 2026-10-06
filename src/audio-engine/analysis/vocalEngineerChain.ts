@@ -1,6 +1,7 @@
 import { createEffectInstance, type EffectInstance, type EqBand } from "@/types/effects";
 import type { VocalAnalysisResult } from "@/types/analysis";
 import type { VocalStyleParams } from "@/types/vocalStyle";
+import { nativeCompressorMakeupDb } from "../effects/nativeCompressor";
 
 /**
  * "Make Vocal Professional" — the broader Auto Vocal Engineer, built on
@@ -128,7 +129,9 @@ export function buildVocalEngineerChain(analysis: VocalAnalysisResult, style: Vo
     compressor.params.attackMs = 8;
     compressor.params.releaseMs = 140;
     compressor.params.kneeDb = 6;
-    compressor.params.makeupDb = 3;
+    // + the native node's own makeup, which CompressorEffect now divides out
+    // (this chain was tuned with it in)
+    compressor.params.makeupDb = 3 + nativeCompressorMakeupDb(compressor.params.thresholdDb, compressor.params.ratio, compressor.params.kneeDb);
   }
   chain.push(compressor);
 

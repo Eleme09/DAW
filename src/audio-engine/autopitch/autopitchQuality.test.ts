@@ -338,3 +338,54 @@ describe("AutoPitch on the failures measured on a real vocal (82 s, user's take)
     expect(Math.abs(db)).toBeLessThan(0.5);
   });
 });
+
+/** Spread (standard deviation, cents) of the pitch of a tone that should
+ * hold `hz` - what is left of the singer's vibrato and drift. Pitch per
+ * 23 ms frame from the autocorrelation peak near the expected period
+ * (parabolic interpolation), like Praat's. */
+function pitchSpreadCents(x: Float32Array, hz: number, fromSec: number, toSec: number): number {
+  const N = 1024;
+  const P = SR / hz;
+  const cents: number[] = [];
+  for (let s = Math.floor(fromSec * SR); s + N + 2 * P < toSec * SR; s += 220) {
+    const ac = (lag: number) => {
+      let sum = 0;
+      for (let i = 0; i < N; i++) sum += x[s + i] * x[s + i + lag];
+      return sum;
+    };
+    let best = 0;
+    let bestLag = 0;
+    for (let lag = Math.floor(P * 0.9); lag <= Math.ceil(P * 1.1); lag++) {
+      const v = ac(lag);
+      if (v > best) {
+        best = v;
+        bestLag = lag;
+      }
+    }
+    const a = ac(bestLag - 1);
+    const c = ac(bestLag + 1);
+    const lag = bestLag + (0.5 * (a - c)) / (a - 2 * best + c);
+    cents.push(1200 * Math.log2(SR / lag / hz));
+  }
+  const mean = cents.reduce((a, c) => a + c, 0) / cents.length;
+  return Math.sqrt(cents.reduce((a, c) => a + (c - mean) ** 2, 0) / cents.length);
+}
+
+describe("Hard Tune", () => {
+  const settings = (presetId: "classic" | "hardTune") => resolveAutoPitch({ ...createAutoPitchSettings(A_MAJOR, "major"), presetId, level: 1 }).worklet;
+
+  it("holds the note dead flat: the singer's vibrato is gone (Classic keeps part of it)", () => {
+    const v = VOICES[2]; // female a, 40 cents off, 25-cent vibrato
+    const { data } = sungVowel({ seconds: 3, hz: v.hz, cents: v.cents, vibratoCents: v.vib, jitter: v.jitter, formants: v.formants });
+    const target = nearestNoteHz(v.hz * Math.pow(2, v.cents / 1200));
+    const hard = pitchSpreadCents(renderAutoPitch(data, settings("hardTune")).left, target, 0.8, 2.7);
+    const classicSpread = pitchSpreadCents(renderAutoPitch(data, settings("classic")).left, target, 0.8, 2.7);
+    expect(hard).toBeLessThan(1.5);
+    expect(hard).toBeLessThan(classicSpread);
+  });
+
+  it("is the only preset with the locked-pitch mode on", () => {
+    expect(settings("hardTune").hard).toBe(1);
+    expect(settings("classic").hard).toBe(0);
+  });
+});
