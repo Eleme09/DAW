@@ -2,7 +2,7 @@ import type { AutoPitchSettings } from "@/types/autoPitch";
 import { generateImpulseResponseSamples } from "../effects/impulseResponse";
 import { resolveAutoPitch, autoPitchLatencySec, type AutoPitchReverb } from "./resolveAutoPitch";
 
-export const AUTOPITCH_WORKLET_URL = "/worklets/autopitch-processor.js";
+export const AUTOPITCH_WORKLET_URL = `/worklets/autopitch-processor.js?v=${process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"}`;
 
 /**
  * One track's AutoPitch stage: the autopitch-processor worklet (tuning,
