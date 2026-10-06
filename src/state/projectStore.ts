@@ -1052,6 +1052,8 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       }
 
       const countInBeats = Math.max(0, Math.round(project.countInBars ?? 1)) * project.timeSignature[0];
+      // Mic opens now (inside the tap) and is ready when the count-in ends.
+      getAudioEngine().prepareInput();
       set({ recordingError: null, isCountingIn: countInBeats > 0, countInBeats: countInBeats > 0 ? countInBeats : null });
       const completedCountIn = await getAudioEngine().playCountIn(project.bpm, countInBeats, (remaining) =>
         set({ countInBeats: remaining })
@@ -1060,7 +1062,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       // Cancelled mid count-in (cancelRecording()) - don't start capturing.
       // The track that just got auto-armed above stays armed, same as if
       // the user had armed it manually and not hit record yet.
-      if (!completedCountIn) return;
+      if (!completedCountIn) {
+        getAudioEngine().releaseInput();
+        return;
+      }
 
       const recordFrom = get().currentTime;
       const result = await getAudioEngine().startRecording(
@@ -1158,6 +1163,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const state = get();
       if (state.isCountingIn) {
         getAudioEngine().cancelCountIn();
+        getAudioEngine().releaseInput();
         set({ isCountingIn: false, countInBeats: null });
         return;
       }
@@ -1273,3 +1279,19 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     persist: () => saveProject(get().project),
   };
 });
+
+/**
+ * Leaving the app (home screen, another app, screen lock) pauses playback
+ * and gives the phone its audio back: mic closed, context suspended. A
+ * take in progress keeps going - stopping it is the user's call.
+ */
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    const state = useProjectStore.getState();
+    if (state.isRecording) return;
+    if (state.isCountingIn) state.cancelRecording();
+    if (state.isPlaying) state.pause();
+    getAudioEngine().releaseAudio();
+  });
+}

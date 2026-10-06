@@ -10,6 +10,11 @@ import type { MonitorMode } from "@/types/project";
  * before this function existed, silently ignored "auto" mode's dependency
  * on transport state and so overstated live monitoring during playback -
  * see TrackHeader.tsx's monitoringLive fix in PROGRESS.md).
+ *
+ * The mic is only open during a take: "auto" and "on" both mean "hear
+ * yourself while recording". Keeping it open while stopped (the old
+ * "auto") or always (the old "on") held the phone's audio in a
+ * call-style mode and paused every other app's sound.
  */
 export function isTrackMonitoredLive(
   armed: boolean,
@@ -17,13 +22,7 @@ export function isTrackMonitoredLive(
   playing: boolean,
   recording: boolean
 ): boolean {
-  if (!armed) return false;
-  switch (monitorMode) {
-    case "off":
-      return false;
-    case "on":
-      return true;
-    case "auto":
-      return !playing || recording;
-  }
+  void playing;
+  if (!armed || monitorMode === "off") return false;
+  return recording;
 }

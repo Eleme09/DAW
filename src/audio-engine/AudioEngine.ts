@@ -108,6 +108,9 @@ export type TransportListener = (currentTime: number) => void;
 
 const METRONOME_LOOKAHEAD_SEC = 0.1;
 const METRONOME_INTERVAL_MS = 25;
+/** How long the context stays up after the last sound before it is
+ * suspended and the phone's audio handed back. */
+const IDLE_RELEASE_MS = 2500;
 const RECORDER_WORKLET_URL = "/worklets/recorder-processor.js";
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
 const PITCH_CORRECTION_WORKLET_URL = "/worklets/realtime-pitch-processor.js";
@@ -150,6 +153,12 @@ export class AudioEngine {
   private recording: RecordingSession | null = null;
   private recorderWorkletLoaded = false;
   private countInCancelled = false;
+  private countingIn = false;
+  /** Mic opened ahead of a take (at the record tap, before the count-in). */
+  private inputHeld = false;
+  /** One-off sounds outside the transport (e.g. a preview player). */
+  private audioHolds = 0;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   private pitchCorrectionWorkletPromise: Promise<void> | null = null;
   private pitchCorrectionWorkletLoaded = false;
@@ -188,14 +197,11 @@ export class AudioEngine {
       // instead of stereo. The Web Audio Session API (Safari 17+, silently
       // absent everywhere else) is the documented fix for exactly that:
       // declare this is a play-and-record app so iOS keeps stereo out.
-      if ("audioSession" in navigator) {
-        try {
-          (navigator as unknown as { audioSession: { type: string } }).audioSession.type = "play-and-record";
-        } catch {
-          // Unsupported value on this OS version - leave the session at
-          // its default rather than throwing during context setup.
-        }
-      }
+      // ...but only while the mic is actually open (setAudioSessionType in
+      // ensureMonitorStream / stopMonitorStream). Held permanently, it
+      // made iOS treat the whole app as a call-style recorder: other apps'
+      // audio (WhatsApp notes, YouTube) paused the instant it started.
+      setAudioSessionType("playback");
       // Explicit per the FASE 9 addendum, even though "interactive" is
       // already the spec default - a recording/monitoring app should never
       // silently end up on "playback" latency (larger buffers, worse for
@@ -213,8 +219,12 @@ export class AudioEngine {
       // only resumed a suspended context at acquisition time, never during an
       // already-running session - this catches it for as long as the context
       // exists, not just once at startup.
+      // Only while the DAW is really playing/recording and on screen:
+      // resuming unconditionally fought every other app for the phone's
+      // audio (iOS interrupts us -> we resume -> their audio pauses),
+      // in the background too.
       ctx.addEventListener("statechange", () => {
-        if (ctx.state !== "running") void ctx.resume();
+        if (ctx.state !== "running" && this.shouldKeepRunning()) void ctx.resume();
       });
       const master = ctx.createGain();
       const analyser = ctx.createAnalyser();
@@ -259,11 +269,85 @@ export class AudioEngine {
       if (this.selectedOutputDeviceId && this.isOutputDeviceSelectionSupported()) {
         void (ctx as unknown as { setSinkId(id: string): Promise<void> }).setSinkId(this.selectedOutputDeviceId);
       }
-    }
-    if (this.ctx.state === "suspended") {
-      void this.ctx.resume();
+      // Created by a gesture it starts running; give the audio back if
+      // nothing ends up playing.
+      this.scheduleIdleRelease();
     }
     return this.ctx;
+  }
+
+  // ---------------------------------------------------------------------
+  // Holding / releasing the phone's audio
+  //
+  // The context only runs while something is making or capturing sound
+  // (transport, count-in, a take, a preview). Otherwise it is suspended
+  // and the mic closed, so iOS gives the audio back to other apps.
+  // ensureContext() never resumes on its own - building graphs, decoding
+  // and loading worklets all work on a suspended context.
+  // ---------------------------------------------------------------------
+
+  /** The context, running. Call from whatever is about to make sound. */
+  wake(): AudioContext {
+    const ctx = this.ensureContext();
+    this.cancelIdleRelease();
+    if (ctx.state !== "running") void ctx.resume();
+    return ctx;
+  }
+
+  /** Keeps the context running for a sound outside the transport (a
+   * preview player); call the returned function when it ends. */
+  holdAudio(): () => void {
+    this.audioHolds++;
+    this.wake();
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.audioHolds = Math.max(0, this.audioHolds - 1);
+      this.scheduleIdleRelease();
+    };
+  }
+
+  private isBusy(): boolean {
+    return this.playing || this.recording !== null || this.countingIn || this.inputHeld || this.audioHolds > 0;
+  }
+
+  private shouldKeepRunning(): boolean {
+    return this.isBusy() && (typeof document === "undefined" || document.visibilityState === "visible");
+  }
+
+  private cancelIdleRelease(): void {
+    if (this.idleTimer !== null) clearTimeout(this.idleTimer);
+    this.idleTimer = null;
+  }
+
+  /** Suspends shortly after the last sound, so a reverb tail rings out
+   * and stop -> play does not bounce the context. */
+  private scheduleIdleRelease(): void {
+    this.cancelIdleRelease();
+    if (this.isBusy()) return;
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = null;
+      if (!this.isBusy()) this.releaseAudio();
+    }, IDLE_RELEASE_MS);
+  }
+
+  /** Closes the mic and suspends the context now (a take in progress is
+   * left alone). Called when idle and when the app goes to the background. */
+  releaseAudio(): void {
+    if (this.recording) return;
+    this.cancelIdleRelease();
+    this.inputHeld = false;
+    this.stopMonitorStream();
+    if (this.ctx && this.ctx.state === "running") void this.ctx.suspend();
+  }
+
+  /** Opens the mic at the record tap, so it is ready when the count-in
+   * ends (and asked for inside the user gesture). */
+  prepareInput(): void {
+    this.inputHeld = true;
+    this.wake();
+    void this.ensureMonitorStream();
   }
 
   getContext(): AudioContext | null {
@@ -696,6 +780,7 @@ export class AudioEngine {
       return { ok: false, error: "Microphone access is not available in this browser/context" };
     }
     const ctx = this.ensureContext();
+    setAudioSessionType("play-and-record");
     this.monitorPending = (async (): Promise<StartRecordingResult> => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -715,6 +800,7 @@ export class AudioEngine {
         this.monitor = { stream, source, inputGain, analyser };
         return { ok: true };
       } catch (err) {
+        setAudioSessionType("playback");
         return { ok: false, error: err instanceof Error ? err.message : "Microphone permission denied" };
       } finally {
         this.monitorPending = null;
@@ -736,6 +822,7 @@ export class AudioEngine {
     analyser.disconnect();
     stream.getTracks().forEach((t) => t.stop());
     this.monitor = null;
+    setAudioSessionType("playback");
   }
 
   private connectMonitorToTrack(trackId: TrackId): void {
@@ -779,7 +866,7 @@ export class AudioEngine {
     }
 
     if (wantIds.size === 0) {
-      if (this.monitor && this.monitorConnected.size === 0) this.stopMonitorStream();
+      if (this.monitor && this.monitorConnected.size === 0 && !this.recording && !this.inputHeld) this.stopMonitorStream();
       return;
     }
 
@@ -828,7 +915,7 @@ export class AudioEngine {
   }
 
   play(tracks: Track[], fromTime: number, loop: LoopRegion, bpm: number, buses: Bus[] = []): void {
-    const ctx = this.ensureContext();
+    const ctx = this.wake();
     this.stopSources();
 
     // `playing` must already be true before syncTracks() below - it calls
@@ -864,6 +951,7 @@ export class AudioEngine {
     this.stopMetronome();
     this.stopClock();
     if (tracks) this.syncTracks(tracks, buses);
+    this.scheduleIdleRelease();
   }
 
   stop(tracks?: Track[], buses?: Bus[]): void {
@@ -874,6 +962,7 @@ export class AudioEngine {
     this.stopClock();
     if (tracks) this.syncTracks(tracks, buses);
     this.emitTime();
+    this.scheduleIdleRelease();
   }
 
   seek(time: number, tracks: Track[], loop: LoopRegion, bpm: number): void {
@@ -1027,7 +1116,7 @@ export class AudioEngine {
       // a hypothetical one). Catching this here, not just on statechange,
       // is what actually bounds how long a real take can silently lose
       // audio to a stalled context.
-      if (this.ctx && this.ctx.state !== "running") void this.ctx.resume();
+      if (this.ctx && this.ctx.state !== "running" && this.shouldKeepRunning()) void this.ctx.resume();
       const t = this.getCurrentTime();
       if (loop.enabled && t >= loop.endTime) {
         this.seek(loop.startTime, tracks, loop, bpm);
@@ -1110,18 +1199,25 @@ export class AudioEngine {
    */
   async playCountIn(bpm: number, beats: number, onBeat?: (remaining: number) => void): Promise<boolean> {
     this.countInCancelled = false;
-    const ctx = this.ensureContext();
-    const secPerBeat = 60 / bpm;
-    const leadInSec = 0.05;
-    for (let i = 0; i < beats; i++) {
-      this.playClick(ctx.currentTime + leadInSec + i * secPerBeat, i === 0);
+    this.countingIn = true;
+    try {
+      const ctx = this.wake();
+      const secPerBeat = 60 / bpm;
+      const leadInSec = 0.05;
+      for (let i = 0; i < beats; i++) {
+        this.playClick(ctx.currentTime + leadInSec + i * secPerBeat, i === 0);
+      }
+      for (let i = 0; i < beats; i++) {
+        if (this.countInCancelled) return false;
+        onBeat?.(beats - i);
+        await new Promise<void>((resolve) => setTimeout(resolve, secPerBeat * 1000));
+      }
+      return !this.countInCancelled;
+    } finally {
+      this.countingIn = false;
+      if (this.countInCancelled) this.inputHeld = false;
+      this.scheduleIdleRelease();
     }
-    for (let i = 0; i < beats; i++) {
-      if (this.countInCancelled) return false;
-      onBeat?.(beats - i);
-      await new Promise<void>((resolve) => setTimeout(resolve, secPerBeat * 1000));
-    }
-    return !this.countInCancelled;
   }
 
   /** Aborts an in-progress playCountIn() - it returns false on its next
@@ -1162,7 +1258,7 @@ export class AudioEngine {
   ): Promise<StartRecordingResult> {
     if (this.recording) return { ok: false, error: "Already recording" };
 
-    const ctx = this.ensureContext();
+    const ctx = this.wake();
 
     // Reuses the one shared mic stream (see MonitorSession) instead of
     // opening a second, independent getUserMedia() - see RecordingSession's
@@ -1171,7 +1267,11 @@ export class AudioEngine {
     // monitorConstraints are actually set, instead of silently hardcoding
     // its own copy that could drift from what you're hearing.
     const monitorResult = await this.ensureMonitorStream();
-    if (!monitorResult.ok) return monitorResult;
+    this.inputHeld = false;
+    if (!monitorResult.ok) {
+      this.scheduleIdleRelease();
+      return monitorResult;
+    }
     const inputGain = this.monitor!.inputGain;
 
     if (!this.recorderWorkletLoaded) {
@@ -1237,6 +1337,9 @@ export class AudioEngine {
     this.stopMetronome();
     this.stopClock();
     this.emitTime();
+    // The mic is only for takes: close it now, not when the track is disarmed.
+    this.refreshMonitoring(this.lastSyncedTracks);
+    this.scheduleIdleRelease();
 
     const numChannels = Math.max(1, chunks.length);
     const channelArrays: Float32Array[] = [];
@@ -1269,6 +1372,27 @@ export class AudioEngine {
     silentSink.disconnect();
     this.recording = null;
     this.stop();
+    this.refreshMonitoring(this.lastSyncedTracks);
+  }
+
+  /** Abandons a mic opened by prepareInput() for a take that never started. */
+  releaseInput(): void {
+    if (!this.inputHeld) return;
+    this.inputHeld = false;
+    this.refreshMonitoring(this.lastSyncedTracks);
+    this.scheduleIdleRelease();
+  }
+}
+
+/** iOS audio category (Web Audio Session API, Safari 16.4+; absent
+ * elsewhere): "play-and-record" only while the mic is open, "playback"
+ * otherwise. */
+function setAudioSessionType(type: "playback" | "play-and-record"): void {
+  if (typeof navigator === "undefined" || !("audioSession" in navigator)) return;
+  try {
+    (navigator as unknown as { audioSession: { type: string } }).audioSession.type = type;
+  } catch {
+    // value not supported on this OS version - keep the current one
   }
 }
 

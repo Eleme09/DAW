@@ -162,6 +162,8 @@ export function VozPanel() {
   // sample) offered that this screen's own button didn't.
   const [styleChoice, setStyleChoice] = useState<VocalStyleChoice>("character:natural");
   const playerRef = useRef<PreviewPlayer | null>(null);
+  /** Keeps the engine's context awake while a preview plays. */
+  const audioHoldRef = useRef<(() => void) | null>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
 
   const [containerRef, width] = useElementWidth<HTMLDivElement>();
@@ -249,13 +251,16 @@ export function VozPanel() {
   function stopPreview() {
     playerRef.current?.source.stop();
     playerRef.current = null;
+    audioHoldRef.current?.();
+    audioHoldRef.current = null;
     setPreviewPlaying(false);
   }
 
   function playPreview(mode: "wet" | "dry", resumeFromSec: number) {
     const buffer = mode === "wet" ? wetBuffer : dryBuffer;
     if (!buffer) return;
-    const ctx = getAudioEngine().ensureContext();
+    audioHoldRef.current ??= getAudioEngine().holdAudio();
+    const ctx = getAudioEngine().wake();
     playerRef.current?.source.stop();
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -268,6 +273,8 @@ export function VozPanel() {
     source.onended = () => {
       if (playerRef.current?.source === source) {
         playerRef.current = null;
+        audioHoldRef.current?.();
+        audioHoldRef.current = null;
         setPreviewPlaying(false);
       }
     };

@@ -12,21 +12,11 @@ describe("isTrackMonitoredLive", () => {
     expect(isTrackMonitoredLive(true, "off", true, true)).toBe(false);
   });
 
-  it("mode on always monitors an armed track, regardless of transport state", () => {
-    expect(isTrackMonitoredLive(true, "on", false, false)).toBe(true);
-    expect(isTrackMonitoredLive(true, "on", true, false)).toBe(true);
-    expect(isTrackMonitoredLive(true, "on", true, true)).toBe(true);
-  });
-
-  it("mode auto monitors while stopped", () => {
-    expect(isTrackMonitoredLive(true, "auto", false, false)).toBe(true);
-  });
-
-  it("mode auto monitors while recording, even though transport is 'playing'", () => {
-    expect(isTrackMonitoredLive(true, "auto", true, true)).toBe(true);
-  });
-
-  it("mode auto does NOT monitor during plain playback (not recording)", () => {
-    expect(isTrackMonitoredLive(true, "auto", true, false)).toBe(false);
+  it("auto and on only open the mic during a take", () => {
+    for (const mode of ["auto", "on"] as const) {
+      expect(isTrackMonitoredLive(true, mode, false, false)).toBe(false);
+      expect(isTrackMonitoredLive(true, mode, true, false)).toBe(false);
+      expect(isTrackMonitoredLive(true, mode, true, true)).toBe(true);
+    }
   });
 });

@@ -3,8 +3,8 @@
 import { isTrackMonitoredLive } from "@/audio-engine/monitoring";
 import { useProjectStore } from "@/state/projectStore";
 import { MicIcon, KnobIcon, ScissorsIcon, HeadphonesIcon } from "../icons";
+import { MONITOR_NEXT } from "../monitorLabels";
 
-const MONITOR_NEXT = { off: "auto", auto: "on", on: "off" } as const;
 
 /**
  * Persistent bar between the track lanes and the transport (estudio-ui.html's

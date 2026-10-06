@@ -1093,3 +1093,20 @@ Pedido: copiar el flujo de +Fx de BandLab (7 videos) y rehacer los efectos "feos
 - **Niveles medidos** (exportando cada preajuste con la voz de prueba, −8.7 LUFS, pico real −1.5 dBTP): todos entre −2.4 y +4.1 LU respecto a la voz seca y 0 muestras recortadas (antes: 3 preajustes recortaban y Robot quedaba −14.9 LU; se corrigió con limitador de seguridad y ganancias).
 - **Verificado**: tsc, eslint, vitest (pruebas nuevas en `src/lib/fx/factoryPresets.test.ts`), build, y en Chromium 390×844 todas las pantallas (hoja, cada cara, librería, guardar, Mis preajustes) sin errores de página.
 - **No verificado / conocido**: nadie escuchó los preajustes; umbrales fijos (dependen del nivel de grabación); latencia del compresor en Safari sin medir; "topboy" sin identificar; escritorio con el rack viejo.
+
+## Bug del iPhone: el DAW bloqueaba el audio de todo el teléfono (reporte del usuario con video)
+
+Síntoma (video del usuario): con el DAW abierto o en segundo plano, una nota de voz de WhatsApp y un video de YouTube se pausan solos al darles play.
+
+Causas en el código (las tres juntas):
+1. `audioSession.type = "play-and-record"` fijo desde que se creaba el contexto de audio: iOS trata la app como una llamada/grabadora y corta el audio de las demás apps.
+2. El contexto se reanudaba solo cada vez que iOS lo interrumpía (`statechange` → `resume()`), también en segundo plano. Las otras apps tomaban el audio, nosotros lo quitábamos y ellas se pausaban.
+3. Con monitor "auto" el micrófono quedaba abierto mientras la pista siguiera armada (después de cada toma la pista queda armada), o sea casi siempre.
+
+Arreglo (`AudioEngine.ts`, `monitoring.ts`, `projectStore.ts`):
+- El micrófono solo se abre al tocar Grabar (antes de la cuenta atrás) y se cierra al terminar o cancelar la toma. "auto" y "on" ahora significan "te escuchas mientras grabas"; el botón alterna apagado / encendido.
+- "play-and-record" solo con el micrófono abierto; si no, "playback".
+- El contexto se suspende a los 2.5 s sin reproducir ni grabar, y ya no se reanuda solo salvo que se esté reproduciendo/grabando con la app en pantalla.
+- Al salir de la app (inicio, otra app, bloqueo) se pausa la reproducción, se cierra el micrófono y se suspende el audio. Una toma en curso sigue (cortarla es decisión del usuario).
+- Verificado en Chromium con micrófono falso: suspendido en reposo; activo al reproducir; suspendido 3.5 s después de pausar; micrófono abierto solo durante cuenta atrás y toma; toma guardada; en segundo plano se pausa y suspende; al volver no se reanuda solo.
+- No verificado en un iPhone real (Chromium no simula la sesión de audio de iOS). Si el teléfono sigue raro: cerrar la app desde el selector de apps o reiniciar.
