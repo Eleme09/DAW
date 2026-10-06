@@ -28,6 +28,7 @@ export interface WorkletHelpers {
   diatonicShift(note: number, steps: number, key: number, pcs: number[]): number;
   allowedPcs(scaleIndex: number, mask: number): number[];
   harmonyPcs(scaleIndex: number, mask: number): number[];
+  refineLag(d: ArrayLike<number>, tau: number): number;
 }
 
 function load(sampleRate: number): { Processor: ProcessorClass; helpers: WorkletHelpers } {

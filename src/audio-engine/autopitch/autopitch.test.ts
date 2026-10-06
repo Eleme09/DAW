@@ -112,7 +112,7 @@ describe("AutoPitch tuning (Classic, real worklet)", () => {
     let a = 0;
     let b = 0;
     for (let i = Math.floor(0.4 * SR); i < Math.floor(1.1 * SR); i++) {
-      const y = out.left[i] / Math.SQRT1_2;
+      const y = out.left[i];
       const x = input[i - lag];
       num += x * y;
       a += x * x;
@@ -178,7 +178,7 @@ describe("AutoPitch tuning (Classic, real worklet)", () => {
     let a = 0;
     let b = 0;
     for (let i = 0.3 * SR; i < 0.9 * SR; i++) {
-      const y = out.left[i] / Math.SQRT1_2;
+      const y = out.left[i];
       num += noise[i - lag] * y;
       a += noise[i - lag] ** 2;
       b += y * y;
@@ -234,7 +234,7 @@ describe("AutoPitch presets (real worklet)", () => {
     }
     expect(peak).toBeLessThan(2);
     const from = Math.floor(0.3 * SR);
-    const outRms = Math.sqrt((rms(out.left, from) ** 2 + rms(out.right, from) ** 2) / 2) / Math.SQRT1_2;
+    const outRms = Math.sqrt((rms(out.left, from) ** 2 + rms(out.right, from) ** 2) / 2);
     const db = 20 * Math.log10(outRms / rms(sliding, from));
     expect(db).toBeGreaterThan(-3);
     expect(db).toBeLessThan(3);
@@ -278,7 +278,7 @@ describe("AutoPitch on a phone-recorded voice (regression)", () => {
     for (let i = 0; i < out.left.length; i++) peak = Math.max(peak, Math.abs(out.left[i]), Math.abs(out.right[i]));
     expect(peak).toBeLessThan(inPeak * 1.3);
     const from = Math.floor(0.3 * SR);
-    const outRms = Math.sqrt((rms(out.left, from) ** 2 + rms(out.right, from) ** 2) / 2) / Math.SQRT1_2;
+    const outRms = Math.sqrt((rms(out.left, from) ** 2 + rms(out.right, from) ** 2) / 2);
     const db = 20 * Math.log10(outRms / rms(voice, from));
     expect(db).toBeGreaterThan(-4);
     expect(db).toBeLessThan(3);
@@ -294,7 +294,7 @@ describe("AutoPitch on a phone-recorded voice (regression)", () => {
       const ri = rms(voice, a, a + win);
       if (ri < 0.04) continue;
       loud++;
-      const ro = Math.sqrt((rms(out.left, a, a + win) ** 2 + rms(out.right, a, a + win) ** 2) / 2) / Math.SQRT1_2;
+      const ro = Math.sqrt((rms(out.left, a, a + win) ** 2 + rms(out.right, a, a + win) ** 2) / 2);
       if (ro < ri * 0.25) dead++;
     }
     expect(loud).toBeGreaterThan(10);

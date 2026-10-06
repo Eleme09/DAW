@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderAutoPitch } from "./workletHarness";
+import { renderAutoPitch, loadAutoPitchHelpers } from "./workletHarness";
 import { sungVowel } from "./testVoice";
 import { resolveAutoPitch } from "./resolveAutoPitch";
 import { createAutoPitchSettings } from "@/types/autoPitch";
@@ -179,8 +179,13 @@ describe("AutoPitch tracking errors", () => {
         f.y1 = v;
         y = v;
       }
-      data[i] = y * 0.12;
+      data[i] = y;
     }
+    // (the resonators have a large gain: normalise to a realistic level - the
+    // raw pulse train peaked at ~650 and only exercised the overflow reset)
+    let peak = 0;
+    for (const v of data) peak = Math.max(peak, Math.abs(v));
+    for (let i = 0; i < n; i++) data[i] *= 0.5 / peak;
     const out = renderAutoPitch(data, classic());
     // Output pulses in a steady second: about 220, not about 110. A pulse is a
     // peak of the energy smoothed over ~1 ms (one per period, however many
@@ -206,5 +211,130 @@ describe("AutoPitch tracking errors", () => {
     }
     expect(peaks).toBeGreaterThan(200);
     expect(peaks).toBeLessThan(240);
+  });
+});
+
+/** A sung line with instant (legato) note changes: harmonic tone at `notes`
+ * (MIDI), each held `holdSec`, with a light vibrato. */
+function legato(notes: number[], holdSec: number): Float32Array {
+  const n = Math.floor(notes.length * holdSec * SR);
+  const out = new Float32Array(n);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const midi = notes[Math.min(notes.length - 1, Math.floor(t / holdSec))] + 0.15 * Math.sin(2 * Math.PI * 5.5 * t);
+    phase += (440 * Math.pow(2, (midi - 69) / 12)) / SR;
+    let s = 0;
+    for (let k = 1; k <= 12; k++) s += Math.sin(2 * Math.PI * k * phase) / k;
+    out[i] = 0.25 * s;
+  }
+  return out;
+}
+
+describe("AutoPitch on the failures measured on a real vocal (82 s, user's take)", () => {
+  it("with nothing to correct the output IS the input, delayed by D (grains follow the input's epochs)", () => {
+    // amount 0 keeps the whole grain engine running with a ratio of exactly 1.
+    // The old mark spacing (one TARGET period) slid against the epochs and only
+    // a snap-to-epoch rescued it; on the real vocal 4 % of 50 ms windows still
+    // fell under 20 dB SNR, and with the snap removed the spectral distance
+    // was 6-8 dB at ZERO shift.
+    const { data } = sungVowel({ seconds: 3, hz: 200, cents: 35, vibratoCents: 25, jitter: 0.004 });
+    const out = renderAutoPitch(data, { ...classic(), amount: 0 });
+    const D = Math.round(0.026 * SR);
+    let err = 0;
+    let sig = 0;
+    for (let i = Math.floor(0.5 * SR); i < Math.floor(2.8 * SR); i++) {
+      const e = out.left[i] - data[i - D];
+      err += e * e;
+      sig += data[i - D] * data[i - D];
+    }
+    expect(10 * Math.log10(sig / err)).toBeGreaterThan(60);
+  });
+
+  it("a small shift repeats/skips input periods only as often as the shift needs", () => {
+    // 20 cents sharp with vibrato, hard-tuned: output runs 20 cents slower than
+    // the input, so about one period every 1/(1 - 2^(-20/1200)) ~ 87 cycles
+    // has to be repeated (~2.3 per second at 200 Hz). The old scheduler
+    // repeated or dropped one every ~25 cycles even at zero shift.
+    const { data } = sungVowel({ seconds: 3, hz: 200, cents: 20, vibratoCents: 20, jitter: 0.004 });
+    let events = 0;
+    let lastE: number | null = null;
+    let wrapped = false;
+    renderAutoPitch(data, classic(), SR, (node) => {
+      if (wrapped) return;
+      wrapped = true;
+      const n = node as unknown as Record<string, unknown> & { epochPos: Float64Array; epochPer: Float32Array; n: number };
+      const find = (n.findEpoch as (...a: unknown[]) => number).bind(n);
+      n.findEpoch = (...a: unknown[]) => {
+        const k = find(...a);
+        if (k >= 0 && n.n > 0.6 * SR && n.n < 2.8 * SR && (a[0] as number) >= 0) {
+          const e = n.epochPos[k];
+          if (lastE !== null && (Math.abs(e - lastE) < 1 || e - lastE > 1.5 * n.epochPer[k])) events++;
+          lastE = e;
+        }
+        return k;
+      };
+    });
+    // ~2.2 s of steady voice -> ~5 needed; allow some slack for vibrato
+    expect(events).toBeLessThanOrEqual(12);
+  });
+
+  it("legato note changes don't make the target flip back and forth", () => {
+    // The ~60 ms pitch average lags a jump. It used to be allowed to choose its
+    // own note, so right after a jump the target alternated every 5.8 ms
+    // between the note being sung and the ones the average was crawling past
+    // (2-6 semitones away) - 37 note changes a second on the real vocal.
+    const input = legato([50, 56, 52, 57, 54], 0.4);
+    const targets: number[] = [];
+    renderAutoPitch(input, { ...classic(), key: 9, scaleIndex: 1 }, SR, (node) => {
+      const t = (node as unknown as { targetNote: number | null }).targetNote;
+      if (t !== null) targets.push(t);
+    });
+    let changes = 0;
+    let flipBacks = 0;
+    for (let i = 1; i < targets.length; i++) {
+      if (targets[i] === targets[i - 1]) continue;
+      changes++;
+      const before = targets.slice(Math.max(0, i - 30), i);
+      if (before.includes(targets[i]) && targets[i] !== before[0]) flipBacks++;
+    }
+    expect(flipBacks).toBe(0);
+    expect(changes).toBeLessThanOrEqual(6);
+  });
+
+  it("the pitch detector's sub-sample refinement can't produce a negative or runaway lag", () => {
+    // On the real vocal the dip picked at 72.03 s had almost no curvature: the
+    // old refinement returned a lag of -38 (-1.15 Hz), the pitch became NaN and
+    // the tuner stayed broken for the rest of the song.
+    const { refineLag } = loadAutoPitchHelpers();
+    const cases: [number[], number][] = [
+      [[0.5, 0.30001, 0.1], 1], // nearly straight slope: the old formula gave ~ -10000
+      [[0.1, 0.3, 0.5], 1], // rising, not a minimum
+      [[0.2, 0.3, 0.6], 1], // convex but the minimum is outside
+      [[0.4, 0.4, 0.4], 1], // flat
+    ];
+    for (const [d, tau] of cases) {
+      const lag = refineLag(d, tau);
+      expect(Number.isFinite(lag)).toBe(true);
+      expect(Math.abs(lag - tau)).toBeLessThanOrEqual(0.5);
+    }
+    // a real dip is still refined towards its true minimum
+    expect(refineLag([0.4, 0.1, 0.2], 1)).toBeGreaterThan(1);
+    expect(refineLag([0.4, 0.1, 0.2], 1)).toBeLessThan(1.5);
+  });
+
+  it("switching AutoPitch on keeps the track's level (it used to drop 3 dB)", () => {
+    const { data } = sungVowel({ seconds: 2, hz: 220, cents: 0, vibratoCents: 10, jitter: 0.003 });
+    const out = renderAutoPitch(data, classic());
+    const rms = (x: Float32Array, a: number, b: number) => {
+      let s = 0;
+      for (let i = a; i < b; i++) s += x[i] * x[i];
+      return Math.sqrt(s / (b - a));
+    };
+    const D = Math.round(0.026 * SR);
+    const a = Math.floor(0.5 * SR);
+    const b = Math.floor(1.9 * SR);
+    const db = 20 * Math.log10(rms(out.left, a + D, b + D) / rms(data, a, b));
+    expect(Math.abs(db)).toBeLessThan(0.5);
   });
 });

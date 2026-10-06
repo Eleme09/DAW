@@ -31,11 +31,12 @@
  *    The old tuner took the loudest sample of the last half period, which
  *    hops between waveform peaks and makes the output rough/buzzy.
  *  - Synthesis: each output stream (lead + up to 4 voices) places its own
- *    marks one TARGET period apart and, for each mark m, takes the input
- *    grain whose epoch is nearest to m - D. Grains are Hann-windowed, one
+ *    marks one LOCAL input period / ratio apart and, for each mark m, takes
+ *    the input grain whose epoch is nearest to m - D (so with no correction
+ *    the output IS the input, delayed by D). Grains are Hann-windowed, one
  *    input period per side, optionally resampled to move the formants
- *    (Chip, Gorgon, the "Original" algorithm's harmony voices), and scaled
- *    by hop/halfLength so the overlap-add keeps a constant level.
+ *    (Chip, Gorgon, the "Original" algorithm's harmony voices), and the
+ *    overlap-add is divided by the sum of the windows (constant level).
  *  - Because D is constant, the dry input delayed by D lines up sample-exact
  *    with the tuned voice: unvoiced sounds (s, sh, t, breaths) crossfade to
  *    that clean dry signal instead of going through the grain machinery.
@@ -68,6 +69,12 @@ const MAX_VOICES = 4;
 const STREAMS = MAX_VOICES + 1; // stream 0 = lead
 const VOC_BANDS = 16;
 const WIN_SIZE = 2048;
+// Grains are read at fractional input positions. Linear interpolation there is
+// a low-pass whose depth changes with every grain's fraction: on a real vocal
+// it took 1.3-2.2 dB off 5-16 kHz and made the top end flutter grain to grain.
+// A 16-tap Lanczos (a = 8) fractional-delay kernel is flat to ~17 kHz.
+const FD_HALF = 8;
+const FD_TAPS = 2 * FD_HALF;
 // Hann half-window table: HANN[i] = 0.5 + 0.5 cos(pi * i / WIN_SIZE), i = 0..WIN_SIZE
 const HANN = new Float32Array(WIN_SIZE + 2);
 for (let i = 0; i <= WIN_SIZE + 1; i++) HANN[i] = 0.5 + 0.5 * Math.cos((Math.PI * Math.min(i, WIN_SIZE)) / WIN_SIZE);
@@ -140,6 +147,21 @@ function diatonicShift(note, steps, key, pcs) {
   oct += Math.floor(j / n);
   j = ((j % n) + n) % n;
   return key + oct * 12 + pcs[j] + (pc - below);
+}
+
+/** Sub-sample lag of the YIN dip at integer lag `tau` (parabola through
+ * d[tau-1..tau+1]), only around a real minimum and by at most half a lag.
+ * The subharmonic guard can pick a lag that is NOT a local minimum; the
+ * unguarded formula then divided by ~0 - on a real 82 s vocal it returned a
+ * lag of -38 (-1.15 Hz) at 72.03 s, a NaN pitch got into the smoothed period
+ * and the tuner stayed broken for the rest of the song. */
+function refineLag(d, tau) {
+  const s0 = d[tau - 1];
+  const s1 = d[tau];
+  const s2 = d[tau + 1];
+  const curv = s0 - 2 * s1 + s2;
+  if (!(curv > 1e-9)) return tau;
+  return tau + clamp((s0 - s2) / (2 * curv), -0.5, 0.5);
 }
 
 function hzToMidi(hz, ref) {
@@ -296,16 +318,17 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.histC0 = 0;
     this.histT1 = 0;
     this.histC1 = 0;
-    // the pitch the tuned voice should have (detected + correction) at the same
-    // two frame centres: output marks are spaced from THIS, not from the
-    // input's own period jitter (see deposit)
-    this.histO0 = 0;
-    this.histO1 = 0;
-    this.histOK0 = false;
-    this.histOK1 = false;
+    // detected pitch and "how much of a pitch deviation the correction follows"
+    // at the same two frame centres (see deposit: local period following)
+    this.histD0 = 0;
+    this.histD1 = 0;
+    this.histG0 = 0;
+    this.histG1 = 0;
+    this.followGain = 0;
 
     // detection state
     this.voiced = false;
+    this.voicedAt = 0; // input sample where the current voiced stretch began
     this.voicedHops = 0;
     this.unvoicedHops = 10;
     this.detMidi = null; // accepted detected pitch (MIDI, float)
@@ -313,6 +336,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.prev2 = null;
     this.suspect = null;
     this.suspectHops = 0;
+    this.holdHops = 0;
     this.pendingJump = null;
     this.period = sr / 200; // smoothed input period, samples
 
@@ -331,10 +355,15 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     // epochs
     this.epochPos = new Float64Array(512);
     this.epochPer = new Float32Array(512);
+    this.epochVoiced = new Uint8Array(512); // tracked on a real waveform (not the unvoiced grid)
     this.epochCount = 0;
     this.lastEpoch = 0;
     this.epochLocked = false;
     this.alignScores = new Float64Array(2048);
+    // per stream: marks already put in phase with the input for this voiced
+    // stretch (see deposit)
+    this.aligned = new Uint8Array(STREAMS);
+    this.fdTaps = new Float64Array(FD_TAPS);
 
     // synthesis streams
     this.ola = [];
@@ -488,14 +517,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       }
     }
     const confidence = clamp(1 - d[tauEstimate], 0, 1);
-    let better = tauEstimate;
-    if (tauEstimate > minTau && tauEstimate < maxTau) {
-      const s0 = d[tauEstimate - 1];
-      const s1 = d[tauEstimate];
-      const s2 = d[tauEstimate + 1];
-      const denom = 2 * (2 * s1 - s2 - s0);
-      if (denom !== 0) better = tauEstimate + (s2 - s0) / denom;
-    }
+    const better = tauEstimate > minTau && tauEstimate < maxTau ? refineLag(d, tauEstimate) : tauEstimate;
     return { hz: sr / better, confidence, rms };
   }
 
@@ -504,7 +526,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const ref = p.referenceHz;
     const dt = HOP / this.sr;
     const det = this.yin();
-    const goodFrame = det.rms >= GATE_RMS && det.confidence >= MIN_CONFIDENCE;
+    const goodFrame = det.rms >= GATE_RMS && det.confidence >= MIN_CONFIDENCE && det.hz > 0 && det.hz < Infinity;
 
     // voicing with hysteresis: on after 1 good frame, off after 2 bad ones
     if (goodFrame) {
@@ -515,7 +537,10 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       this.voicedHops = 0;
     }
     const wasVoiced = this.voiced;
-    if (!this.voiced && this.voicedHops >= 1) this.voiced = true;
+    if (!this.voiced && this.voicedHops >= 1) {
+      this.voiced = true;
+      this.voicedAt = this.n;
+    }
     if (this.voiced && this.unvoicedHops >= 2) this.voiced = false;
 
     if (goodFrame) {
@@ -539,14 +564,17 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       // of 1-3 hops that don't agree and never reach the tuner - one such run
       // used to flip the target to the neighbouring note for a few ms, which
       // is an audible blip in a hard-tuned voice.
+      // Each reading is compared with the one before it (not with the first
+      // suspect), and a hold never lasts more than 4 hops (~23 ms): a glide
+      // moves ~0.5 st per hop, never "agreed" with its first reading, and kept
+      // a stale pitch for 75 ms on a real vocal (the voice sat on a wrong note).
       let m = raw;
       const steady = this.prev1 !== null && this.prev2 !== null && Math.abs(this.prev1 - this.prev2) < 0.25;
-      if (steady && Math.abs(raw - this.prev1) > 0.5) {
+      if (steady && Math.abs(raw - this.prev1) > 0.5 && this.suspectHops < 3 && this.holdHops < 4) {
         if (this.suspect !== null && Math.abs(raw - this.suspect) < 0.5) this.suspectHops++;
-        else {
-          this.suspect = raw;
-          this.suspectHops = 1;
-        }
+        else this.suspectHops = 1;
+        this.suspect = raw;
+        this.holdHops++;
         if (this.suspectHops >= 3) {
           this.suspect = null; // it persisted: a real change
         } else {
@@ -554,11 +582,18 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         }
       } else {
         this.suspect = null;
+        this.suspectHops = 0;
+        this.holdHops = 0;
       }
       this.prev2 = this.prev1;
       this.prev1 = m;
       this.detMidi = m;
       if (this.avgA === null) {
+        this.avgA = m;
+        this.avgMidi = m;
+      } else if (Math.abs(m - this.avgMidi) > 1) {
+        // a real jump (new note, end of a held-back run): restart the average
+        // there instead of letting it crawl across the gap for ~100 ms
         this.avgA = m;
         this.avgMidi = m;
       } else {
@@ -580,7 +615,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         this.suspect = null;
         this.avgA = null;
       }
-      this.pushHistory(false);
+      this.followGain = 0;
+      this.pushHistory();
       return;
     }
 
@@ -602,12 +638,18 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       // two); otherwise decide on the pitch averaged over ~60 ms, which
       // vibrato riding near the midpoint can't push across but a real note
       // change - even one sung 30 cents off - does within ~75 ms.
+      // The average only CONFIRMS the note the voice is nearest to now; it
+      // never proposes a different one. It lags a fast move, and when it was
+      // allowed to pick its own note the target alternated every 5.8 ms
+      // between the note being sung and the one the lagging average was
+      // passing (2-6 semitones apart): 37 note changes a second on a real
+      // vocal, heard as a broken, robotic voice.
       const avgNearest = nearestNote(this.avgMidi, key, pcs);
       const rawMargin = Math.abs(d - this.targetNote) - Math.abs(d - nearest);
       const avgMargin = Math.abs(this.avgMidi - this.targetNote) - Math.abs(this.avgMidi - avgNearest);
       let next = null;
       if (nearest !== this.targetNote && rawMargin > 0.5) next = nearest;
-      else if (avgNearest !== this.targetNote && avgMargin > 0.1) next = avgNearest;
+      else if (nearest !== this.targetNote && avgNearest === nearest && avgMargin > 0.1) next = nearest;
       if (next !== null) {
         this.targetNote = next;
         this.transitioning = true;
@@ -627,11 +669,15 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       tauSec += p.humanize * 0.25 * Math.min(1, (this.heldSec - 0.15) / 0.3);
     }
     const alpha = tauSec <= 0.0005 ? 1 : 1 - Math.exp(-dt / tauSec);
+    // An instant correction (hard tune) follows every deviation of the voice
+    // from the note, so it can be refined per grain from the local period
+    // (deposit). A slow one (Retune speed, Humanize) or Flex-Tune must not.
+    this.followGain = tauSec <= 0.0005 && !(p.flex > 0) ? p.amount : 0;
     this.correction += (wanted - this.correction) * alpha;
     if (this.transitioning && Math.abs(wanted - this.correction) < 0.05) this.transitioning = false;
     this.heldSec += dt;
     this.outMidi = d + this.correction;
-    this.pushHistory(true);
+    this.pushHistory();
 
     // per-voice drift: two copies of a voice must not move identically
     for (let v = 0; v < MAX_VOICES; v++) {
@@ -640,27 +686,26 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     }
   }
 
-  pushHistory(voiced) {
+  pushHistory() {
     // centre of the frame just analysed, in input samples
     const center = this.n - (this.frameLen * DECIM) / 2;
     this.histT0 = this.histT1;
     this.histC0 = this.histC1;
-    this.histO0 = this.histO1;
-    this.histOK0 = this.histOK1;
     this.histT1 = center;
     this.histC1 = this.correction;
-    this.histO1 = this.outMidi === null ? 0 : this.outMidi;
-    this.histOK1 = voiced && this.outMidi !== null;
+    this.histD0 = this.histD1;
+    this.histG0 = this.histG1;
+    this.histD1 = this.detMidi === null ? 0 : this.detMidi;
+    this.histG1 = this.followGain;
   }
 
-  /** Pitch (MIDI) the tuned voice has at input instant `t`, interpolated
-   * between the last two voiced frames; null when either was unvoiced. */
-  outMidiAt(t) {
-    if (!this.histOK0 || !this.histOK1) return null;
+  /** Detected pitch (MIDI) at input instant `t`, interpolated between the
+   * last two frame centres. */
+  detectedAt(t) {
     const span = this.histT1 - this.histT0;
-    if (span <= 0) return this.histO1;
+    if (span <= 0) return this.histD1;
     const a = clamp((t - this.histT0) / span, 0, 1);
-    return this.histO0 + (this.histO1 - this.histO0) * a;
+    return this.histD0 + (this.histD1 - this.histD0) * a;
   }
 
   /** Correction at input instant `t`: interpolated between the last two
@@ -719,6 +764,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       const k = this.epochCount & 511;
       this.epochPos[k] = e;
       this.epochPer[k] = clamp(e - this.lastEpoch, this.sr / MAX_HZ, this.sr / MIN_HZ);
+      this.epochVoiced[k] = this.voiced ? 1 : 0;
       this.epochCount++;
       this.lastEpoch = e;
     }
@@ -860,7 +906,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       const k = (this.epochCount - i) & 511;
       const e = this.epochPos[k];
       const per = this.epochPer[k];
-      if (e + grainHalfWidth(per, ratio, f, hMax) * f > now) continue;
+      if (e + grainHalfWidth(per, ratio, f, hMax) * f + FD_HALF + 1 > now) continue; // + interpolation taps
       const dist = Math.abs(e - u);
       if (dist < bestDist) {
         bestDist = dist;
@@ -911,34 +957,68 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       return;
     }
     const e = this.epochPos[k];
-    // With no shift to apply, lock the mark onto the epoch: the output is
-    // then the input delayed by exactly D, in phase with the dry path the
-    // consonants use. (While shifting, marks must drift against epochs -
-    // that drift IS the pitch change - so the lock only engages at 1:1.)
     const per = this.epochPer[k];
-    // (only when that epoch is the one expected here: a stale fallback epoch
-    // would drag the mark into the past and the scheduler would then spend
-    // its whole time catching up)
-    if (Math.abs(ratio - 1) < 0.0006 && s === 0 && Math.abs(e - (mark - this.delay[s])) < 0.5 * per) mark = e + this.delay[s];
-    // Output marks are spaced from the pitch the voice SHOULD have, not from
-    // the input epoch's own spacing: that carried the input's period jitter
-    // (and the epoch picker's +-1 sample noise) straight into the output, which
-    // a tuned voice must not have - cycle-to-cycle period noise above ~0.5 % is
-    // what reads as rough/hoarse. At 100 % hard tune the target is one fixed
-    // note, so the marks are exactly periodic.
-    let hop = Math.max(8, per / ratio);
-    const outMidi = this.outMidiAt(mark - this.delay[s]);
-    if (outMidi !== null) {
-      const { extra } = this.streamSemis(s, mark - this.delay[s]);
-      const regular = clamp(this.sr / midiToHz(outMidi + extra, this.p.referenceHz), this.sr / 2000, this.sr / 30);
-      // Cross-check against the input's own period: when the detector is wrong
-      // (an octave error makes the "target" an octave away from what is really
-      // being sung) the two disagree by far more than any correction does, and
-      // following the target would drop the voice an octave. Then keep the
-      // old behaviour (move the input by the correction), which stays close
-      // to the sung pitch whatever the detector believed.
-      if (Math.abs(regular / hop - 1) < 0.12) hop = regular;
+    // At the start of each voiced stretch the lead's marks are put in phase
+    // with the input (mark = epoch + D), so the tuned voice takes over from
+    // the dry signal without a jump - on the first epoch tracked on the real
+    // waveform (the unvoiced grid before it is not the voice's), and again
+    // during the first 100 ms if there is nothing to correct, while the
+    // detector settles (an onset octave error tracks epochs at the wrong rate
+    // for a few periods). Otherwise a mark is never moved: snapping it
+    // mid-note (the old 1:1 lock, whenever the correction passed through zero
+    // - constantly, with hard tune) shifted the output by up to half a period
+    // in one go - a glitch every time the singer crossed the note's centre.
+    // (Only when the epoch is the one expected here: a stale fallback epoch
+    // would drag the mark into the past.)
+    if (!this.voiced) this.aligned[s] = 0;
+    else if (s === 0 && this.epochVoiced[k] && Math.abs(e - (mark - this.delay[s])) < 0.5 * per) {
+      const settling = this.n - this.voicedAt < 0.1 * this.sr && Math.abs(ratio - 1) < 0.0006;
+      if (!this.aligned[s] || settling) {
+        mark = e + this.delay[s];
+        this.aligned[s] = 1;
+      }
     }
+    // TD-PSOLA spacing: the next mark is one LOCAL input period (this epoch to
+    // the next one) divided by the ratio. With nothing to correct the marks
+    // then walk the input's epochs one by one and the output is the input
+    // itself; with a shift they drift against the epochs exactly as fast as
+    // the pitch change asks. The output keeps the voice's own cycle-to-cycle
+    // variation, as BandLab's does (~1 % on a real vocal). The old spacing
+    // (one period of the TARGET pitch, and before that the period BEFORE the
+    // epoch) did not follow the input: even with zero correction the marks
+    // slid against the epochs, repeating or dropping a period every ~25
+    // cycles and overlapping neighbouring grains out of phase - measured on a
+    // real vocal: 2 % repeated + 2.3 % skipped periods, grain misalignment
+    // > 18 samples in 10 % of grains, spectral distance 6-8 dB, at ZERO shift.
+    let after = per;
+    // (bounded by the detector's period, not by the spacing before this epoch:
+    // at an onset that one runs from the unvoiced grid to the first real
+    // epoch and is meaningless)
+    if (k !== ((this.epochCount - 1) & 511)) after = clamp(this.epochPos[(k + 1) & 511] - e, 0.5 * this.period, 2 * this.period);
+    // Local period following (hard tune): the correction was computed from a
+    // ~30 ms YIN frame centred ~15 ms away from this grain, so a vibrato or a
+    // slide had moved on - the tuned note wobbled by what the frame missed
+    // (steady notes: median 6.7, p90 32 cents off on a real vocal; BandLab's
+    // Classic is much flatter). The epochs around THIS grain give the period
+    // right here: shift by the difference, scaled by how much the correction
+    // follows deviations (all of it at speed 0, none for a slow retune).
+    let r = ratio;
+    const g = Math.min(this.histG0, this.histG1);
+    if (g > 0 && this.epochCount > 4 && this.epochVoiced[k] && this.epochVoiced[(k - 3) & 511]) {
+      const latest = (this.epochCount - 1) & 511;
+      const pref = k !== latest ? (this.epochPos[(k + 1) & 511] - this.epochPos[(k - 2) & 511]) / 3 : (e - this.epochPos[(k - 3) & 511]) / 3;
+      if (pref > 0.8 * this.period && pref < 1.25 * this.period) {
+        const diff = this.detectedAt(mark - this.delay[s]) - hzToMidi(this.sr / pref, this.p.referenceHz);
+        if (Math.abs(diff) < 0.5) r = ratio * Math.pow(2, (g * diff) / 12);
+      }
+    }
+    let hop = Math.max(8, after / r);
+    // Nothing to correct (within a cent - the detector's own noise): steer the
+    // marks back onto the epochs, at most half a sample per period (~4 cents
+    // for one cycle, inaudible), so an in-tune voice comes out as the input
+    // delayed by exactly D - in phase with the dry path it hands over to at
+    // consonants - instead of drifting slowly away from it.
+    if (s === 0 && Math.abs(r - 1) < 0.0006) hop += clamp(0.25 * (e - (mark - this.delay[s])), -0.5, 0.5);
     this.nextMark[s] = mark + hop;
     const hOut = grainHalfWidth(per, ratio, f, this.hMax[s]);
     if (hOut < 4) return;
@@ -951,18 +1031,51 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const j0 = Math.max(now, Math.ceil(center - hOut));
     const j1 = Math.floor(center + hOut);
     const winScale = WIN_SIZE / hOut;
-    for (let j = j0; j <= j1; j++) {
-      const x = j - center;
-      const wi = (x < 0 ? -x : x) * winScale;
-      const w0 = wi | 0;
-      const w = HANN[w0] + (HANN[w0 + 1] - HANN[w0]) * (wi - w0);
-      const pos = e + x * f;
-      const i0 = Math.floor(pos);
-      const frac = pos - i0;
-      const a = this.ring[i0 & RING_MASK];
-      const b = this.ring[(i0 + 1) & RING_MASK];
-      buf[j & OLA_MASK] += (a + (b - a) * frac) * w;
-      wbuf[j & OLA_MASK] += w;
+    const ring = this.ring;
+    if (f === 1) {
+      // Unresampled grain (the lead, most voices): ONE fractional offset for
+      // the whole grain - build its windowed-sinc kernel once.
+      const pos0 = e + (j0 - center);
+      const base = Math.floor(pos0);
+      const frac = pos0 - base;
+      const h = this.fdTaps;
+      let sum = 0;
+      for (let k = 0; k < FD_TAPS; k++) {
+        const t = k - FD_HALF + 1 - frac;
+        const v = t === 0 ? 1 : Math.abs(t) >= FD_HALF ? 0 : (FD_HALF * Math.sin(Math.PI * t) * Math.sin((Math.PI * t) / FD_HALF)) / (Math.PI * Math.PI * t * t);
+        h[k] = v;
+        sum += v;
+      }
+      for (let k = 0; k < FD_TAPS; k++) h[k] /= sum;
+      for (let j = j0; j <= j1; j++) {
+        const x = j - center;
+        const wi = (x < 0 ? -x : x) * winScale;
+        const w0 = wi | 0;
+        const w = HANN[w0] + (HANN[w0 + 1] - HANN[w0]) * (wi - w0);
+        const i0 = base + (j - j0) - FD_HALF + 1;
+        let y = 0;
+        for (let k = 0; k < FD_TAPS; k++) y += ring[(i0 + k) & RING_MASK] * h[k];
+        buf[j & OLA_MASK] += y * w;
+        wbuf[j & OLA_MASK] += w;
+      }
+    } else {
+      // Resampled grain (formant shift): the fraction moves sample by sample -
+      // 4-point cubic (Catmull-Rom), far flatter than linear.
+      for (let j = j0; j <= j1; j++) {
+        const x = j - center;
+        const wi = (x < 0 ? -x : x) * winScale;
+        const w0 = wi | 0;
+        const w = HANN[w0] + (HANN[w0 + 1] - HANN[w0]) * (wi - w0);
+        const pos = e + x * f;
+        const i0 = Math.floor(pos);
+        const t = pos - i0;
+        const a = ring[(i0 - 1) & RING_MASK];
+        const b = ring[i0 & RING_MASK];
+        const c = ring[(i0 + 1) & RING_MASK];
+        const d = ring[(i0 + 2) & RING_MASK];
+        buf[j & OLA_MASK] += (b + 0.5 * t * (c - a + t * (2 * a - 5 * b + 4 * c - d + t * (3 * (b - c) + d - a)))) * w;
+        wbuf[j & OLA_MASK] += w;
+      }
     }
   }
 
@@ -1090,6 +1203,11 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       panR[v] = Math.sin(a) * p[`v${v}Gain`];
     }
     const center = Math.SQRT1_2;
+    // Panning inside the node is equal-power (a centred voice gets 0.707 per
+    // side); the track without AutoPitch plays the same mono/dual-mono clip at
+    // 1.0 per side. Lift the whole output by sqrt(2) so switching AutoPitch on
+    // keeps the level (it used to drop 3 dB) and the preset balances stay.
+    const outGain = p.outGain * Math.SQRT2;
     const useVoc = p.vocMix > 0.0001;
     const useWah = p.wahMix > 0.0001;
     const useCrush = p.crushMix > 0.0001;
@@ -1271,8 +1389,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         }
       }
 
-      L *= p.outGain;
-      R *= p.outGain;
+      L *= outGain;
+      R *= outGain;
       if (!(L === L) || !(R === R) || L > 8 || L < -8 || R > 8 || R < -8) {
         // A numeric fault must never reach the speakers, and must not leave
         // the engine dead afterwards: wipe every buffer and start over.
@@ -1325,5 +1443,5 @@ registerProcessor("autopitch-processor", AutoPitchProcessor);
 
 // Node test harness hook (vitest loads this file in a sandbox); harmless in a worklet.
 if (typeof globalThis.__autopitchExports === "object") {
-  globalThis.__autopitchExports.helpers = { nearestNote, diatonicShift, allowedPcs, harmonyPcs, VOICE_FIELDS };
+  globalThis.__autopitchExports.helpers = { nearestNote, diatonicShift, allowedPcs, harmonyPcs, refineLag, VOICE_FIELDS };
 }
