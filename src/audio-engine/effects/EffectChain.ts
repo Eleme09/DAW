@@ -19,12 +19,16 @@ import { PitchCorrectionEffect } from "./PitchCorrectionEffect";
 import { VocoderEffect } from "./VocoderEffect";
 import type { EffectInstance, EffectType } from "@/types/effects";
 import { compressorLatencySec } from "./latency";
+import { PitchShiftEffect } from "./PitchShiftEffect";
 
 export interface EffectChainDeps {
   isNoiseGateWorkletLoaded: () => boolean;
   ensureNoiseGateWorklet: () => Promise<void>;
   isPitchCorrectionWorkletLoaded: () => boolean;
   ensurePitchCorrectionWorklet: () => Promise<void>;
+  /** The AutoPitch module, which the pitch shifter runs on. */
+  isAutoPitchWorkletLoaded: () => boolean;
+  ensureAutoPitchWorklet: () => Promise<void>;
 }
 
 /** Effect types backed by an AudioWorklet, which must finish loading its
@@ -33,6 +37,7 @@ export interface EffectChainDeps {
 const WORKLET_BACKED_TYPES: Partial<Record<EffectType, { isLoaded: (deps: EffectChainDeps) => boolean; ensure: (deps: EffectChainDeps) => Promise<void> }>> = {
   noiseGate: { isLoaded: (d) => d.isNoiseGateWorkletLoaded(), ensure: (d) => d.ensureNoiseGateWorklet() },
   pitchCorrection: { isLoaded: (d) => d.isPitchCorrectionWorkletLoaded(), ensure: (d) => d.ensurePitchCorrectionWorklet() },
+  pitchShift: { isLoaded: (d) => d.isAutoPitchWorkletLoaded(), ensure: (d) => d.ensureAutoPitchWorklet() },
 };
 
 /** No-op passthrough, used as a placeholder while the noise-gate worklet loads. */
@@ -89,13 +94,21 @@ function createEffectNode(ctx: BaseAudioContext, type: EffectType): Effect<unkno
       return new PitchCorrectionEffect(ctx) as unknown as Effect<unknown>;
     case "vocoder":
       return new VocoderEffect(ctx) as unknown as Effect<unknown>;
+    case "pitchShift":
+      return new PitchShiftEffect(ctx) as unknown as Effect<unknown>;
   }
 }
 
 /** Effects built on DynamicsCompressorNode, whose fixed look-ahead delays
  * the signal (see latency.ts). The chain's dry path for Blend is delayed by
  * the same amount, or mixing it back in would comb-filter the voice. */
-const LATENT_TYPES = new Set<EffectType>(["compressor", "deesser", "limiter", "multibandCompressor"]);
+const LATENT_TYPES = new Set<EffectType>(["compressor", "deesser", "limiter", "multibandCompressor", "pitchShift"]);
+
+/** Delay one live, un-bypassed effect adds to the signal. */
+function effectLatencySec(type: EffectType, sampleRate: number): number {
+  if (type === "pitchShift") return PitchShiftEffect.latencySec(sampleRate);
+  return LATENT_TYPES.has(type) ? compressorLatencySec(sampleRate) : 0;
+}
 
 interface ChainEntry {
   instance: Effect<unknown>;
@@ -255,11 +268,23 @@ export class EffectChain {
       if (!entry) continue; // still pending (e.g. worklet loading)
       node.connect(entry.wrapper.inputNode);
       node = entry.wrapper.outputNode;
-      if (!ins.bypassed && LATENT_TYPES.has(ins.type)) latency += compressorLatencySec(this.ctx.sampleRate);
+      if (!ins.bypassed) latency += effectLatencySec(ins.type, this.ctx.sampleRate);
     }
     node.connect(this.wet);
     this.input.connect(this.dryDelay);
     this.dryDelay.delayTime.value = Math.min(0.2, latency);
+  }
+
+  /** How late the chain's output is vs its input right now (live,
+   * un-bypassed effects) - playback starts the track's clips this much
+   * earlier so a delayed effect (the pitch shifter: ~38 ms) stays on the beat. */
+  getLatencySec(): number {
+    let latency = 0;
+    for (const ins of this.lastInserts) {
+      const entry = this.effects.get(ins.id);
+      if (entry && !ins.bypassed && entry.type === ins.type && !(entry.instance instanceof PassthroughEffect)) latency += effectLatencySec(ins.type, this.ctx.sampleRate);
+    }
+    return Math.min(0.2, latency);
   }
 
   /** Blend's dry path delay follows which latent effects are on (bypass
@@ -267,7 +292,7 @@ export class EffectChain {
   private updateDryLatency(inserts: EffectInstance[]): void {
     let latency = 0;
     for (const ins of inserts) {
-      if (this.effects.has(ins.id) && !ins.bypassed && LATENT_TYPES.has(ins.type)) latency += compressorLatencySec(this.ctx.sampleRate);
+      if (this.effects.has(ins.id) && !ins.bypassed) latency += effectLatencySec(ins.type, this.ctx.sampleRate);
     }
     const next = Math.min(0.2, latency);
     if (Math.abs(this.dryDelay.delayTime.value - next) > 1e-9) this.dryDelay.delayTime.value = next;

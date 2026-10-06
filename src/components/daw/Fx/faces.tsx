@@ -349,6 +349,8 @@ export function EffectFace({ effect, target, onParams }: { effect: EffectInstanc
         </div>
       );
     }
+    case "pitchShift":
+      return <PitchShiftFace effect={effect} onParams={onParams} skin={skin} />;
     case "vocoder": {
       const p = effect.params;
       const set = (patch: Partial<typeof p>) => onParams({ ...p, ...patch });
@@ -373,6 +375,91 @@ export function EffectFace({ effect, target, onParams }: { effect: EffectInstanc
       );
     }
   }
+}
+
+const INTERVALS = ["Unísono", "2ª menor", "2ª mayor", "3ª menor", "3ª mayor", "4ª justa", "Tritono", "5ª justa", "6ª menor", "6ª mayor", "7ª menor", "7ª mayor", "Octava"];
+
+/** "5ª justa arriba", "Octava abajo". */
+export function intervalName(semitones: number): string {
+  const st = Math.round(semitones);
+  if (st === 0) return "Sin cambio";
+  return `${INTERVALS[Math.min(12, Math.abs(st))]} ${st > 0 ? "arriba" : "abajo"}`;
+}
+
+const SHIFT_QUICK = [-12, -7, -5, 5, 7, 12];
+
+function PitchShiftFace({ effect, onParams, skin }: { effect: Extract<EffectInstance, { type: "pitchShift" }>; onParams: (p: EffectInstance["params"]) => void; skin: FxSkin }) {
+  const p = effect.params;
+  const set = (patch: Partial<typeof p>) => onParams({ ...p, ...patch });
+  const st = Math.round(p.semitones);
+  // two staffs of the same melody: the original (faint) and where it lands
+  const y = (offset: number) => 60 - offset * 3.2;
+  const line = (offset: number) => `M8 ${y(offset)} q 22 -14 44 0 t 44 0 t 44 0 t 44 0 t 44 0 t 44 0`;
+  return (
+    <div>
+      <div className="relative overflow-hidden rounded-2xl" style={{ background: skin.box, height: 128 }}>
+        <svg viewBox="0 0 280 120" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+          {[-12, -6, 0, 6, 12].map((o) => (
+            <line key={o} x1={0} x2={280} y1={y(o)} y2={y(o)} stroke={skin.ink2} strokeOpacity={o === 0 ? 0.35 : 0.12} strokeDasharray={o === 0 ? "" : "3 5"} />
+          ))}
+          <path d={line(0)} stroke={skin.ink} strokeOpacity={0.3} strokeWidth={2} fill="none" />
+          <path d={line(p.semitones + p.cents / 100)} stroke={skin.accent} strokeWidth={3} fill="none" style={{ filter: `drop-shadow(0 0 6px ${skin.accent})` }} />
+        </svg>
+        <div className="absolute left-3 top-2">
+          <div className="font-mono text-[28px] font-bold leading-none tabular-nums" style={{ color: skin.ink }}>
+            {st > 0 ? "+" : ""}
+            {st}
+            <span className="ml-1 text-[13px] font-semibold" style={{ color: skin.ink2 }}>
+              st{p.cents !== 0 ? ` ${p.cents > 0 ? "+" : ""}${Math.round(p.cents)} c` : ""}
+            </span>
+          </div>
+          <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: skin.accent }}>
+            {intervalName(st)}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-1.5">
+        {SHIFT_QUICK.map((v) => (
+          <button
+            key={v}
+            onClick={() => set({ semitones: v, cents: 0 })}
+            className="h-8 flex-1 rounded-full text-[12px] font-semibold tabular-nums"
+            style={st === v && p.cents === 0 ? { background: skin.accent, color: "#12061c" } : { background: "rgba(255,255,255,0.07)", color: skin.ink }}
+          >
+            {v > 0 ? "+" : ""}
+            {v}
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Box skin={skin} title="Tono">
+          <div className="flex justify-center">
+            <FxKnob label="" ariaLabel="Tono" value={p.semitones} min={-12} max={12} step={1} bipolar onChange={(v) => set({ semitones: Math.round(v) })} skin={skin} format={(v) => `${v > 0 ? "+" : ""}${Math.round(v)} st`} defaultValue={0} size={84} />
+          </div>
+        </Box>
+        <Box skin={skin} title="Mezcla">
+          <div className="flex justify-center">
+            <FxKnob label="" ariaLabel="Mezcla" value={p.mix} min={0} max={1} onChange={(v) => set({ mix: v })} skin={skin} format={fmt.pct} defaultValue={1} size={84} />
+          </div>
+        </Box>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Box skin={skin} title="Formante">
+          <div className="flex justify-center">
+            <FxKnob label="" ariaLabel="Formante" value={p.formantSt} min={-12} max={12} bipolar onChange={(v) => set({ formantSt: Math.round(v * 2) / 2 })} skin={skin} format={(v) => (Math.abs(v) < 0.25 ? "Tu timbre" : `${v > 0 ? "+" : ""}${v} st`)} defaultValue={0} size={60} />
+          </div>
+        </Box>
+        <Box skin={skin} title="Fino">
+          <div className="flex justify-center">
+            <FxKnob label="" ariaLabel="Fino" value={p.cents} min={-50} max={50} bipolar onChange={(v) => set({ cents: Math.round(v) })} skin={skin} format={(v) => `${v > 0 ? "+" : ""}${Math.round(v)} c`} defaultValue={0} size={60} />
+          </div>
+        </Box>
+      </div>
+      <p className="mt-2 text-center text-[11px]" style={{ color: skin.ink2 }}>
+        Para una voz. Las consonantes (s, t, ch) pasan sin cambiar, como en los transpositores de voz.
+      </p>
+    </div>
+  );
 }
 
 const SYNC_OPTIONS = ["1/2", "1/4.", "1/4", "1/8.", "1/8", "1/16"];

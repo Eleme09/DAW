@@ -391,6 +391,8 @@ export class AudioEngine {
       ensureNoiseGateWorklet: () => this.ensureNoiseGateWorklet(),
       isPitchCorrectionWorkletLoaded: () => this.pitchCorrectionWorkletLoaded,
       ensurePitchCorrectionWorklet: () => this.ensurePitchCorrectionWorklet(),
+      isAutoPitchWorkletLoaded: () => this.autoPitchWorkletLoaded,
+      ensureAutoPitchWorklet: () => this.ensureAutoPitchWorklet(),
     };
   }
 
@@ -994,7 +996,7 @@ export class AudioEngine {
       if (!graph) continue;
       // AutoPitch delays its track by a fixed few ms; starting that track's
       // clips the same amount early keeps the tuned voice on the beat.
-      const latency = graph.autoPitch?.latencySec ?? 0;
+      const latency = (graph.autoPitch?.latencySec ?? 0) + graph.effectChain.getLatencySec();
       for (const clip of track.clips) {
         this.scheduleClip(clip, graph, fromTime + latency, ctxStartTime);
       }

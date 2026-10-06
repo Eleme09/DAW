@@ -389,3 +389,35 @@ describe("Hard Tune", () => {
     expect(settings("classic").hard).toBe(0);
   });
 });
+
+describe("Pitch shifter (lead shift, no tuning)", () => {
+  const shiftParams = (shift: number) => ({ ...classic(), amount: 0, hard: 0, shift, leadFormant: 1, shiftMix: 1 });
+  it.each([-12, -7, 5, 12])("shifts a sung vowel by %i semitones", (st) => {
+    const { data } = sungVowel({ seconds: 3, hz: 200, cents: 0, vibratoCents: 10, jitter: 0.004 });
+    const out = renderAutoPitch(data, shiftParams(st)).left;
+    const want = 200 * Math.pow(2, st / 12);
+    // the shifted pitch holds steady around the wanted one
+    expect(pitchSpreadCents(out, want, 0.8, 2.6)).toBeLessThan(15);
+    // and the autocorrelation peak sits at the new period, not the old one
+    const seg = out.subarray(Math.floor(1.0 * SR), Math.floor(1.0 * SR) + 8192);
+    const ac = (lag: number) => {
+      let s = 0;
+      for (let i = 0; i + lag < seg.length; i++) s += seg[i] * seg[i + lag];
+      return s;
+    };
+    expect(ac(Math.round(SR / want))).toBeGreaterThan(ac(Math.round(SR / 200)) * (st === 12 ? 0.5 : 1));
+  });
+
+  it("with no shift the lead is the input itself, delayed (identity)", () => {
+    const { data } = sungVowel({ seconds: 2, hz: 200, cents: 0 });
+    const out = renderAutoPitch(data, shiftParams(0)).left;
+    const D = Math.round(AUTOPITCH_LATENCY_SEC * SR);
+    let err = 0;
+    let ref = 0;
+    for (let i = SR; i < 1.5 * SR; i++) {
+      err += (out[i] - data[i - D]) ** 2;
+      ref += data[i - D] ** 2;
+    }
+    expect(10 * Math.log10(ref / err)).toBeGreaterThan(30);
+  });
+});

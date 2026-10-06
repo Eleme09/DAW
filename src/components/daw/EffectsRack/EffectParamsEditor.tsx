@@ -19,6 +19,8 @@ import { AutoPanPanel } from "./AutoPanPanel";
 import { ExciterPanel } from "./ExciterPanel";
 import { MultibandPanel } from "./MultibandPanel";
 import { VocoderPanel } from "./VocoderPanel";
+import { EffectFace } from "../Fx/faces";
+import { KnobDefs } from "../Fx/kit";
 
 interface EffectParamsEditorProps {
   target: EffectTarget;
@@ -78,6 +80,15 @@ export function EffectParamsEditor({ target, effect, onChange }: EffectParamsEdi
 
     case "vocoder":
       return <VocoderPanel target={target} effectId={effect.id} params={effect.params} onChange={onChange} />;
+
+    case "pitchShift":
+      // newer than the desktop rack's panels: it shows the phone face
+      return (
+        <div className="rounded-2xl p-3" style={{ background: "#12061c" }}>
+          <KnobDefs />
+          <EffectFace effect={effect} target={target} onParams={onChange} />
+        </div>
+      );
   }
 }
 

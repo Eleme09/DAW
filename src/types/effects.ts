@@ -247,6 +247,25 @@ export interface VocoderParams {
   mix: number;
 }
 
+/**
+ * Pitch shifter for a voice: a fixed shift with the singer's own timbre
+ * kept (or moved on its own with `formantSt`). TD-PSOLA on the voice's
+ * tracked pitch marks (the AutoPitch engine with no tuning), so it is made
+ * for one voice at a time - consonants pass unshifted, as in vocal pitch
+ * shifters; a beat or a chord is what the region's "Transponer" is for.
+ */
+export interface PitchShiftParams {
+  /** -12..+12 semitones. */
+  semitones: number;
+  /** -50..+50 cents on top (detune / doubles). */
+  cents: number;
+  /** Formant shift in semitones, independent of the pitch (0 = own timbre;
+   * + smaller/brighter, - bigger/darker). */
+  formantSt: number;
+  /** 0 = dry, 1 = only the shifted voice. */
+  mix: number;
+}
+
 export type EffectInstance =
   | { id: EffectId; type: "eq"; bypassed: boolean; params: EqParams }
   | { id: EffectId; type: "compressor"; bypassed: boolean; params: CompressorParams }
@@ -264,7 +283,8 @@ export type EffectInstance =
   | { id: EffectId; type: "autoPan"; bypassed: boolean; params: AutoPanParams }
   | { id: EffectId; type: "stereoWidth"; bypassed: boolean; params: StereoWidthParams }
   | { id: EffectId; type: "pitchCorrection"; bypassed: boolean; params: PitchCorrectionParams }
-  | { id: EffectId; type: "vocoder"; bypassed: boolean; params: VocoderParams };
+  | { id: EffectId; type: "vocoder"; bypassed: boolean; params: VocoderParams }
+  | { id: EffectId; type: "pitchShift"; bypassed: boolean; params: PitchShiftParams };
 
 export type EffectType = EffectInstance["type"];
 
@@ -286,6 +306,7 @@ export const EFFECT_LABELS: Record<EffectType, string> = {
   stereoWidth: "Imagen estéreo",
   pitchCorrection: "Afinación",
   vocoder: "Vocoder",
+  pitchShift: "Pitch shifter",
 };
 
 function defaultEqParams(): EqParams {
@@ -374,6 +395,10 @@ export function createEffectInstance(type: EffectType): EffectInstance {
       };
     case "vocoder":
       return { id, type, bypassed: false, params: { carrierType: "sawtooth", carrierFreqHz: 110, mix: 1 } };
+    case "pitchShift":
+      // an octave down, blended: the trap ad-lib layer - something you hear
+      // the moment you add it
+      return { id, type, bypassed: false, params: { semitones: -12, cents: 0, formantSt: 0, mix: 1 } };
   }
 }
 
@@ -557,6 +582,14 @@ export const VOCODER_PRESETS: EffectPreset<VocoderParams>[] = [
   { id: "roboAgudo", label: "Robot agudo", params: { carrierType: "square", carrierFreqHz: 220, mix: 0.75 } },
 ];
 
+export const PITCH_SHIFT_PRESETS: EffectPreset<PitchShiftParams>[] = [
+  { id: "octava-abajo", label: "Octava abajo", params: { semitones: -12, cents: 0, formantSt: 0, mix: 1 } },
+  { id: "octava-arriba", label: "Octava arriba", params: { semitones: 12, cents: 0, formantSt: 0, mix: 1 } },
+  { id: "doble-grave", label: "Doble grave", params: { semitones: -12, cents: 0, formantSt: 0, mix: 0.4 } },
+  { id: "ardilla", label: "Ardilla", params: { semitones: 7, cents: 0, formantSt: 7, mix: 1 } },
+  { id: "monstruo", label: "Monstruo", params: { semitones: -7, cents: 0, formantSt: -5, mix: 1 } },
+];
+
 /** Erased-to-metadata view of every preset list above, plus Pitch
  * Correction's own (already-existing) presets - the one place `EffectCard`
  * (which only knows a generic `EffectInstance`, not each type's concrete
@@ -580,6 +613,7 @@ export const EFFECT_PRESET_META: Record<EffectType, { id: string; label: string 
   stereoWidth: STEREO_WIDTH_PRESETS,
   pitchCorrection: PITCH_CORRECTION_PRESET_NAMES.map((name) => ({ id: name, label: PITCH_CORRECTION_PRESET_LABELS[name] })),
   vocoder: VOCODER_PRESETS,
+  pitchShift: PITCH_SHIFT_PRESETS,
 };
 
 /** Applies preset `presetId` (from `EFFECT_PRESET_META[effect.type]`) to
@@ -657,6 +691,10 @@ export function applyEffectPreset(effect: EffectInstance, presetId: string): Eff
       const p = VOCODER_PRESETS.find((x) => x.id === presetId);
       return p ? { ...effect.params, ...p.params } : effect.params;
     }
+    case "pitchShift": {
+      const p = PITCH_SHIFT_PRESETS.find((x) => x.id === presetId);
+      return p ? { ...effect.params, ...p.params } : effect.params;
+    }
   }
 }
 
@@ -684,4 +722,5 @@ export const EFFECT_ACCENT: Record<EffectType, string> = {
   stereoWidth: "s5",
   pitchCorrection: "s6",
   vocoder: "s6",
+  pitchShift: "s6",
 };

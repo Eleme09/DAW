@@ -88,6 +88,14 @@ export function FxTile({ type, size = 44, dim = false }: { type: EffectType; siz
         return <path d="M20 32 L6 10 M20 32 L34 10" stroke={a} strokeWidth={2.4} strokeLinecap="round" />;
       case "vocoder":
         return [6, 11, 16, 21, 26, 31].map((x, i) => <rect key={x} x={x} y={30 - [8, 16, 22, 14, 18, 10][i]} width={3.5} height={[8, 16, 22, 14, 18, 10][i]} fill={a} />);
+      case "pitchShift":
+        return (
+          <>
+            <path d="M5 27 Q 9 21, 13 27 T 21 27" stroke={ink} strokeOpacity={0.45} strokeWidth={2} fill="none" />
+            <path d="M19 15 Q 23 9, 27 15 T 35 15" stroke={a} strokeWidth={2.4} fill="none" />
+            <path d="M13 21 L 20 14 M 20 14 L 15.5 14.5 M 20 14 L 19.5 18.5" stroke={a} strokeWidth={1.8} strokeLinecap="round" fill="none" />
+          </>
+        );
     }
   })();
   return (

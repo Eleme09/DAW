@@ -282,6 +282,12 @@ const PARAMS = [
   // Hard Tune: output pitch locked to the note (see deposit) and note
   // switching with a narrow tolerance (see decide).
   ["hard", 0, 0, 1],
+  // Pitch shifter (the Fx chain's "pitchShift" uses this node with no tuning):
+  // a fixed shift of the lead in semitones, the lead's formant factor (1 =
+  // the voice keeps its own timbre) and the shifted/dry balance.
+  ["shift", 0, -24, 24],
+  ["leadFormant", 1, 0.5, 2],
+  ["shiftMix", 1, 0, 1],
 ];
 for (let i = 0; i < MAX_VOICES; i++) {
   PARAMS.push([`v${i}Active`, 0, 0, 1]);
@@ -1037,7 +1043,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
   streamSemis(s, t) {
     const p = this.p;
     const c = this.correctionAt(t);
-    if (s === 0) return { semis: c, extra: 0 };
+    if (s === 0) return { semis: c + p.shift, extra: p.shift };
     const v = s - 1;
     const vib = p.vibCents > 0 ? (p.vibCents / 100) * Math.sin(this.vibPhase) : 0;
     const extra = this.voiceOffset[v] + this.vDetune[v] / 100 + this.voiceDrift[v] * 0.06 + vib;
@@ -1051,7 +1057,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
 
   streamFormant(s, ratio) {
     const p = this.p;
-    if (s === 0) return 1;
+    if (s === 0) return p.leadFormant;
     const fixed = this.vFormant[s - 1];
     if (fixed > 0) return fixed;
     return p.formantFollow > 0 ? Math.pow(ratio, p.formantFollow) : 1;
@@ -1146,7 +1152,13 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     // consonants - instead of drifting slowly away from it.
     if (s === 0 && !hardHop && Math.abs(r - 1) < 0.0006) hop += clamp(0.25 * (e - (mark - this.delay[s])), -0.5, 0.5);
     this.nextMark[s] = mark + hop;
-    const hOut = grainHalfWidth(per, ratio, f, this.hMax[s]);
+    // Shifting the lead down (pitch shifter): grains of one input period each
+    // side, as in classic TD-PSOLA - the 0.7-hop minimum overlap pulls the
+    // neighbouring glottal pulses into each grain when the output hop is
+    // much longer than the input period (an octave down: two periods), and
+    // the voice kept sounding at its original pitch.
+    const hOut =
+      s === 0 && this.p.shift !== 0 && ratio < 1 ? Math.min(Math.max(per / f, Math.min(0.7 * Math.max(8, per / ratio), 1.15 * (per / f))), this.hMax[s]) : grainHalfWidth(per, ratio, f, this.hMax[s]);
     if (hOut < 4) return;
     const delaySamples = s === 0 ? 0 : (this.vDelay[s - 1] * this.sr) / 1000;
     const center = mark + delaySamples;
@@ -1438,11 +1450,14 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       // a gap becomes unprocessed audio, not a dropout.
       const wsum = leadW[idx];
       const tuned = wsum > 1e-4 ? leadBuf[idx] / (wsum > 0.35 ? wsum : 0.35) : 0;
-      const cover = wsum >= 0.5 ? 1 : wsum * 2;
+      // (a pitch shift never fills thin coverage with the dry voice: between
+      // the pulses of a voice shifted down, silence IS the waveform)
+      const cover = wsum >= 0.5 || p.shift !== 0 ? 1 : wsum * 2;
       leadBuf[idx] = 0;
       leadW[idx] = 0;
       const dry = n - leadDelay >= 0 ? this.ring[(n - leadDelay) & RING_MASK] : 0;
-      const lead = (dry + (tuned - dry) * this.voicedGain * cover) * p.leadGain;
+      const wet = dry + (tuned - dry) * this.voicedGain * cover;
+      const lead = (p.shiftMix >= 1 ? wet : dry + (wet - dry) * p.shiftMix) * p.leadGain;
 
       let L = lead * center;
       let R = lead * center;

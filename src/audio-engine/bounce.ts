@@ -65,7 +65,7 @@ export async function bounceProject(
   if (projectUsesEffect(project, "pitchCorrection")) {
     await ctx.audioWorklet.addModule(PITCH_CORRECTION_WORKLET_URL);
   }
-  if (project.tracks.some((t) => t.autoPitch?.enabled)) {
+  if (project.tracks.some((t) => t.autoPitch?.enabled) || projectUsesEffect(project, "pitchShift")) {
     await ctx.audioWorklet.addModule(AUTOPITCH_WORKLET_URL);
   }
   const deps: EffectChainDeps = {
@@ -73,6 +73,8 @@ export async function bounceProject(
     ensureNoiseGateWorklet: () => Promise.resolve(),
     isPitchCorrectionWorkletLoaded: () => true,
     ensurePitchCorrectionWorklet: () => Promise.resolve(),
+    isAutoPitchWorkletLoaded: () => true,
+    ensureAutoPitchWorklet: () => Promise.resolve(),
   };
 
   const master = ctx.createGain();
@@ -140,6 +142,9 @@ export async function bounceProject(
 
     effectChain.setInserts(track.inserts);
     effectChain.setBlend(track.fx?.blend ?? 1);
+    // a delayed insert (pitch shifter, compressors' look-ahead): start the
+    // clips that much earlier, as live playback does
+    latency += effectChain.getLatencySec();
     volume.gain.value = dbToGain(track.volumeDb);
     pan.pan.value = track.pan;
     // Anchored at time 0 (a bounce always starts from the top) - same

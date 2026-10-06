@@ -7,6 +7,7 @@
  */
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import type { EffectInstance } from "@/types/effects";
+import { AUTOPITCH_WORKLET_URL } from "./autopitch/AutoPitchEffect";
 
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
 const PITCH_CORRECTION_WORKLET_URL = "/worklets/realtime-pitch-processor.js";
@@ -20,11 +21,16 @@ export async function renderBufferThroughChain(buffer: AudioBuffer, inserts: Eff
   if (inserts.some((i) => i.type === "pitchCorrection")) {
     await ctx.audioWorklet.addModule(PITCH_CORRECTION_WORKLET_URL);
   }
+  if (inserts.some((i) => i.type === "pitchShift")) {
+    await ctx.audioWorklet.addModule(AUTOPITCH_WORKLET_URL);
+  }
   const deps: EffectChainDeps = {
     isNoiseGateWorkletLoaded: () => true,
     ensureNoiseGateWorklet: () => Promise.resolve(),
     isPitchCorrectionWorkletLoaded: () => true,
     ensurePitchCorrectionWorklet: () => Promise.resolve(),
+    isAutoPitchWorkletLoaded: () => true,
+    ensureAutoPitchWorklet: () => Promise.resolve(),
   };
 
   const chain = new EffectChain(ctx, deps);

@@ -188,6 +188,14 @@ export const FX_CATALOG: Record<Exclude<EffectType, "pitchCorrection">, FxCatalo
     category: "creativos",
     skin: { panel: "linear-gradient(180deg,#0c1f0e 0%,#061108 100%)", box: "#030a04", ink: "#d8ffd9", ink2: "#79b47d", accent: "#3dff6a", knob: "black" },
   },
+  pitchShift: {
+    type: "pitchShift",
+    name: "Metamorfo",
+    kind: "Pitch shifter",
+    description: "Sube o baja tu voz sin perder tu timbre. Octavas, quintas, monstruo.",
+    category: "creativos",
+    skin: { panel: "linear-gradient(180deg,#2a0f3d 0%,#12061c 100%)", box: "#0b0412", ink: "#f5e9ff", ink2: "#b993d6", accent: "#e46bff", knob: "black" },
+  },
 };
 
 export type OfferedEffectType = keyof typeof FX_CATALOG;
