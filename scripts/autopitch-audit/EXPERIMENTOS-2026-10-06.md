@@ -150,6 +150,16 @@ la identidad pero no la recupera (14.6 dB, primeros 25 s). Arreglarlo exige toca
 (realinear marcas tras un salto del detector): es otro componente y queda como siguiente experimento.
 Los dos tonos de prueba quedaron como `it.fails` en `autopitch.test.ts` (bugs conocidos).
 
+**Adoptados el 2026-10-07** (ver `PROGRESS.md`, "Autotune que pega a la nota con tomas de audífono"):
+
+- F2 tal cual.
+- F1 partido en dos reglas:
+  - el triple del período se toma fácil;
+  - el doble solo si gana por mucho (d < d(τ) − 0.1 y < 0.3·d(τ)), así la voz rasposa de 7.1 s ya no se lee una octava abajo.
+- Las marcas se realinean hasta 2 % del período por ciclo.
+- El arrastre de épocas hacia el pico de energía bajó de 0.2 a 0.04: desafinaba el Hard Tune cuando la vocal cambia.
+- Prueba nula: 10.8 → 18.0 dB. El baseline actual ya daba 10.8, no 32.3, por los cambios de síntesis posteriores a este informe.
+
 ## E4 — micro-transición 0/1/2/3/5 ms
 
 `transitionMs` del preset (Classic = 0). En el motor la corrección se calcula por cuadro de 5.8 ms y se

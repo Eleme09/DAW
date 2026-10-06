@@ -344,6 +344,19 @@ describe("AutoPitch on the failures measured on a real vocal (82 s, user's take)
  * 23 ms frame from the autocorrelation peak near the expected period
  * (parabolic interpolation), like Praat's. */
 function pitchSpreadCents(x: Float32Array, hz: number, fromSec: number, toSec: number): number {
+  const cents = pitchCents(x, hz, fromSec, toSec);
+  const mean = cents.reduce((a, c) => a + c, 0) / cents.length;
+  return Math.sqrt(cents.reduce((a, c) => a + (c - mean) ** 2, 0) / cents.length);
+}
+
+/** Mean offset, in cents, of the pitch from `hz` between the two instants. */
+function pitchMeanCents(x: Float32Array, hz: number, fromSec: number, toSec: number): number {
+  const cents = pitchCents(x, hz, fromSec, toSec);
+  return cents.reduce((a, c) => a + c, 0) / cents.length;
+}
+
+/** Pitch (cents from `hz`) every 5 ms: autocorrelation peak within +-10 %. */
+function pitchCents(x: Float32Array, hz: number, fromSec: number, toSec: number): number[] {
   const N = 1024;
   const P = SR / hz;
   const cents: number[] = [];
@@ -367,8 +380,7 @@ function pitchSpreadCents(x: Float32Array, hz: number, fromSec: number, toSec: n
     const lag = bestLag + (0.5 * (a - c)) / (a - 2 * best + c);
     cents.push(1200 * Math.log2(SR / lag / hz));
   }
-  const mean = cents.reduce((a, c) => a + c, 0) / cents.length;
-  return Math.sqrt(cents.reduce((a, c) => a + (c - mean) ** 2, 0) / cents.length);
+  return cents;
 }
 
 describe("Hard Tune", () => {
@@ -382,6 +394,32 @@ describe("Hard Tune", () => {
     const classicSpread = pitchSpreadCents(renderAutoPitch(data, settings("classic")).left, target, 0.8, 2.7);
     expect(hard).toBeLessThan(1.5);
     expect(hard).toBeLessThan(classicSpread);
+  });
+
+  it("stays on the note when the vowel changes shape mid-note", () => {
+    // 30 cents sharp of A3; at 0.6 s the upper harmonics change phase over
+    // 20 ms (a vowel moving) and the energy peak inside each period moves
+    // ~25 samples. The epoch pull toward that peak bent the hard-tuned note
+    // 18 cents here (29 cents for ~50 ms on a real take, 81.04 s).
+    const hz = 220 * Math.pow(2, 30 / 1200);
+    const n = Math.floor(1.4 * SR);
+    const data = new Float32Array(n);
+    const shift = [0, 0, 0.26, 0.56, 1.43, -0.65, -0.77, -0.59, 0.94, 0.46, 0.75, -0.79];
+    for (let i = 0; i < n; i++) {
+      const t = i / SR;
+      const mix = Math.min(1, Math.max(0, (t - 0.6) / 0.02));
+      let s = 0;
+      for (let k = 1; k < shift.length; k++) {
+        const env = 1 / (1 + ((hz * k - 700) / 300) ** 2) + 0.3 / k;
+        s += env * Math.sin(2 * Math.PI * hz * k * t + mix * shift[k]);
+      }
+      data[i] = 0.15 * s;
+    }
+    const out = renderAutoPitch(data, settings("hardTune")).left;
+    const lat = AUTOPITCH_LATENCY_SEC;
+    const after = pitchCents(out, 220, 0.6 + lat, 0.8 + lat);
+    expect(Math.max(...after.map(Math.abs))).toBeLessThan(8);
+    expect(Math.abs(pitchMeanCents(out, 220, 0.25 + lat, 0.55 + lat))).toBeLessThan(3);
   });
 
   it("is the only preset with the locked-pitch mode on", () => {

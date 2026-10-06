@@ -343,16 +343,13 @@ describe("AutoPitch on a phone-recorded voice (regression)", () => {
   });
 });
 
-// KNOWN BUGS (it.fails: these pass while the bug is there, and go red when it
-// is fixed - then turn them into plain its). Both fixes were measured on the
-// real vocal (scripts/autopitch-audit/EXPERIMENTOS-2026-10-06.md, "F"): they
-// cut detector errors 11 -> 6 % and the longest wrong lock 673 -> 137 ms, but
-// every faster lock release also lets real octave jumps through (a creaky,
-// period-doubled onset at 7.1 s read an octave low), and after any big
-// detector jump the synthesis marks take ~0.5 s to line up with the dry path
-// again: with correction 0 the output stopped matching the input (null test
-// 32 -> 6 dB). They need the synthesis to re-align after a jump first.
-describe("AutoPitch detector: octave locks (known bugs, real vocal 2026-10-06)", () => {
+// Octave locks found on a real vocal (scripts/autopitch-audit/EXPERIMENTOS-2026-10-06.md, "F").
+// Fixed 2026-10-07 together with what had kept them as known bugs: a period
+// twice the reading must now win clearly before it is taken (a creaky,
+// period-doubled onset no longer reads an octave low), and the synthesis
+// marks steer back onto the epochs at up to 2 % of a period per cycle
+// instead of half a sample (after a detector jump they took ~0.5 s).
+describe("AutoPitch detector: octave locks (regression, real vocal 2026-10-06)", () => {
   /** Steady 220 Hz tone with the given harmonic amplitudes (k = 1, 2, 3...). */
   function tone(amps: number[], seconds: number, phase0 = 0): Float32Array {
     const n = Math.floor(seconds * SR);
@@ -378,19 +375,39 @@ describe("AutoPitch detector: octave locks (known bugs, real vocal 2026-10-06)",
     return hz;
   }
 
-  it.fails("reads a voice whose 3rd harmonic dominates at its real pitch, not 3x higher", () => {
+  it("reads a voice whose 3rd harmonic dominates at its real pitch, not 3x higher", () => {
     // F1 on the 3rd harmonic (an "ah" at A3): YIN's first dip under its
     // threshold is a third of the period, the true period's dip is far deeper.
-    // The detector reads 663 Hz for the whole note.
+    // The detector used to read 663 Hz for the whole note.
     const hz = detected(tone([0.3, 0.15, 1], 0.6), 0.05);
     for (const v of hz) expect(Math.abs(cents(v, 220))).toBeLessThan(30);
   });
 
-  it.fails("lets go of a wrong octave lock as soon as the readings agree", () => {
-    // 100 ms the detector can't read right (locks on 662 Hz), then a plain A3:
-    // every reading says 220 Hz, but the octave-jump confirmation and the
-    // outlier hold take turns rejecting them and the lock sticks for the rest
-    // of the note (604 ms on the real vocal, 58.8 s).
+  it("reads an earbud/phone voice (fundamental far under the 2nd harmonic) at its real pitch", () => {
+    // Real earbud take (2.9 s): fundamental 14 dB under the 2nd harmonic.
+    // YIN's first dip is half the period and the tuner used to work an
+    // octave up for whole phrases.
+    const hz = detected(tone([0.15, 1, 0.2, 0.05], 0.6), 0.05);
+    expect(hz.length).toBeGreaterThan(10);
+    for (const v of hz) expect(Math.abs(cents(v, 220))).toBeLessThan(30);
+  });
+
+  it("does not read a slightly creaky voice (alternating cycles) an octave low", () => {
+    // Every other cycle 15 % louder: the signal repeats better at twice the
+    // period, but the pitch heard is still 220 Hz.
+    const base = tone([1, 0.5, 0.3], 0.6);
+    const period = SR / 220;
+    for (let i = 0; i < base.length; i++) base[i] *= Math.floor(i / period) % 2 ? 1.15 : 1;
+    const hz = detected(base, 0.05);
+    expect(hz.length).toBeGreaterThan(10);
+    for (const v of hz) expect(Math.abs(cents(v, 220))).toBeLessThan(30);
+  });
+
+  it("lets go of a wrong octave lock as soon as the readings agree", () => {
+    // 100 ms of a hard-to-read voice, then a plain A3: every reading says
+    // 220 Hz, but the octave-jump confirmation and the outlier hold used to
+    // take turns rejecting them and a wrong lock stuck for the rest of the
+    // note (604 ms on the real vocal, 58.8 s).
     const a = tone([0.2, 0.1, 1], 0.1);
     const b = tone([1, 0.5, 0.3], 0.5, a.length);
     const input = new Float32Array(a.length + b.length);

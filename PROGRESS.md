@@ -1210,3 +1210,30 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
   - Se quitaron los botones "Preguntar a la IA".
 - `tsc`, `eslint`, `vitest` (413 con las nuevas: ley del fader, automezcla, análisis de beat, nivel de presets de autotune), `next build`, flujos en Chromium 390×844.
 - **No verificado**: nada de esto en un iPhone real. Nadie ha escuchado todavía el compresor nuevo; suena distinto al del navegador: sin la anticipación de 6 ms deja pasar un poco más el ataque.
+
+## Autotune que pega a la nota con tomas de audífono (pedido del usuario)
+
+- **Causa principal, medida con tus tomas (voz y copia, audífonos)**: el detector se quedaba trabado en la octava equivocada, o una octava y una quinta arriba, en tramos de hasta 0.9 s: 13 % de los cuadros con voz en una toma y 23 % en la otra. Ahí el autotune afinaba hacia la nota equivocada. Si el error era de 3.er armónico, apuntaba a otra nota de la escala (una quinta).
+  - **Por qué**: el mic de audífono corta graves y la fundamental llega 9–14 dB por debajo del 2.º armónico. YIN veía la mitad del período.
+  - **Lo que lo dejaba trabado**: la confirmación de saltos grandes y el filtro de lecturas raras se anulaban entre sí y no lo soltaban nunca. Era el bug "F" documentado como conocido en `scripts/autopitch-audit/EXPERIMENTOS-2026-10-06.md`.
+- **Arreglos** (`public/worklets/autopitch-processor.js`):
+  1. Un salto confirmado ya no se vuelve a retener.
+  2. **Regla de períodos múltiplos.** Si el doble o el triple del período repite claramente mejor, ese es el período. El triple se acepta fácil; el doble necesita ganar por mucho, porque una voz rasposa también repite mejor al doble y leerla una octava abajo es peor.
+     - Ajustada contra los cuadros donde CREPE y Praat coinciden, en las dos tomas.
+     - Período correcto: 86.0 → 96.3 % y 87.8 → 97.1 %.
+     - Lecturas falsas una octava abajo: 7 y 0 cuadros.
+  3. **Arrastre de las épocas hacia el pico de energía: 0.2 → 0.04 por ciclo.** Cuando la vocal cambia, el pico salta y el arrastre movía las épocas 3–4 muestras por ciclo. Con el Hard Tune eso salía como 29 cents de desafinación durante ~50 ms.
+  4. **Realineación de marcas con corrección 0: hasta 2 % del período por ciclo** (antes media muestra). Tras un salto del detector tardaba ~0.5 s. Esto era lo que había bloqueado el arreglo 1 en la auditoría anterior.
+- **Resultados con tus tomas** (Praat sobre la salida; antes → ahora):
+  - Detector correcto (±½ semitono): voz 80.7 → 93.6 %; copia 71.0 → 94.0 %.
+  - Notas sostenidas, ±10 cents de la nota objetivo:
+    - Hard Tune: 84 → 99.0 % (voz) y 90 → 99.7 % (copia).
+    - Classic: 75 → 85 % y 82 → 90 %.
+  - Auditoría oficial (`analyze.py`, voz completa):
+    - Cuadros a ±10 c de una nota: Classic 51 → 61 %; Hard Tune 71 → 82 %.
+    - Errores de octava en la salida (p95): Hard Tune 993 → 208 c.
+    - Clics: 2.6 → 2.2/s.
+    - Prueba nula con corrección 0: 10.8 → 18.0 dB.
+  - **Peor**: peine espectral 1.5 → 2.1 (Classic); BandLab Classic medía 1.9. "Tono que salta y vuelve": 1.2 → 1.5/s, porque ahora sigue de verdad la voz donde antes estaba congelada.
+- **Pruebas nuevas**: voz de audífono (2.º armónico dominante), voz rasposa que no debe leerse una octava abajo, y Hard Tune que no se dobla cuando la vocal cambia de forma. Las tres fallan con el motor anterior. Las dos `it.fails` de bugs conocidos ahora son pruebas normales.
+- **No verificado**: nadie escuchó todavía el resultado; los números no dicen cómo suena. Tampoco está probado en iPhone ni con grabación en vivo. Hay audios A/B de 30 s de tu voz en el scratchpad (`ab_autotune/`).

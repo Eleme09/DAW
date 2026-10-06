@@ -572,6 +572,36 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
         break;
       }
     }
+    // The opposite error, typical of earbud and phone mics: they cut the
+    // lows, the fundamental arrives 9-14 dB under the 2nd harmonic, and the
+    // half (or third) of the real period already dips under the threshold.
+    // When three or two times the lag repeats clearly better, that longer
+    // lag is the period. (A voice that really is at the shorter lag repeats
+    // as well or worse at its multiples - cycle-to-cycle variation adds up.)
+    // Twice the lag needs a much clearer win than three times: a creaky,
+    // period-doubled stretch also repeats better at twice its period, and
+    // reading it an octave low is worse than an octave high (the corrected
+    // note is the same either way, but the grains then hold two glottal
+    // pulses). Three times is never that: a third-harmonic reading is a
+    // fifth off - the tuner pulls toward the wrong note.
+    // Frame by frame on a real earbud take, against frames where CREPE and
+    // Praat agree: right period 86.0 -> 96.3 %; 7 of 4756 frames read an
+    // octave low that weren't.
+    {
+      const base = d[tauEstimate];
+      const best = (k) => {
+        const c = Math.round(tauEstimate * k);
+        let bt = -1;
+        if (c + k > maxTau) return bt;
+        for (let t = c - k; t <= c + k; t++) if (bt < 0 || d[t] < d[bt]) bt = t;
+        return bt;
+      };
+      const t3 = best(3);
+      const t2 = best(2);
+      const d2 = t2 > 0 ? d[t2] : Infinity;
+      if (t3 > 0 && d[t3] < base - 0.03 && d[t3] < 0.75 * base && d[t3] <= d2 + 0.02) tauEstimate = t3;
+      else if (t2 > 0 && d2 < base - 0.1 && d2 < 0.3 * base) tauEstimate = t2;
+    }
     const confidence = clamp(1 - d[tauEstimate], 0, 1);
     const better = tauEstimate > minTau && tauEstimate < maxTau ? refineLag(d, tauEstimate) : tauEstimate;
     return { hz: sr / better, confidence, rms };
@@ -653,11 +683,12 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
 
     if (goodFrame) {
       let raw = hzToMidi(det.hz, ref);
+      let jumped = false;
       // octave-jump confirmation: a jump of more than 7 semitones must repeat
       if (this.detMidi !== null && wasVoiced && Math.abs(raw - this.detMidi) > 7) {
         if (this.pendingJump !== null && Math.abs(raw - this.pendingJump) < 1) {
           this.pendingJump = null;
-          this.medianCount = 0;
+          jumped = true;
         } else {
           this.pendingJump = raw;
           raw = this.detMidi;
@@ -676,9 +707,20 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       // suspect), and a hold never lasts more than 4 hops (~23 ms): a glide
       // moves ~0.5 st per hop, never "agreed" with its first reading, and kept
       // a stale pitch for 75 ms on a real vocal (the voice sat on a wrong note).
+      // A jump the confirmation above has just accepted skips this hold: the
+      // two used to take turns - the hold sent the reading back to the old
+      // pitch, the confirmation then saw a "new" jump and started over - and
+      // a pitch read an octave (or an octave and a fifth) too high at the
+      // start of a phrase stayed there for up to 0.9 s on a real earbud
+      // take (12-23 % of its voiced frames), tuning toward the wrong note.
       let m = raw;
       const steady = this.prev1 !== null && this.prev2 !== null && Math.abs(this.prev1 - this.prev2) < 0.25;
-      if (steady && Math.abs(raw - this.prev1) > 0.5 && this.suspectHops < 3 && this.holdHops < 4) {
+      if (jumped) {
+        this.suspect = null;
+        this.suspectHops = 0;
+        this.holdHops = 0;
+        this.prev1 = raw;
+      } else if (steady && Math.abs(raw - this.prev1) > 0.5 && this.suspectHops < 3 && this.holdHops < 4) {
         if (this.suspect !== null && Math.abs(raw - this.suspect) < 0.5) this.suspectHops++;
         else this.suspectHops = 1;
         this.suspect = raw;
@@ -1011,11 +1053,18 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     // The pull has a dead zone (a few % of a period): inside it the epoch is
     // left exactly where the correlation put it, which is the most consistent
     // position; the pull only acts when it has really wandered.
+    // And it is gentle: every sample it moves an epoch is a sample of period
+    // error, and Hard Tune places the grains on a perfectly even grid, so the
+    // error comes out as pitch. At 0.2 per period, a vowel whose energy peak
+    // jumped 18 samples (real take, 81.04 s) pulled the epochs 3-4 samples a
+    // cycle and the hard-tuned note sat 29 cents flat for ~50 ms. Measured
+    // on two real earbud takes, steady hard-tuned notes within 10 cents of
+    // the target: 84 / 90 % -> 99 / 99.7 % (Classic 75 / 82 % -> 85 / 90 %).
     const peak = this.energyPeak(aligned, Math.max(3, P / 8), P);
     const dev = peak - aligned;
     const dead = P / 24;
-    if (dev > dead) return aligned + 0.2 * (dev - dead);
-    if (dev < -dead) return aligned + 0.2 * (dev + dead);
+    if (dev > dead) return aligned + 0.04 * (dev - dead);
+    if (dev < -dead) return aligned + 0.04 * (dev + dead);
     return aligned;
   }
 
@@ -1156,11 +1205,18 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       }
     }
     // Nothing to correct (within a cent - the detector's own noise): steer the
-    // marks back onto the epochs, at most half a sample per period (~4 cents
-    // for one cycle, inaudible), so an in-tune voice comes out as the input
+    // marks back onto the epochs, so an in-tune voice comes out as the input
     // delayed by exactly D - in phase with the dry path it hands over to at
-    // consonants - instead of drifting slowly away from it.
-    if (s === 0 && !hardHop && Math.abs(r - 1) < 0.0006) hop += clamp(0.25 * (e - (mark - this.delay[s])), -0.5, 0.5);
+    // consonants - instead of drifting away from it. At most 2 % of a period
+    // per cycle (a voice's own cycle-to-cycle jitter is ~1.5 %): after a
+    // detector jump (a creaky, period-doubled stretch) the marks can be a
+    // third of a period off, and half a sample per cycle took ~0.5 s to
+    // catch up. Real takes with correction 0, output vs input: 10.8 ->
+    // 18.0 dB (null test, whole file).
+    if (s === 0 && !hardHop && Math.abs(r - 1) < 0.0006) {
+      const most = Math.max(0.5, 0.02 * per);
+      hop += clamp(0.25 * (e - (mark - this.delay[s])), -most, most);
+    }
     this.nextMark[s] = mark + hop;
     // Shifting the lead down (pitch shifter): grains of one input period each
     // side, as in classic TD-PSOLA - the 0.7-hop minimum overlap pulls the
