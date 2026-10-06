@@ -1,6 +1,6 @@
 import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
-import { AutoPitchEffect, AUTOPITCH_WORKLET_URL } from "./autopitch/AutoPitchEffect";
+import { AutoPitchEffect, AUTOPITCH_WORKLET_URL, type PitchTelemetry } from "./autopitch/AutoPitchEffect";
 import { DYNAMICS_WORKLET_URL, DynamicsNode, createOutputGuard } from "./effects/dynamics";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { isTrackMonitoredLive } from "./monitoring";
@@ -189,6 +189,8 @@ export class AudioEngine {
   private pitchCorrectionWorkletLoaded = false;
   private autoPitchWorkletPromise: Promise<void> | null = null;
   private autoPitchWorkletLoaded = false;
+  /** Live pitch views open per track (see watchAutoPitch). */
+  private pitchWatchers = new Map<TrackId, (p: PitchTelemetry) => void>();
   /** Last synced tracks, so AutoPitch stages can be built once their
    * worklet module finishes loading. */
   private lastSyncedTracks: Track[] = [];
@@ -489,6 +491,8 @@ export class AudioEngine {
         graph.input.connect(stage.input);
         stage.output.connect(graph.effectChain.inputNode);
         graph.autoPitch = stage;
+        const watcher = this.pitchWatchers.get(track.id);
+        if (watcher) stage.watchPitch(watcher);
       } else {
         graph.autoPitch.setSettings(settings);
       }
@@ -691,6 +695,18 @@ export class AudioEngine {
       }
       glide(sendGain.gain, dbToGain(send.levelDb), this.ctx!);
     }
+  }
+
+  /** Live pitch of a track's AutoPitch while `cb` is subscribed (also once
+   * the stage is built later, when it gets turned on). Returns the unsubscribe. */
+  watchAutoPitch(trackId: TrackId, cb: (p: PitchTelemetry) => void): () => void {
+    this.pitchWatchers.set(trackId, cb);
+    this.tracks.get(trackId)?.autoPitch?.watchPitch(cb);
+    return () => {
+      if (this.pitchWatchers.get(trackId) !== cb) return;
+      this.pitchWatchers.delete(trackId);
+      this.tracks.get(trackId)?.autoPitch?.watchPitch(null);
+    };
   }
 
   getTrackAnalyser(trackId: TrackId): AnalyserNode | null {

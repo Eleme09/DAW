@@ -1,27 +1,25 @@
 /**
- * BandLab AutoPitch: a per-track vocal effect that lives OUTSIDE the Fx chain
- * (BandLab FAQ: "AutoPitch Vocal Effects differ from those created in the
- * effects chain") - pitch correction to a key/scale plus, depending on the
- * preset, harmony voices, a vocoder, and character effects. It processes
+ * Núcleo (internally still "autoPitch"): a per-track vocal effect that lives
+ * OUTSIDE the Fx chain - pitch correction to a key/scale plus, depending on
+ * the preset, harmony voices, a vocoder and character effects. It processes
  * live while monitoring and on playback; the recorded take stays dry.
  *
- * BandLab's 24 presets, their names, categories and what each one does come from
- * BandLab's official AutoPitch FAQ (help.bandlab.com, article
- * 29099155628953). BandLab does NOT publish the DSP behind them, so the
- * numbers in AUTOPITCH_RECIPES (retune speed, voice gains/pans, filter
- * corners...) are our own engineering of each official description - the
- * intervals named in the FAQ ("third-down", "fourth-up", "fifth-down",
- * "octave and perfect fourth-down", "perfect fifth-up and fourth-down",
- * "octave lower") are followed exactly. "Hard Tune" is our own addition.
+ * The 24 original recipes were engineered from the descriptions in BandLab's
+ * AutoPitch FAQ (help.bandlab.com, article 29099155628953), which publishes
+ * what each preset does but not the DSP: the numbers (retune speed, voice
+ * gains/pans, filter corners...) and the hard-tune preset are ours. Names,
+ * groups and descriptions are now our own too (user request: it must not
+ * look like BandLab); preset ids stay as they were so saved projects load.
  */
 
-export type AutoPitchCategory = "essentials" | "hipHop" | "hyperpop" | "sciFi";
+export type AutoPitchCategory = "tune" | "choir" | "texture" | "space";
 
-export const AUTOPITCH_CATEGORIES: { id: AutoPitchCategory; label: string }[] = [
-  { id: "essentials", label: "Esenciales" },
-  { id: "hipHop", label: "Hip Hop" },
-  { id: "hyperpop", label: "Hyperpop" },
-  { id: "sciFi", label: "Sci-Fi" },
+/** Our own grouping, by what a preset does to the voice. */
+export const AUTOPITCH_CATEGORIES: { id: AutoPitchCategory; label: string; hint: string }[] = [
+  { id: "tune", label: "Afinar", hint: "Solo afinación" },
+  { id: "choir", label: "Coros", hint: "Voces extra en la escala" },
+  { id: "texture", label: "Texturas", hint: "Timbre y carácter" },
+  { id: "space", label: "Espacio", hint: "Síntesis y atmósfera" },
 ];
 
 /** BandLab's scale row, in its order: Personalizado, Cromática, Mayor,
@@ -146,7 +144,7 @@ export interface AutoPitchRecipe {
   id: AutoPitchPresetId;
   label: string;
   category: AutoPitchCategory;
-  /** BandLab's own description (official FAQ), in Spanish. */
+  /** What it does, in plain Spanish (ours). */
   description: string;
   /** Correction behaviour at full Level - the controls Antares Auto-Tune and
    * Waves Tune Real-Time agree on: `speedMs` pulls the pitch onto the note
@@ -181,12 +179,11 @@ const stereoPair = (interval: number, diatonic: boolean, gain: number, spread: n
 ];
 
 export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
-  // --- Essentials ---
   {
     id: "classic",
-    label: "Classic",
-    category: "essentials",
-    description: "Inspirado en el efecto de corrección de tono popular que aparece en innumerables canciones.",
+    label: "Imán",
+    category: "tune",
+    description: "Lleva cada nota a la escala al instante y deja pasar tu vibrato: afinado y todavía suena a ti.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [],
@@ -197,18 +194,18 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     // note tolerance, so slides become steps and singing between two notes
     // flips between them - the heavy, obvious autotune sound.
     id: "hardTune",
-    label: "Hard Tune",
-    category: "essentials",
-    description: "Autotune pesado: la nota queda clavada, sin vibrato, y salta en escalones. Se nota que es autotune.",
+    label: "Cuántico",
+    category: "tune",
+    description: "La voz salta de nota en nota sin pasar por el medio, plana y sin vibrato. El autotune que se nota.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0, hard: true },
     lead: { gain: 1 },
     voices: [],
   },
   {
     id: "duet",
-    label: "Duet",
-    category: "essentials",
-    description: "Una armonía de dos tonos cuidadosamente diseñada para armonizar la voz sin fallos.",
+    label: "Binaria",
+    category: "choir",
+    description: "Tu voz y una segunda voz una tercera arriba, abierta a los dos lados.",
     tune: { speedMs: 15, transitionMs: 40, humanize: 0.1, flex: 0 },
     lead: { gain: 1 },
     voices: stereoPair(2, true, 0.5, 0.6),
@@ -216,9 +213,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "bigHarmony",
-    label: "Big Harmony",
-    category: "essentials",
-    description: "Armoniza tu voz en cualquier tonalidad y te da el gran efecto de coro usado en la música moderna.",
+    label: "Galaxia",
+    category: "choir",
+    description: "Coro grande: tercera y quinta arriba, cuarta y octava abajo, con chorus y sala.",
     tune: { speedMs: 10, transitionMs: 40, humanize: 0.1, flex: 0 },
     lead: { gain: 1 },
     voices: [
@@ -233,9 +230,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "natural",
-    label: "Natural",
-    category: "essentials",
-    description: "Un preset limpio inspirado en el pop moderno: una mejora sutil que saca lo mejor de tu voz.",
+    label: "Humano",
+    category: "tune",
+    description: "Corrige despacio y solo cerca de la nota: deja pasar deslizamientos y adornos. Con un poco de compresión y sala.",
     tune: { speedMs: 40, transitionMs: 120, humanize: 0.5, flex: 0.5 },
     lead: { gain: 1 },
     voices: [],
@@ -245,9 +242,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "third",
-    label: "Third",
-    category: "essentials",
-    description: "Añade una armonía suave una tercera por debajo, para una voz más rica y con más cuerpo.",
+    label: "Luna",
+    category: "choir",
+    description: "Una voz una tercera abajo, pegada a la tuya: más cuerpo sin que se note el truco.",
     tune: { speedMs: 20, transitionMs: 50, humanize: 0.15, flex: 0 },
     lead: { gain: 1 },
     voices: stereoPair(-2, true, 0.5, 0.35),
@@ -255,9 +252,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "chip",
-    label: "Chip",
-    category: "essentials",
-    description: "Una capa vocal aguda, nítida y modulada: el clásico sonido de ardilla o de helio.",
+    label: "Helio",
+    category: "texture",
+    description: "Una capa una octava arriba con timbre de helio y vibrato: la voz de ardilla.",
     tune: { speedMs: 10, transitionMs: 30, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [{ interval: 12, diatonic: false, gain: 0.7, pan: 0, formant: 1.9 }],
@@ -266,12 +263,11 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     chorus: { mix: 0.3, depthMs: 2.5, rateHz: 1.1 },
     trimDb: -2,
   },
-  // --- Hip Hop ---
   {
     id: "modernRap",
-    label: "Modern Rap",
-    category: "hipHop",
-    description: "Mezcla tu voz original con una versión una octava más grave, para darle profundidad.",
+    label: "Tierra",
+    category: "texture",
+    description: "Tu voz con una copia una octava abajo y compresión: más peso para rap.",
     tune: { speedMs: 10, transitionMs: 30, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [{ interval: -12, diatonic: false, gain: 0.6, pan: 0 }],
@@ -280,9 +276,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "stone",
-    label: "Stone",
-    category: "hipHop",
-    description: "Realza tu voz con una armonía una cuarta arriba, un impulso melódico al estilo de los grandes éxitos.",
+    label: "Cumbre",
+    category: "choir",
+    description: "Una armonía una cuarta arriba a los dos lados: levanta los estribillos.",
     tune: { speedMs: 15, transitionMs: 40, humanize: 0.1, flex: 0 },
     lead: { gain: 1 },
     voices: stereoPair(3, true, 0.45, 0.5),
@@ -290,9 +286,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "yummy",
-    label: "Yummy",
-    category: "hipHop",
-    description: "Inspirado en el mumble rap moderno, con una armonía una quinta por debajo.",
+    label: "Bruma",
+    category: "choir",
+    description: "Una quinta abajo con afinación instantánea: voz oscura y pegada, para trap melódico.",
     tune: { speedMs: 0, transitionMs: 10, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: stereoPair(-4, true, 0.5, 0.3),
@@ -301,9 +297,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "playCard",
-    label: "Play Card",
-    category: "hipHop",
-    description: "Mezcla armonías una octava y una cuarta justa por debajo, con compresión fuerte para un sonido pulido.",
+    label: "Titán",
+    category: "choir",
+    description: "Una octava y dos cuartas abajo con compresión fuerte: pesado y al frente.",
     tune: { speedMs: 5, transitionMs: 20, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [
@@ -315,9 +311,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "ocean",
-    label: "Ocean",
-    category: "hipHop",
-    description: "Una armonía fluida y suave una tercera por debajo: un tono cálido, soñador e ingrávido.",
+    label: "Deriva",
+    category: "choir",
+    description: "Una tercera abajo muy abierta, corrección lenta, chorus y sala larga: suena a sueño.",
     tune: { speedMs: 45, transitionMs: 110, humanize: 0.3, flex: 0.2 },
     lead: { gain: 1 },
     voices: stereoPair(-2, true, 0.45, 0.65),
@@ -328,9 +324,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "telephone",
-    label: "Telephone",
-    category: "hipHop",
-    description: "Una textura lo-fi nítida, perfecta para darle a tu voz un aire de radio retro.",
+    label: "Señal",
+    category: "texture",
+    description: "Banda estrecha y saturada, como una radio o un teléfono viejo.",
     tune: { speedMs: 10, transitionMs: 30, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [],
@@ -340,12 +336,11 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     compress: 0.5,
     trimDb: 0,
   },
-  // --- Hyperpop ---
   {
     id: "simulacrum",
-    label: "Simulacrum",
-    category: "hyperpop",
-    description: "Una ligera variación de voces armonizadas inspirada en Big Harmony.",
+    label: "Espejo",
+    category: "choir",
+    description: "Cuatro voces (tercera y quinta arriba, octava arriba y abajo) con chorus y afinación instantánea.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [
@@ -359,9 +354,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "ultrashift",
-    label: "Ultrashift",
-    category: "hyperpop",
-    description: "Le da un toque hyperpop a tu voz con armonías dinámicas una quinta justa arriba y una cuarta abajo.",
+    label: "Plasma",
+    category: "choir",
+    description: "Una quinta arriba y una cuarta abajo, abiertas y algo saturadas: hyperpop.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [
@@ -373,9 +368,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "hyper",
-    label: "Hyper",
-    category: "hyperpop",
-    description: "Un sonido distorsionado inspirado en el hyperpop, integrado con Duet para darle un giro original.",
+    label: "Voltaje",
+    category: "texture",
+    description: "Distorsión fuerte más una tercera arriba a los dos lados: hyperpop agresivo.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: stereoPair(2, true, 0.5, 0.6),
@@ -385,9 +380,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "bitz",
-    label: "Bitz",
-    category: "hyperpop",
-    description: "Un efecto vocal bit-crushed que le da a tu voz un filo digital característico.",
+    label: "Píxel",
+    category: "texture",
+    description: "Voz digitalizada con pocos bits y muestreo bajo: filo de videojuego.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [],
@@ -395,9 +390,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "amped",
-    label: "Amped",
-    category: "hyperpop",
-    description: "Un tono vocal potente con un filo robótico, distorsión suave y un chorus estéreo ligero para más amplitud.",
+    label: "Ion",
+    category: "texture",
+    description: "Saturación suave y chorus ancho con afinación casi instantánea: brillo con filo.",
     tune: { speedMs: 0, transitionMs: 5, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [],
@@ -406,9 +401,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "appleX",
-    label: "AppleX",
-    category: "hyperpop",
-    description: "Un tono cálido y rico con una armonía sutil una tercera abajo, para un sonido profundo y muy amplio.",
+    label: "Ámbar",
+    category: "choir",
+    description: "Terceras abajo en los extremos, tono cálido con chorus y placa: ancho y suave.",
     tune: { speedMs: 20, transitionMs: 60, humanize: 0.1, flex: 0 },
     lead: { gain: 1 },
     voices: stereoPair(-2, true, 0.32, 0.95, { delayMs: 18 }),
@@ -418,12 +413,11 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     reverb: { mix: 0.12, decaySec: 1.8, sizeType: "plate" },
     trimDb: -0.7,
   },
-  // --- Sci-Fi ---
   {
     id: "robot",
-    label: "Robot",
-    category: "sciFi",
-    description: "Contiene un efecto vocoder que toma tu voz y la sintetiza en una voz robótica.",
+    label: "Autómata",
+    category: "space",
+    description: "Un vocoder sigue tu nota y la voz se vuelve máquina.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 0.25 },
     voices: [],
@@ -431,9 +425,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "futurescape",
-    label: "Futurescape",
-    category: "sciFi",
-    description: "Combina un chorus exuberante con voces armonizadas para una textura vocal futurista.",
+    label: "Hiperespacio",
+    category: "space",
+    description: "Tercera y quinta arriba con un chorus profundo y sala: textura futurista.",
     tune: { speedMs: 5, transitionMs: 20, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [
@@ -446,9 +440,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "krafty",
-    label: "Krafty",
-    category: "sciFi",
-    description: "Inspirado en los sonidos electrónicos icónicos, con las texturas dinámicas de un Autofilter y modulación Wah.",
+    label: "Frecuencia",
+    category: "space",
+    description: "Vocoder y un filtro wah que se mueve solo: electrónica clásica.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 0.5 },
     voices: [],
@@ -458,9 +452,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "gorgon",
-    label: "Gorgon",
-    category: "sciFi",
-    description: "Transforma tu voz bajándola una octava y añadiendo realces para una presencia más grave, envolvente e imponente.",
+    label: "Coloso",
+    category: "texture",
+    description: "Toda la voz una octava abajo con timbre de gigante, saturación y una sala corta.",
     tune: { speedMs: 10, transitionMs: 30, humanize: 0, flex: 0 },
     lead: { gain: 0 },
     voices: [{ interval: -12, diatonic: false, gain: 1, pan: 0, formant: 0.78, main: true }],
@@ -472,9 +466,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "halo",
-    label: "Halo",
-    category: "sciFi",
-    description: "Superpone acordes exuberantes tipo sintetizador sobre tu voz, para un toque nítido, electrónico y moderno.",
+    label: "Corona",
+    category: "space",
+    description: "Un acorde de sintetizador (tu nota, su tercera y su quinta) sigue tu voz, con placa.",
     tune: { speedMs: 5, transitionMs: 25, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [],
@@ -484,9 +478,9 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
   },
   {
     id: "drone",
-    label: "Drone",
-    category: "sciFi",
-    description: "Añade una capa de drone vocal brillante y profunda, creando una atmósfera espaciosa y etérea.",
+    label: "Eclipse",
+    category: "space",
+    description: "Un zumbido de sintetizador fijo en la tónica de la clave bajo tu voz, con sala larga.",
     tune: { speedMs: 20, transitionMs: 60, humanize: 0.1, flex: 0 },
     lead: { gain: 1 },
     voices: [],
@@ -498,6 +492,20 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
 export const AUTOPITCH_RECIPE_BY_ID: Record<AutoPitchPresetId, AutoPitchRecipe> = Object.fromEntries(
   AUTOPITCH_RECIPES.map((r) => [r.id, r])
 ) as Record<AutoPitchPresetId, AutoPitchRecipe>;
+
+/** Display order inside each group (the array above keeps its history). */
+const AUTOPITCH_ORDER: AutoPitchPresetId[] = [
+  "classic", "hardTune", "natural",
+  "duet", "third", "bigHarmony", "stone", "yummy", "ocean", "playCard", "simulacrum", "ultrashift", "appleX",
+  "modernRap", "gorgon", "chip", "telephone", "amped", "hyper", "bitz",
+  "robot", "halo", "futurescape", "krafty", "drone",
+];
+
+/** The presets of one group, in display order. */
+export function autoPitchPresetsIn(category: AutoPitchCategory): AutoPitchRecipe[] {
+  return AUTOPITCH_ORDER.map((id) => AUTOPITCH_RECIPE_BY_ID[id]).filter((r) => r.category === category);
+}
+
 export function autoPitchKeyLabel(settings: Pick<AutoPitchSettings, "key" | "scale">): string {
   const note = NOTE_SHORT_ES[settings.key] ?? "Do";
   switch (settings.scale) {
@@ -515,13 +523,12 @@ export function autoPitchKeyLabel(settings: Pick<AutoPitchSettings, "key" | "sca
       return `${note} pent. menor`;
   }
 }
-/** BandLab shows "Lo más intenso" at the top of the Level knob and "Off"
- * with AutoPitch off (both seen in the user's videos); "Heavy" sits around
- * two thirds in the official GIF. The lower two labels are ours. */
+/** The Level control is the nucleus' pull ("Fuerza"): how hard the voice is
+ * drawn to the notes. */
 export function autoPitchLevelLabel(level: number, enabled: boolean): string {
-  if (!enabled) return "Off";
-  if (level >= 0.99) return "Lo más intenso";
-  if (level >= 0.6) return "Intenso";
-  if (level >= 0.3) return "Medio";
+  if (!enabled) return "Apagado";
+  if (level >= 0.99) return "Atracción total";
+  if (level >= 0.6) return "Fuerte";
+  if (level >= 0.3) return "Media";
   return "Suave";
 }

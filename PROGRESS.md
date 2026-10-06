@@ -1237,3 +1237,28 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
   - **Peor**: peine espectral 1.5 → 2.1 (Classic); BandLab Classic medía 1.9. "Tono que salta y vuelve": 1.2 → 1.5/s, porque ahora sigue de verdad la voz donde antes estaba congelada.
 - **Pruebas nuevas**: voz de audífono (2.º armónico dominante), voz rasposa que no debe leerse una octava abajo, y Hard Tune que no se dobla cuando la vocal cambia de forma. Las tres fallan con el motor anterior. Las dos `it.fails` de bugs conocidos ahora son pruebas normales.
 - **No verificado**: nadie escuchó todavía el resultado; los números no dicen cómo suena. Tampoco está probado en iPhone ni con grabación en vivo. Hay audios A/B de 30 s de tu voz en el scratchpad (`ab_autotune/`).
+
+## Núcleo: el autotune con identidad propia (pedido del usuario)
+
+- **Nombre**: "AutoPitch" pasa a llamarse **Núcleo** en toda la app: botón de la pista, panel, editor de pista y textos. Por dentro el código sigue llamándose autoPitch, y los proyectos guardados abren igual.
+- **Concepto**: las notas de la escala son niveles de energía alrededor del núcleo, con la tónica arriba. Tu voz es una partícula que el núcleo atrae a su nivel. La perilla de nivel ahora es la **Fuerza** de atracción: el arco exterior del orbe.
+- **Orbe en vivo** (`AutoPitch/NucleoOrb.tsx`, canvas):
+  - Mientras suena la pista, la partícula está donde cantas de verdad. Un haz la lleva a la nota corregida y ese nivel se enciende.
+  - El centro muestra la nota y cuánto llegaste desafinado (p. ej. "La +14¢").
+  - Sin voz, muestra la tónica de la clave.
+  - La fuerza se cambia arrastrando el orbe o con las flechas del teclado.
+  - El worklet manda la telemetría cada ~17 ms, solo de la pista con el panel abierto.
+  - Chromium 390×844 con audio: 60 fps, sin tareas largas. No medido en iPhone.
+- **Variantes**: los 25 nombres, grupos y descripciones eran los de BandLab traducidos; ahora son propios.
+  - **Afinar**: Imán, Cuántico, Humano.
+  - **Coros**: Binaria, Luna, Galaxia, Cumbre, Bruma, Deriva, Titán, Espejo, Plasma, Ámbar.
+  - **Texturas**: Tierra, Coloso, Helio, Señal, Ion, Voltaje, Píxel.
+  - **Espacio**: Autómata, Corona, Hiperespacio, Frecuencia, Eclipse.
+  - Las descripciones dicen lo que hace de verdad cada receta (intervalos, efectos).
+- **Iconos**: cada variante se dibuja como un átomo armado con lo que hace (`NucleoGlyph.tsx`):
+  - una órbita por voz extra, con el electrón arriba o abajo según la voz suba o baje;
+  - escalera para Cuántico; órbita punteada para la corrección suave;
+  - el núcleo cambia de forma según el carácter: rejilla para el vocoder, píxeles para el bitcrusher, picos para la distorsión, onda para el wah y halo para chorus o reverb.
+- **Bug arreglado: escala personalizada.** El motor lee la máscara relativa a la clave, pero los botones de notas cambiaban el bit con el mismo número que la nota. Con clave La, tocar "Do" activaba La. Ahora cada botón cambia la nota que dice.
+- Verificado: `tsc`, `eslint`, `vitest` (415), `next build`, Chromium 390×844 y 375×667 sin errores.
+- **No verificado**: en iPhone real (fluidez del canvas, tamaño en pantallas chicas). En iPhone SE el orbe queda de 150 px y las notas se leen chicas.

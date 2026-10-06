@@ -2,6 +2,18 @@ import type { AutoPitchSettings } from "@/types/autoPitch";
 import { generateImpulseResponseSamples } from "../effects/impulseResponse";
 import { resolveAutoPitch, autoPitchLatencySec, type AutoPitchReverb } from "./resolveAutoPitch";
 
+/** What the worklet reports for the live view (MIDI numbers, null = none). */
+export interface PitchTelemetry {
+  /** Detected pitch of the voice. */
+  d: number | null;
+  /** Note it is being pulled to. */
+  t: number | null;
+  /** Pitch that comes out. */
+  o: number | null;
+  /** 1 while there is a voiced sound. */
+  v: number;
+}
+
 export const AUTOPITCH_WORKLET_URL = `/worklets/autopitch-processor.js?v=${process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"}`;
 
 /**
@@ -96,6 +108,13 @@ export class AutoPitchEffect {
       }
     }
     this.reverbGain.gain.setTargetAtTime(reverb ? reverb.mix : 0, t, 0.02);
+  }
+
+  /** Live pitch reports (every ~17 ms while sound comes in), or null to
+   * stop them - only the open panel's track pays for them. */
+  watchPitch(cb: ((p: PitchTelemetry) => void) | null): void {
+    this.node.port.onmessage = cb ? (e: MessageEvent) => cb(e.data as PitchTelemetry) : null;
+    this.node.port.postMessage({ type: "telemetry", on: !!cb });
   }
 
   dispose(): void {

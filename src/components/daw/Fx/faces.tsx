@@ -37,7 +37,7 @@ function readPhase(target: string, id: string): () => number | null {
 }
 
 export function EffectFace({ effect, target, onParams }: { effect: EffectInstance; target: string; onParams: (p: EffectInstance["params"]) => void }) {
-  if (effect.type === "pitchCorrection") return <p className="p-4 text-sm text-bone-2">Este efecto antiguo se edita desde AutoPitch.</p>;
+  if (effect.type === "pitchCorrection") return <p className="p-4 text-sm text-bone-2">Este efecto antiguo se edita desde Núcleo.</p>;
   const skin = FX_CATALOG[effect.type].skin;
   const id = effect.id;
   switch (effect.type) {

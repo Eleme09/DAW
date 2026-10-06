@@ -94,7 +94,7 @@ export function TrackEditorView({ onTuning }: { onTuning: () => void }) {
 
       <div className="flex shrink-0 items-center gap-2 overflow-x-auto px-3 py-2">
         <button onClick={onTuning} className={chip}>
-          <TuneIcon className="h-4 w-4" /> AutoPitch
+          <TuneIcon className="h-4 w-4" /> Núcleo
         </button>
         <button onClick={() => void cleanVoice()} disabled={cleaning} className={chip}>
           <DenoiseIcon className="h-4 w-4" /> {cleaning ? "Limpiando…" : "Limpiador de voz"}

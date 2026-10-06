@@ -15,7 +15,7 @@ import { AddTrackSheet } from "./AddTrackSheet";
 import { StudioSettingsPage } from "./StudioSettingsPage";
 import { LyricsPage } from "./LyricsPage";
 import { AutoPitchPanel } from "./AutoPitch/AutoPitchPanel";
-import { AutoPitchPresetIcon } from "./AutoPitch/AutoPitchIcons";
+import { NucleoGlyph } from "./AutoPitch/NucleoGlyph";
 import { RULER_HEIGHT } from "./Timeline/constants";
 import { useReturnToStart } from "./TransportBar";
 import { MONITOR_NEXT } from "./monitorLabels";
@@ -246,7 +246,7 @@ export function MobileStudio() {
         <ClipEditPanel />
       ) : (
         <>
-      {/* Fila de la pista seleccionada, como BandLab: [voz · +Fx · AutoPitch] … armar · monitor */}
+      {/* Fila de la pista seleccionada: [voz · +Fx · Núcleo] … armar · monitor */}
       <div className={`h-14 shrink-0 items-center gap-2 px-2 ${tab === "studio" ? "flex" : "hidden"}`}>
         <div className="flex h-11 items-center rounded-full bg-surf-2 px-1">
           <button onClick={() => togglePanel("voz")} disabled={!selectedTrack} aria-label="Voz" title="Voz: grabación y entrada de la pista" className={seg(mobileView === "voz")}>
@@ -260,15 +260,15 @@ export function MobileStudio() {
           <button
             onClick={autoPitchPill}
             disabled={!selectedTrack}
-            aria-label="AutoPitch"
-            title={mobileView === "autopitch" ? "Encender/apagar AutoPitch" : "AutoPitch: afinación y efectos de voz"}
+            aria-label="Núcleo"
+            title={mobileView === "autopitch" ? "Encender/apagar Núcleo" : "Núcleo: afinación y efectos de voz"}
             className={`relative ${seg(mobileView === "autopitch")}`}
           >
             {selectedTrack?.autoPitch?.enabled && (
               <span className="absolute -top-1.5 left-1.5 rounded-full border border-bone bg-ink px-1.5 text-[10px] font-semibold leading-4 text-bone">On</span>
             )}
-            <AutoPitchPresetIcon presetId={selectedTrack?.autoPitch?.presetId ?? "classic"} className="h-5 w-5" />
-            <span className="text-sm font-medium">AutoPitch</span>
+            <NucleoGlyph presetId={selectedTrack?.autoPitch?.presetId ?? "classic"} className="h-6 w-6" />
+            <span className="text-sm font-medium">Núcleo</span>
           </button>
         </div>
         <div className="flex-1" />

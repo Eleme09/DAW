@@ -469,6 +469,14 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.vDetune = new Float32Array(MAX_VOICES);
     this.vFormant = new Float32Array(MAX_VOICES);
     this.vDelay = new Float32Array(MAX_VOICES);
+    // Pitch telemetry for the panel's live view (only while it is open, for
+    // the track it shows): every ~17 ms the detected pitch, the note it is
+    // pulled to and the pitch that comes out.
+    this.telemetry = false;
+    this.telemetryBlocks = 0;
+    this.port.onmessage = (e) => {
+      if (e.data && e.data.type === "telemetry") this.telemetry = !!e.data.on;
+    };
   }
 
   configureLatency(lowLatency) {
@@ -1651,6 +1659,10 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       }
       outL[i] = L;
       if (outR) outR[i] = R;
+    }
+    if (this.telemetry && ++this.telemetryBlocks >= 6) {
+      this.telemetryBlocks = 0;
+      this.port.postMessage({ d: this.detMidi, t: this.targetNote, o: this.outMidi, v: this.voiced ? 1 : 0 });
     }
     return true;
   }
