@@ -9,7 +9,7 @@ Detalle de cada fase: `PROGRESS.md` (secciones "Tema N"). Qué hace BandLab: `BA
 | 0 | Estructura: pantalla de proyectos, Studio de una pantalla, Mezcla, línea fija al centro | Hecho | 3084494, 9dd8399 |
 | 1 | Clips: seleccionar, barra de acciones, menú ⋯, panel inferior, Armonizar | Hecho | d94f9eb |
 | 2 | Grabar + desplazamiento: eje bloqueado con inercia, toma en vivo, ciclo y tomas, editor de pista | Hecho | 09fcf9d |
-| 3 | Efectos (+Fx): librería de presets, agregar efecto, perillas | Hecho (sin escucha del usuario: ver PROGRESS) | PENDIENTE_COMMIT |
+| 3 | Efectos (+Fx): librería de presets, agregar efecto, perillas | Hecho (sin escucha del usuario: ver PROGRESS) | ad07081 |
 | 4 | AutoPitch: panel, tonalidad, categorías, armonías (24 presets) + pestañas Letra y Ajustes | Hecho (con ajustes posteriores: ver PROGRESS) | 6369504, eb45d8e |
 | 5 | Masterización: Universal/Fire/Clarity/Tape, intensidad, EQ | Pendiente |  |
 | 6 | Automatización | Pendiente |  |
