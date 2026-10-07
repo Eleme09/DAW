@@ -16,6 +16,7 @@ import { StudioSettingsPage } from "./StudioSettingsPage";
 import { LyricsPage } from "./LyricsPage";
 import { AutoPitchPanel } from "./AutoPitch/AutoPitchPanel";
 import { NucleoGlyph } from "./AutoPitch/NucleoGlyph";
+import { MasteringPanel } from "./Mixer/MasteringPanel";
 import { RULER_HEIGHT } from "./Timeline/constants";
 import { useReturnToStart } from "./TransportBar";
 import { MONITOR_NEXT } from "./monitorLabels";
@@ -197,12 +198,12 @@ export function MobileStudio() {
 
       {/* Studio: la línea de tiempo siempre está; el panel de pista abre debajo, Mezcla/Muestras encima */}
       <div className={`relative min-h-0 flex-1 flex-col ${tab === "studio" ? "flex" : "hidden"}`}>
-        {mobileView === "autopitch" ? (
+        {mobileView === "autopitch" || mobileView === "mastering" ? (
           <>
             <div className="flex shrink-0" style={{ height: RULER_HEIGHT + 8 }}>
               <Timeline compact rulerOnly />
             </div>
-            <AutoPitchPanel />
+            {mobileView === "autopitch" ? <AutoPitchPanel /> : <MasteringPanel />}
           </>
         ) : (
           <div className="flex min-h-0 flex-1">

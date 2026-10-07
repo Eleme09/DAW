@@ -1288,3 +1288,32 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
   - **Ad-lib Astro** (Travis): eco largo y sala enorme.
 - **Sugerencias de Núcleo** de los preajustes con los nombres nuevos (Imán, Cuántico, Humano).
 - **No verificado**: nadie escuchó las cadenas nuevas. Lo marcado con ~ son guías de terceros o lectura nuestra, no datos de los artistas.
+
+## Masterizar: automática, con estilos propios (pedido del usuario + video de BandLab)
+
+- **Dónde**: Mezcla → fila **«Masterizar»**, con interruptor y resumen (estilo · volumen · LUFS). Reemplaza la fila vieja que solo abría los efectos del master; esos siguen como «Efectos del master (avanzado)».
+- **Dónde va en el audio**: es una etapa propia del master (`audio-engine/mastering/MasteringStage.ts`), después de los efectos del master y antes del volumen master. En vivo y al exportar es la misma (`bounce.ts`): lo que oyes es lo que se exporta.
+- **8 estilos propios** (`lib/mastering/masterChain.ts`): Equilibrio, Peso, Brillo, Cálido, Abierto, Amplio, Épico y Golpe.
+  - Todos usan la misma cadena; solo cambian los números: EQ → compresor de 3 bandas → compresor de pegado → saturación → aire → ancho → limitador (techo −1 dB).
+  - Por eso cambiar de estilo o mover un control se desliza, sin cortes.
+- **Controles**: intensidad (suave a fuerte), tono graves/medios/agudos ±6 dB, y volumen final:
+  - **Plataformas**: −14 LUFS;
+  - **Fuerte**: −10 LUFS;
+  - **Máximo**: −9 LUFS o lo más cerca que llegue el limitador sin distorsionar.
+- **Automático** (`lib/mastering/measureMaster.ts`):
+  - Busca los 12 s más fuertes de la canción y renderiza la sesión ahí, una sola vez mientras no cambien las pistas.
+  - Con eso calcula la ganancia de entrada (lleva la mezcla a −16 LUFS) y el empuje del limitador para llegar al objetivo: un render sin empuje, uno estimado y hasta dos correcciones.
+  - Se vuelve a medir sola al cambiar algo.
+- **A/B honesto**: «Mantén para oír antes» suena sin master pero al mismo volumen medido, para comparar el sonido y no quién suena más fuerte. BandLab no lo hace.
+- **Medido con tu canción** (voz, copia, beat; 12 s del estribillo):
+  - Fuerte: los 8 estilos entre −10.1 y −10.3 LUFS (Abierto −12 y Épico −10.7, que van más suaves a propósito), pico −1.0 dB.
+  - Plataformas: −13.9 a −14.2.
+  - Máximo: −9.5 a −9.7 (Cálido −8.8): con un solo limitador limpio no llega a −9 en tu tema.
+  - Cada compresor quita en promedio ~1 dB, no aplasta.
+- **Tiempo de medida en Chromium (escritorio)**: 4.8 s la primera vez en la app con 2 pistas y 4.4 s al cambiar de estilo. Con Núcleo y cadenas en las voces, el primer render de la sesión sube a ~5 s.
+- **Pruebas**: cadena igual en todos los estilos, intensidad y tono, empuje del limitador, objetivos, ventana más fuerte y recorte de la sesión.
+- **No verificado**:
+  - Nadie lo escuchó todavía: hay un audio con los 8 estilos sobre tu canción, la mezcla primero y al mismo volumen.
+  - No está probado en iPhone, donde medir será más lento.
+  - La automatización de volumen y paneo se ignora al medir (solo afecta la medida, no el sonido).
+- Falta, si lo quieres: igualar a una canción de referencia (BandLab lo tiene en beta).

@@ -16,6 +16,7 @@ vi.mock("@/audio-engine/AudioEngine", async (importOriginal) => {
   const engine = actual.getAudioEngine();
   engine.syncTracks = vi.fn();
   engine.syncMasterInserts = vi.fn();
+  engine.syncMastering = vi.fn();
   return { ...actual, getAudioEngine: () => engine };
 });
 

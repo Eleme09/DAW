@@ -9,6 +9,7 @@ import type { Track } from "@/types/project";
 import { MeterBar } from "../MeterBar";
 import { BottomSheet } from "../BottomSheet";
 import { AutoMixSheet } from "./AutoMixSheet";
+import { MASTER_STYLES, TARGET_INFO } from "@/lib/mastering/masterChain";
 import { SendSlots } from "./SendSlots";
 import { MicIcon, MoreIcon, ChevronRightIcon, PlusIcon, MixIcon } from "../icons";
 
@@ -64,21 +65,7 @@ export function MobileMixView({ onAddTrack }: { onAddTrack: () => void }) {
           <ChevronRightIcon className="ml-auto h-5 w-5 text-bone-3" />
         </button>
 
-        <button
-          onClick={() => {
-            setEffectsRackMode("master");
-            setMobileView("effects");
-          }}
-          className="flex h-14 items-center gap-3 rounded-xl bg-surf px-4 text-left"
-        >
-          <MixIcon className="h-5 w-5 rotate-90 text-bone-2" />
-          <span className="min-w-0">
-            <span className="block text-[15px] font-semibold leading-tight text-bone">Masterización</span>
-            <span className="flex items-center gap-0.5 text-xs text-bone-3">
-              Efectos del master <ChevronRightIcon className="h-3.5 w-3.5" />
-            </span>
-          </span>
-        </button>
+        <MasteringRow onOpen={() => setMobileView("mastering")} />
 
         <div className="flex h-14 items-center gap-3 rounded-xl bg-surf px-4">
           <SpeakerIcon className="h-5 w-5 shrink-0 text-bone-2" />
@@ -121,6 +108,37 @@ export function MobileMixView({ onAddTrack }: { onAddTrack: () => void }) {
 
       <TrackMenu track={menuTrack} onClose={() => setMenuTrackId(null)} />
       <AutoMixSheet open={assistantOpen} onClose={() => setAssistantOpen(false)} />
+    </div>
+  );
+}
+
+/** Mastering row: on/off right here, the style and where it lands, tap to open. */
+function MasteringRow({ onOpen }: { onOpen: () => void }) {
+  const m = useProjectStore((s) => s.project.mastering);
+  const setMastering = useProjectStore((s) => s.setMastering);
+  const on = !!m?.enabled;
+  return (
+    <div className="flex h-14 items-center gap-3 rounded-xl bg-surf pl-4 pr-3" style={on ? { boxShadow: "inset 0 0 0 1px rgba(62,232,196,.35)" } : undefined}>
+      <button onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+        <MixIcon className={`h-5 w-5 rotate-90 ${on ? "text-[#3ee8c4]" : "text-bone-2"}`} />
+        <span className="min-w-0">
+          <span className="block text-[15px] font-semibold leading-tight text-bone">Masterizar</span>
+          <span className="flex items-center gap-0.5 truncate text-xs text-bone-3">
+            {m ? `${MASTER_STYLES[m.style].label} · ${TARGET_INFO[m.target].label}${m.measured && on ? ` · ${m.measured.masterLufs.toFixed(1)} LUFS` : ""}` : "Automática: estilo y volumen final"}
+            <ChevronRightIcon className="h-3.5 w-3.5 shrink-0" />
+          </span>
+        </span>
+      </button>
+      <button
+        role="switch"
+        aria-checked={on}
+        aria-label="Masterización encendida"
+        onClick={() => (m ? setMastering({ enabled: !on }) : onOpen())}
+        className="relative h-7 w-12 shrink-0 rounded-full transition-colors"
+        style={{ background: on ? "#3ee8c4" : "#2a2c32" }}
+      >
+        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${on ? "left-6" : "left-1"}`} />
+      </button>
     </div>
   );
 }

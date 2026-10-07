@@ -34,6 +34,7 @@ export function DawShell() {
   const tracks = useProjectStore((s) => s.project.tracks);
   const buses = useProjectStore((s) => s.project.buses);
   const masterInserts = useProjectStore((s) => s.project.masterInserts);
+  const mastering = useProjectStore((s) => s.project.mastering);
   const masterVolumeDb = useProjectStore((s) => s.project.masterVolumeDb);
   const isDesktop = useIsDesktop();
 
@@ -46,6 +47,10 @@ export function DawShell() {
   useEffect(() => {
     getAudioEngine().syncMasterInserts(masterInserts);
   }, [masterInserts]);
+
+  useEffect(() => {
+    getAudioEngine().syncMastering(mastering);
+  }, [mastering]);
 
   useEffect(() => {
     getAudioEngine().setMasterVolume(masterVolumeDb);

@@ -115,7 +115,7 @@ function soloProject(project: Project, track: Track, w0: number, w1: number): Pr
   };
 }
 
-function stereoLufs(buffer: AudioBuffer): number | null {
+export function stereoLufs(buffer: AudioBuffer): number | null {
   const per: number[] = [];
   for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
     const l = computeIntegratedLufs(buffer.getChannelData(ch), buffer.sampleRate);

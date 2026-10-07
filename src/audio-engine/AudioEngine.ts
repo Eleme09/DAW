@@ -1,11 +1,12 @@
 import { dbToGain } from "./dbUtils";
 import { encodeWav } from "./wavEncoder";
 import { AutoPitchEffect, AUTOPITCH_WORKLET_URL, type PitchTelemetry } from "./autopitch/AutoPitchEffect";
+import { MasteringStage } from "./mastering/MasteringStage";
 import { DYNAMICS_WORKLET_URL, DynamicsNode, createOutputGuard } from "./effects/dynamics";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { isTrackMonitoredLive } from "./monitoring";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
-import type { AudioClip, Bus, BusId, LoopRegion, Track, TrackId } from "@/types/project";
+import type { AudioClip, Bus, BusId, LoopRegion, MasteringSettings, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
 
 /**
@@ -141,6 +142,9 @@ export class AudioEngine {
   private masterAnalyser: AnalyserNode | null = null;
   private loudnessAnalyser: AnalyserNode | null = null;
   private masterChain: EffectChain | null = null;
+  /** Mastering after the master inserts (lib/mastering). */
+  private mastering: MasteringStage | null = null;
+  private masteringSettings: MasteringSettings | undefined = undefined;
   private noiseGateWorkletPromise: Promise<void> | null = null;
   private noiseGateWorkletLoaded = false;
   private dynamicsWorkletPromise: Promise<void> | null = null;
@@ -257,9 +261,12 @@ export class AudioEngine {
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
       const masterChain = new EffectChain(ctx, this.effectChainDeps());
+      const mastering = new MasteringStage(ctx, this.effectChainDeps());
       const masterVolume = ctx.createGain();
       master.connect(masterChain.inputNode);
-      masterChain.outputNode.connect(masterVolume);
+      masterChain.outputNode.connect(mastering.input);
+      mastering.output.connect(masterVolume);
+      mastering.set(this.masteringSettings);
       masterVolume.connect(analyser);
       analyser.connect(ctx.destination);
 
@@ -290,6 +297,7 @@ export class AudioEngine {
       this.masterAnalyser = analyser;
       this.loudnessAnalyser = loudnessAnalyser;
       this.masterChain = masterChain;
+      this.mastering = mastering;
 
       this.startBypassMaintenanceLoop();
       void this.ensureDynamicsWorklet().then(() => this.insertOutputGuard());
@@ -404,6 +412,17 @@ export class AudioEngine {
   syncMasterInserts(inserts: EffectInstance[]): void {
     this.ensureContext();
     this.masterChain?.setInserts(inserts);
+  }
+
+  syncMastering(settings: MasteringSettings | undefined): void {
+    this.masteringSettings = settings;
+    this.ensureContext();
+    this.mastering?.set(settings);
+  }
+
+  /** A/B: the mix without mastering, at the master's loudness. */
+  setMasteringCompare(on: boolean): void {
+    this.mastering?.setCompare(on);
   }
 
   /** Final output trim, applied post insert-chain (right before the master
@@ -547,6 +566,7 @@ export class AudioEngine {
     if (this.bypassTickRafId !== null) return;
     const tick = () => {
       this.masterChain?.tick();
+      this.mastering?.tick();
       for (const graph of this.tracks.values()) graph.effectChain.tick();
       for (const graph of this.buses.values()) graph.effectChain.tick();
       this.bypassTickRafId = requestAnimationFrame(tick);

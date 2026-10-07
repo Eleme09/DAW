@@ -14,6 +14,8 @@ import { dbToGain } from "./dbUtils";
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { AutoPitchEffect, AUTOPITCH_WORKLET_URL } from "./autopitch/AutoPitchEffect";
 import { DYNAMICS_WORKLET_URL, createOutputGuard } from "./effects/dynamics";
+import { MasteringStage } from "./mastering/MasteringStage";
+import { masteringChain } from "@/lib/mastering/masterChain";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
 import type { AudioClip, BusId, Project } from "@/types/project";
 
@@ -27,7 +29,7 @@ export interface BounceOptions {
 }
 
 function projectUsesEffect(project: Project, type: string): boolean {
-  const chains = [project.masterInserts, ...project.tracks.map((t) => t.inserts)];
+  const chains = [project.masterInserts, ...project.tracks.map((t) => t.inserts), project.mastering?.enabled ? masteringChain(project.mastering) : []];
   return chains.some((inserts) => inserts.some((i) => i.type === type));
 }
 
@@ -89,8 +91,12 @@ export async function bounceProject(
   // silently ignore the master fader entirely.
   const masterVolume = ctx.createGain();
   masterVolume.gain.value = dbToGain(project.masterVolumeDb);
+  // mastering after the master inserts, as live (AudioEngine)
+  const mastering = new MasteringStage(ctx, deps);
   master.connect(masterChain.inputNode);
-  masterChain.outputNode.connect(masterVolume);
+  masterChain.outputNode.connect(mastering.input);
+  mastering.output.connect(masterVolume);
+  mastering.set(project.mastering);
   // same output protection as the live engine (AudioEngine.insertOutputGuard)
   const guard = createOutputGuard(ctx);
   masterVolume.connect(guard.node);

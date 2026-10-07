@@ -173,6 +173,9 @@ export interface Project {
   masterInserts: EffectInstance[];
   /** Final output trim, applied after the master insert chain. */
   masterVolumeDb: number;
+  /** Mastering, after the master inserts and before the master fader
+   * (lib/mastering). Absent = off. */
+  mastering?: MasteringSettings;
   /** Free-form lyrics for the song, shown large on VozPanel while
    * recording (a real teleprompter guide, not just a place to jot notes). */
   lyrics: string;
@@ -188,6 +191,36 @@ export interface Project {
   metronomeVolume: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type MasterStyle = "equilibrio" | "peso" | "brillo" | "calido" | "abierto" | "amplio" | "epico" | "golpe";
+
+/** Where the master should land: streaming loudness, loud, or as loud as
+ * trap/rage masters usually go. */
+export type MasterTarget = "plataformas" | "fuerte" | "maximo";
+
+export interface MasteringSettings {
+  enabled: boolean;
+  style: MasterStyle;
+  /** How much the style does, 0..1 (0.5 = normal). */
+  intensity: number;
+  /** The user's tone on top of the style, dB (-6..+6). */
+  lowDb: number;
+  midDb: number;
+  highDb: number;
+  target: MasterTarget;
+  /** Gain into the chain so any mix enters at the level it is built for
+   * (measured: lib/mastering/measureMaster). */
+  inputGainDb: number;
+  /** Limiter push that lands the loudest part on the target (measured). */
+  driveDb: number;
+  /** Last measurement: the mix and the master, integrated LUFS of the
+   * loudest 30 s, and the master's sample peak. */
+  measured?: { mixLufs: number; masterLufs: number; peakDb: number; at: string };
+}
+
+export function createMasteringSettings(): MasteringSettings {
+  return { enabled: true, style: "equilibrio", intensity: 0.5, lowDb: 0, midDb: 0, highDb: 0, target: "fuerte", inputGainDb: 0, driveDb: 6 };
 }
 
 /** Metadata for an imported/recorded audio source, decoded once and cached by id. */

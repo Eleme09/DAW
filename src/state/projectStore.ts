@@ -13,6 +13,8 @@ import {
   createDefaultAutomation,
   createTrack,
   createBus,
+  createMasteringSettings,
+  type MasteringSettings,
   type AudioClip,
   type AutomationParam,
   type AutomationPoint,
@@ -58,7 +60,7 @@ export type EffectTarget = TrackId | BusId | "master";
  * where every pane renders simultaneously. */
 export type ClipEditMode = "shift" | "gain" | "transpose" | "stretch" | "fade" | "loop" | "harmonize";
 
-export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects" | "autopitch";
+export type MobileView = "voz" | "browser" | "timeline" | "mixer" | "effects" | "autopitch" | "mastering";
 /** Which sub-tab BrowserPanel is showing - lifted out of that component so
  * a track/effect's "Ask AI" button can jump straight to the Assistant tab. */
 export type BrowserTab = "audio" | "mix" | "assistant";
@@ -244,6 +246,9 @@ interface ProjectState {
   /** Creates the track's AutoPitch (from the project key) on first use.
    * Knob/slider moves coalesce into one undo step. */
   setAutoPitch: (trackId: TrackId, patch: Partial<AutoPitchSettings>) => void;
+  /** Mastering (Mezcla → Masterizar): creates it on first use. Knob moves
+   * coalesce into one undo step. */
+  setMastering: (patch: Partial<MasteringSettings>) => void;
   loadProject: (project: Project) => void;
   /** Loads a saved project by id from disk and hydrates its samples into
    * the audio engine cache. Returns false if the project no longer exists
@@ -389,6 +394,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const nextProject = touch({ ...project, masterInserts: updater(project.masterInserts) });
       setProject(nextProject, opts);
       getAudioEngine().syncMasterInserts(nextProject.masterInserts);
+      getAudioEngine().syncMastering(nextProject.mastering);
       return;
     }
     if (project.tracks.some((t) => t.id === target)) {
@@ -500,6 +506,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       });
       getAudioEngine().syncTracks(previous.tracks, previous.buses);
       getAudioEngine().syncMasterInserts(previous.masterInserts);
+      getAudioEngine().syncMastering(previous.mastering);
       lastPushWasCoalescible = false;
     },
     redo: () => {
@@ -509,6 +516,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       set({ project: next, past: [...past, project], future: future.slice(1), ...validSelection(get(), next) });
       getAudioEngine().syncTracks(next.tracks, next.buses);
       getAudioEngine().syncMasterInserts(next.masterInserts);
+      getAudioEngine().syncMastering(next.mastering);
       lastPushWasCoalescible = false;
     },
 
@@ -1087,6 +1095,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       setProject(nextProject, { coalesce: true });
       getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
       getAudioEngine().syncMasterInserts(nextProject.masterInserts);
+      getAudioEngine().syncMastering(nextProject.mastering);
     },
     setTimeSignature: (num, den) =>
       setProject(touch({ ...get().project, timeSignature: [num, den] }), { coalesce: true }),
@@ -1316,6 +1325,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         setProject(nextProject);
         getAudioEngine().syncTracks(nextProject.tracks, nextProject.buses);
         getAudioEngine().syncMasterInserts(nextProject.masterInserts);
+      getAudioEngine().syncMastering(nextProject.mastering);
         set({ beatNotice: beatInfo });
       } catch {
         // analysis is a convenience: the project just keeps its tempo/key
@@ -1327,6 +1337,14 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     setMetronomeVolume: (volume) => {
       setProject(touch({ ...get().project, metronomeVolume: volume }), { coalesce: true });
       getAudioEngine().setMetronomeVolume(volume);
+    },
+    setMastering: (patch) => {
+      const project = get().project;
+      const base = project.mastering ?? createMasteringSettings();
+      const mastering = { ...base, ...patch };
+      const coalesce = Object.keys(patch).every((k) => ["intensity", "lowDb", "midDb", "highDb", "inputGainDb", "driveDb", "measured"].includes(k));
+      setProject(touch({ ...project, mastering }), { coalesce });
+      getAudioEngine().syncMastering(mastering);
     },
     setAutoPitch: (trackId, patch) => {
       const project = get().project;
