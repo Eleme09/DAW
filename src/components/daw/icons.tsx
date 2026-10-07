@@ -27,15 +27,14 @@ export function WaveformIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Mixer: three faders with their caps. */
 export function MixIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <line x1="6" y1="4" x2="6" y2="20" />
-      <circle cx="6" cy="9" r="1.75" fill="currentColor" stroke="none" />
-      <line x1="12" y1="4" x2="12" y2="20" />
-      <circle cx="12" cy="15" r="1.75" fill="currentColor" stroke="none" />
-      <line x1="18" y1="4" x2="18" y2="20" />
-      <circle cx="18" cy="7" r="1.75" fill="currentColor" stroke="none" />
+      <path d="M6 3.5v17M12 3.5v17M18 3.5v17" opacity={0.55} />
+      <rect x="3.5" y="7" width="5" height="3.2" rx="1" fill="currentColor" stroke="none" />
+      <rect x="9.5" y="13.5" width="5" height="3.2" rx="1" fill="currentColor" stroke="none" />
+      <rect x="15.5" y="5" width="5" height="3.2" rx="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -105,12 +104,14 @@ export function RedoIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** More tools: a grid of four (the menu it opens is a grid). */
 export function MoreIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props} fill="currentColor" stroke="none">
-      <circle cx="5" cy="12" r="1.75" />
-      <circle cx="12" cy="12" r="1.75" />
-      <circle cx="19" cy="12" r="1.75" />
+      <circle cx="8" cy="8" r="1.9" />
+      <circle cx="16" cy="8" r="1.9" />
+      <circle cx="8" cy="16" r="1.9" />
+      <circle cx="16" cy="16" r="1.9" />
     </svg>
   );
 }
@@ -357,37 +358,48 @@ export function CloudUploadIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Delete: a region fading out, an x on it. */
 export function TrashIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+      <rect x="3" y="8" width="12.5" height="9" rx="1.8" strokeDasharray="2.4 2.2" />
+      <circle cx="17.5" cy="7.5" r="4" />
+      <path d="M15.9 5.9l3.2 3.2M19.1 5.9l-3.2 3.2" />
     </svg>
   );
 }
 
+/** Copy: a region and its copy on the next lane. */
 export function CopyIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <rect x="8" y="8" width="12" height="12" rx="2.5" />
-      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+      <rect x="3" y="5" width="12" height="6" rx="1.6" />
+      <rect x="9" y="13" width="12" height="6" rx="1.6" fill="currentColor" fillOpacity={0.25} />
+      <path d="M6 11v4.5a.5.5 0 0 0 .5.5H9" opacity={0.6} />
     </svg>
   );
 }
 
-/** BandLab's slice icon: ]|[ */
+/** Split: a region cut in two by the playhead. */
 export function SliceIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M5 5h3v14H5M19 5h-3v14h3M12 3v18" />
+      <rect x="3" y="8" width="7" height="9" rx="1.6" />
+      <rect x="14" y="8" width="7" height="9" rx="1.6" />
+      <path d="M12 6v15" />
+      <circle cx="12" cy="4" r="1.8" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
+/** Loop: a region repeating itself. */
 export function LoopIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M20 12a8 8 0 1 1-2.3-5.6" />
-      <path d="M20 4v4h-4" />
+      <rect x="3" y="10" width="8" height="8" rx="1.6" />
+      <rect x="13" y="10" width="8" height="8" rx="1.6" strokeDasharray="2.2 2" />
+      <path d="M7 7.5c1.5-3.3 8.5-3.3 10 0" />
+      <path d="M14.6 6.6l2.4.9.6-2.4" />
     </svg>
   );
 }
@@ -404,27 +416,33 @@ export function HarmonizeIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Nudge: a region sliding a little either way. */
 export function ShiftIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M12 4v16M8 8l-4 4 4 4M16 8l4 4-4 4" />
+      <rect x="5" y="4" width="14" height="8" rx="1.6" />
+      <path d="M4 18h16M7 15.5 4.5 18 7 20.5M17 15.5l2.5 2.5-2.5 2.5" />
     </svg>
   );
 }
 
+/** Clip gain: a region and its own fader. */
 export function GainIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M4 9h3l4-4v14l-4-4H4z" />
-      <path d="M15 9v6M18 7v10" />
+      <rect x="3" y="8" width="11" height="8" rx="1.6" />
+      <path d="M19 3.5v17" opacity={0.55} />
+      <rect x="16.5" y="7" width="5" height="3.2" rx="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
+/** Normalize: the loudest peak brought up to the ceiling. */
 export function NormalizeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M4 4h16M4 20h16M12 7v10M9 10l3-3 3 3M9 14l3 3 3-3" />
+      <path d="M3 4.5h18" strokeDasharray="2.2 2" />
+      <path d="M6 20v-8M10 20V7.5M14 20v-6M18 20V9.5" />
     </svg>
   );
 }
@@ -438,36 +456,50 @@ export function TransposeIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Time-stretch: a region pulled out at both ends. */
 export function StretchIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4M9 5h6M9 19h6" />
+      <rect x="7" y="8" width="10" height="8" rx="1.6" />
+      <path d="M2.5 12h2.5M19 12h2.5M4 10l-1.5 2L4 14M20 10l1.5 2-1.5 2" />
     </svg>
   );
 }
 
+/** Fade: the curve the region's fades draw. */
 export function FadeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M3 19L9 5h6l6 14" />
-      <circle cx="9" cy="5" r="1.5" />
-      <circle cx="15" cy="5" r="1.5" />
+      <path d="M3 19.5h18" opacity={0.45} />
+      <path d="M3 19.5Q8.5 5 21 4.5" />
+      <circle cx="21" cy="4.5" r="1.6" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
+/** Noise cleanup: the clean signal, the noise left around it. */
 export function DenoiseIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M4 20L20 4M14 4h.01M18 8h.01M20 12h.01M10 4h.01M17 15h.01M7 9h.01M4 13h.01" />
+      <path d="M3 12c1.5-4 4.5-4 6 0s4.5 4 6 0 4.5-4 6 0" />
+      <g fill="currentColor" stroke="none" opacity={0.55}>
+        <circle cx="5" cy="5" r="1" />
+        <circle cx="12" cy="4" r="1" />
+        <circle cx="19" cy="6" r="1" />
+        <circle cx="6" cy="19" r="1" />
+        <circle cx="13.5" cy="20" r="1" />
+        <circle cx="20" cy="18.5" r="1" />
+      </g>
     </svg>
   );
 }
 
+/** Reverse: the region played backwards. */
 export function ReverseIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M20 8H5M8 4L4 8l4 4M4 16h15M16 12l4 4-4 4" />
+      <rect x="3" y="11" width="18" height="8" rx="1.6" />
+      <path d="M18 6.5H6M8.5 4 6 6.5 8.5 9" />
     </svg>
   );
 }
@@ -480,7 +512,6 @@ export function ChevronUpIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** BandLab's "lyrics/notes" tab glyph: a quill. */
 /** Lyrics tab: lines of text and the reading point (teleprompter). */
 export function FeatherIcon(props: SVGProps<SVGSVGElement>) {
   return (

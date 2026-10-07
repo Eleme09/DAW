@@ -37,11 +37,11 @@ const HARMONY_VOICES: HarmonyVoice[] = [
 ];
 
 const TITLES = {
-  shift: "Cambio",
+  shift: "Desplazar",
   gain: "Ganancia",
   transpose: "Transponer",
-  stretch: "Expansión de tiempo",
-  fade: "Fade",
+  stretch: "Estirar",
+  fade: "Fades",
   loop: "Loop",
   harmonize: "Armonizar",
 } as const;

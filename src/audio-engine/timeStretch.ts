@@ -2,7 +2,7 @@
  * Pitch-preserving time-stretch (WSOLA - Waveform Similarity Overlap-Add)
  * and a pitch shift built on it, for ANY audio (a full beat, not only a
  * monophonic voice the way the PSOLA-based transpose in ./pitch/ needs).
- * Backs BandLab's "Expansión de tiempo" (0.5x / 1x / 2x) and "Transponer"
+ * Backs the region's "Estirar" (0.5x / 1x / 2x) and "Transponer"
  * region actions.
  *
  * WSOLA: output is built from overlapping Hann-windowed grains taken from

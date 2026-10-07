@@ -1335,7 +1335,13 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
   - seleccionada: franja blanca y contorno blanco, con las mismas manijas de recorte.
 - «Mezclar con IA» (Voz) pasa a «Mezclar la voz»: es por reglas, no IA.
 - Verificado: `tsc`, `eslint`, `vitest` (420), `next build`, Chromium 390×844 sin errores.
+- La región de la voz «sin onda» en la captura era silencio real: `voz.wav` no tiene audio en sus primeros 2 s. El lienzo sí se dibuja (medido en Chromium: píxeles pintados en las dos regiones, y la onda aparece al desplazarse). No era un bug; no se tocó el cargador.
+- **Herramientas de región, segunda pasada**:
+  - La barra flotante ya no es la píldora + círculo «⋯» de BandLab: es una sola barra con icono y nombre debajo (Borrar · Copiar · Dividir · Loop · Armonizar · Más).
+  - «Más» abre una cuadrícula de 4×2 en vez de la lista de BandLab.
+  - Iconos propios con el lenguaje de «regiones en carriles»: borrar (región que se desvanece con una ×), copiar (región y su copia en el carril de abajo), dividir (región partida por el cursor), loop (región que se repite), desplazar, ganancia (región y su fader), normalizar (picos hasta el techo), estirar, fades (la misma curva de las regiones), quitar ruido, al revés. El mezclador usa faders con tapa; «más» es una cuadrícula de cuatro puntos.
+  - Nombres que eran traducción literal de BandLab: Cambio → Desplazar, Expansión de tiempo → Estirar, Fade → Fades, Eliminación de ruido → Quitar ruido, Revertir → Al revés, «Éxito» → «Listo».
+- Verificado: `tsc`, `eslint`, `vitest` (420), `next build`, Chromium 390×844 (barra, cuadrícula y panel «Desplazar») sin errores.
 - **No verificado / pendiente**:
-  - En la captura la región de la voz se ve sin onda en los primeros segundos. No revisé si es silencio real del archivo o un bug de dibujo.
-  - Quedan iconos secundarios del set viejo (menús de región, editor).
+  - El panel inferior de edición (deslizador blanco, ▶ · nombre · ✓) sigue con el diseño de BandLab.
   - Nadie lo vio en un iPhone.
