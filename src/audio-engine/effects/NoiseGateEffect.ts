@@ -1,5 +1,6 @@
 import type { Effect } from "./Effect";
 import type { NoiseGateParams } from "@/types/effects";
+import { workletProfiler } from "@/lib/diagnostics/workletProfiler";
 
 /**
  * Wraps the noise-gate-processor AudioWorklet. The worklet module must
@@ -26,8 +27,9 @@ export class NoiseGateEffect implements Effect<NoiseGateParams> {
     this.inputAnalyser.fftSize = 1024;
     this.inputAnalyser.connect(this.node);
     this.node.port.onmessage = (ev: MessageEvent<number>) => {
-      this.lastEnvelope = ev.data;
+      if (typeof ev.data === "number") this.lastEnvelope = ev.data;
     };
+    workletProfiler.register(this.node, "noiseGate");
   }
 
   get inputNode(): AudioNode {
@@ -61,6 +63,7 @@ export class NoiseGateEffect implements Effect<NoiseGateParams> {
   }
 
   dispose(): void {
+    workletProfiler.unregister(this.node);
     this.node.disconnect();
     this.node.port.close();
   }

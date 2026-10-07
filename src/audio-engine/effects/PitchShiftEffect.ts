@@ -1,6 +1,7 @@
 import type { Effect } from "./Effect";
 import type { PitchShiftParams } from "@/types/effects";
 import { autoPitchLatencySec } from "../autopitch/resolveAutoPitch";
+import { workletProfiler } from "@/lib/diagnostics/workletProfiler";
 
 /**
  * Pitch shifter for a voice: the autopitch-processor worklet with the tuner
@@ -30,6 +31,7 @@ export class PitchShiftEffect implements Effect<PitchShiftParams> {
       channelCountMode: "explicit",
       channelInterpretation: "speakers",
     });
+    workletProfiler.register(this.node, "pitchShift");
     // no tuning, nothing but the shifted lead
     this.write({ amount: 0, speedMs: 0, transitionMs: 0, humanize: 0, flex: 0, hard: 0, leadGain: 1, lowLatency: 0 }, true);
   }
@@ -71,6 +73,7 @@ export class PitchShiftEffect implements Effect<PitchShiftParams> {
   }
 
   dispose(): void {
+    workletProfiler.unregister(this.node);
     this.node.disconnect();
     this.node.port.close();
   }

@@ -65,6 +65,37 @@ class DynamicsProcessor extends AudioWorkletProcessor {
     this.silentRun = 0; // input samples in a row that were exactly 0
     this.reportMin = 0;
     this.reportCount = 0;
+    // CPU meter for Ajustes > Rendimiento (off unless the page asks)
+    this.meter = null;
+    this.port.onmessage = (e) => {
+      if (e.data && e.data.type === "prof") this.meter = e.data.on ? { ms: 0, blocks: 0, over2: 0, over4: 0, max: 0, since: currentTime } : null;
+    };
+  }
+
+  /** process() with its running time added up (Date.now(), 1 ms steps: a
+   * sum over thousands of blocks is unbiased), reported once per second of
+   * audio. Only while the meter is on. */
+  process(inputs, outputs, parameters) {
+    const m = this.meter;
+    if (!m) return this.run(inputs, outputs, parameters);
+    const t0 = Date.now();
+    const keep = this.run(inputs, outputs, parameters);
+    const dt = Date.now() - t0;
+    m.ms += dt;
+    m.blocks++;
+    if (dt >= 2) m.over2++;
+    if (dt >= 4) m.over4++;
+    if (dt > m.max) m.max = dt;
+    if (currentTime - m.since >= 1) {
+      this.port.postMessage({ prof: { ms: m.ms, blocks: m.blocks, over2: m.over2, over4: m.over4, max: m.max, sec: currentTime - m.since } });
+      m.ms = 0;
+      m.blocks = 0;
+      m.over2 = 0;
+      m.over4 = 0;
+      m.max = 0;
+      m.since = currentTime;
+    }
+    return keep;
   }
 
   /** Sends the gain reduction to the UI meters every REPORT_EVERY samples. */
@@ -83,7 +114,7 @@ class DynamicsProcessor extends AudioWorkletProcessor {
   // input costs almost nothing (a track with nothing playing used to cost
   // as much as a singing one), and while no knob moves the parameters are
   // not re-derived per sample.
-  process(inputs, outputs, parameters) {
+  run(inputs, outputs, parameters) {
     const input = inputs[0];
     const output = outputs[0];
     const chans = output.length;

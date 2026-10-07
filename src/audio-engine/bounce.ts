@@ -17,6 +17,7 @@ import { DYNAMICS_WORKLET_URL, createOutputGuard } from "./effects/dynamics";
 import { MasteringStage } from "./mastering/MasteringStage";
 import { masteringChain } from "@/lib/mastering/masterChain";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
+import { perfJob } from "@/lib/diagnostics/perfLog";
 import type { AudioClip, BusId, Project } from "@/types/project";
 
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
@@ -53,6 +54,21 @@ export async function bounceProject(
   project: Project,
   getBuffer: (sampleId: string) => AudioBuffer | undefined,
   options: BounceOptions = {}
+): Promise<AudioBuffer> {
+  // an offline render competes with the live audio for the CPU: say so in
+  // the performance diagnostic's log
+  const done = perfJob("render offline");
+  try {
+    return await renderProject(project, getBuffer, options);
+  } finally {
+    done();
+  }
+}
+
+async function renderProject(
+  project: Project,
+  getBuffer: (sampleId: string) => AudioBuffer | undefined,
+  options: BounceOptions
 ): Promise<AudioBuffer> {
   const sampleRate = options.sampleRate ?? 44100;
   const durationSec = projectDurationSec(project);

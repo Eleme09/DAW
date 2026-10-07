@@ -30,6 +30,8 @@ function load(file: string) {
   const posted: unknown[] = [];
   const sandbox = {
     sampleRate: SR,
+    /** The audio clock (seconds), moved by the test like the engine does. */
+    currentTime: 0,
     Math,
     Float32Array,
     Float64Array,
@@ -43,8 +45,13 @@ function load(file: string) {
   (sandbox as unknown as { globalThis: unknown }).globalThis = sandbox;
   runInNewContext(readFileSync(join(process.cwd(), "public/worklets", file), "utf8"), sandbox);
   if (!Cls) throw new Error(`${file} did not register`);
-  return { Cls: Cls as ProcessorClass, posted };
+  return { Cls: Cls as ProcessorClass, posted, sandbox };
 }
+
+interface ProfReport {
+  prof: { ms: number; blocks: number; over2: number; over4: number; max: number; sec: number };
+}
+const isProf = (m: unknown): m is ProfReport => typeof m === "object" && m !== null && "prof" in m;
 
 function params(Cls: ProcessorClass, values: Record<string, number>) {
   const p: Record<string, Float32Array> = {};
@@ -156,6 +163,89 @@ describe("noise gate on a silent track", () => {
     let maxDiff = 0;
     for (let i = 0; i < fast.length; i++) maxDiff = Math.max(maxDiff, Math.abs(fast[i] - full[i]));
     expect(maxDiff).toBeLessThan(1e-6);
+  });
+});
+
+describe("on-device CPU meter (Ajustes > Rendimiento)", () => {
+  /** 3 s of voice through a processor, the audio clock advancing per block. */
+  function runMetered(file: string, options: Record<string, unknown>, values: Record<string, number>, meterOn: boolean) {
+    const { Cls, posted, sandbox } = load(file);
+    const node = new Cls({ processorOptions: options });
+    if (meterOn) node.port.onmessage?.({ data: { type: "prof", on: true } });
+    const p = params(Cls, values);
+    const x = voice(3, 0.5);
+    const inB = new Float32Array(BLOCK);
+    const oL = new Float32Array(BLOCK);
+    const oR = new Float32Array(BLOCK);
+    let n = 0;
+    for (let s = 0; s + BLOCK <= x.length; s += BLOCK) {
+      sandbox.currentTime = (n++ * BLOCK) / SR;
+      inB.set(x.subarray(s, s + BLOCK));
+      node.process([[inB, inB]], [[oL, oR]], p);
+    }
+    return posted.filter(isProf);
+  }
+
+  for (const [file, options, values] of [
+    ["dynamics-processor.js", {}, COMP],
+    ["noise-gate-processor.js", {}, { thresholdDb: -40 }],
+  ] as const) {
+    it(`${file}: silent by default, reports once per second of audio when asked`, () => {
+      expect(runMetered(file, options, values, false)).toHaveLength(0);
+      const reports = runMetered(file, options, values, true);
+      expect(reports.length).toBeGreaterThanOrEqual(2); // 3 s of audio
+      for (const { prof } of reports) {
+        expect(prof.sec).toBeGreaterThanOrEqual(1);
+        expect(prof.blocks).toBeGreaterThan((SR / BLOCK) * 0.95);
+        expect(prof.blocks).toBeLessThan((SR / BLOCK) * 1.1);
+        expect(prof.ms).toBeGreaterThanOrEqual(0);
+        expect(prof.over2).toBeLessThanOrEqual(prof.blocks);
+      }
+    });
+
+    it(`${file}: the meter does not change the audio`, () => {
+      const render = (meterOn: boolean) => {
+        const { Cls, sandbox } = load(file);
+        const node = new Cls({ processorOptions: options });
+        if (meterOn) node.port.onmessage?.({ data: { type: "prof", on: true } });
+        const p = params(Cls, values);
+        const x = voice(1, 0.5);
+        const out = new Float32Array(x.length);
+        const inB = new Float32Array(BLOCK);
+        const oL = new Float32Array(BLOCK);
+        const oR = new Float32Array(BLOCK);
+        for (let s = 0, n = 0; s + BLOCK <= x.length; s += BLOCK, n++) {
+          sandbox.currentTime = (n * BLOCK) / SR;
+          inB.set(x.subarray(s, s + BLOCK));
+          node.process([[inB, inB]], [[oL, oR]], p);
+          out.set(oL, s);
+        }
+        return out;
+      };
+      expect(render(true)).toEqual(render(false));
+    });
+  }
+
+  it("switching the meter off stops the reports", () => {
+    const { Cls, posted, sandbox } = load("dynamics-processor.js");
+    const node = new Cls({ processorOptions: {} });
+    const p = params(Cls, COMP);
+    const inB = voice(0.01, 0.5).subarray(0, BLOCK);
+    const oL = new Float32Array(BLOCK);
+    const oR = new Float32Array(BLOCK);
+    node.port.onmessage?.({ data: { type: "prof", on: true } });
+    for (let n = 0; n < (SR / BLOCK) * 2.5; n++) {
+      sandbox.currentTime = (n * BLOCK) / SR;
+      node.process([[inB, inB]], [[oL, oR]], p);
+    }
+    const during = posted.filter(isProf).length;
+    expect(during).toBeGreaterThan(0);
+    node.port.onmessage?.({ data: { type: "prof", on: false } });
+    for (let n = 0; n < (SR / BLOCK) * 2.5; n++) {
+      sandbox.currentTime = 3 + (n * BLOCK) / SR;
+      node.process([[inB, inB]], [[oL, oR]], p);
+    }
+    expect(posted.filter(isProf).length).toBe(during);
   });
 });
 

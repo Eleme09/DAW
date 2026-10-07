@@ -1,5 +1,6 @@
 import { TEMPO_DIVISIONS, divisionToMs } from "@/audio-engine/effects/tempoGrid";
-import { instantiateChain, serializeChain, type FxChainPreset, type TrackFxState } from "@/types/fxPresets";
+import { instantiateChain, reuseInsertIds, serializeChain, type FxChainPreset, type TrackFxState } from "@/types/fxPresets";
+import { perfLog } from "@/lib/diagnostics/perfLog";
 import { create } from "zustand";
 import { splitCyclePasses } from "@/lib/timeline/cyclePasses";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
@@ -1022,7 +1023,10 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     applyFxPreset: (trackId, preset) => {
       const project = get().project;
       const bpm = project.bpm;
-      const inserts = preset ? syncDelaysToTempo(instantiateChain(preset.effects), bpm) : [];
+      const before = project.tracks.find((t) => t.id === trackId);
+      // keeps the processors the old chain and the new one have in common
+      const inserts = preset ? reuseInsertIds(before?.inserts ?? [], syncDelaysToTempo(instantiateChain(preset.effects), bpm)) : [];
+      perfLog("preset", `${preset ? preset.name : "ninguno"} → ${before?.name ?? "?"} (${inserts.length} efectos)`);
       const fx: TrackFxState | undefined = preset
         ? { presetId: preset.id, name: preset.name, blend: preset.blend, baseline: serializeChain(inserts) }
         : undefined;
@@ -1345,13 +1349,20 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
       const project = get().project;
       const base = project.mastering ?? createMasteringSettings();
       const mastering = { ...base, ...patch };
+      if ("style" in patch || "target" in patch || "enabled" in patch) {
+        perfLog("masterizar", `${mastering.enabled ? "sí" : "no"} · ${mastering.style} · ${mastering.target}`);
+      }
       const coalesce = Object.keys(patch).every((k) => ["intensity", "lowDb", "midDb", "highDb", "inputGainDb", "driveDb", "measured"].includes(k));
       setProject(touch({ ...project, mastering }), { coalesce });
       getAudioEngine().syncMastering(mastering);
     },
     setAutoPitch: (trackId, patch) => {
       const project = get().project;
-      const coalesce = Object.keys(patch).every((k) => k === "level" || k === "harmonyMix");
+      if ("presetId" in patch || "enabled" in patch) {
+        const name = project.tracks.find((t) => t.id === trackId)?.name ?? "?";
+        perfLog("núcleo", `${patch.enabled === false ? "apagado" : (patch.presetId ?? "encendido")} → ${name}`);
+      }
+      const coalesce =Object.keys(patch).every((k) => k === "level" || k === "harmonyMix");
       setProject(
         touch({
           ...project,

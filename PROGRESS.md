@@ -1421,3 +1421,29 @@ Síntoma (iPhone): después de grabar muchas tomas seguidas, o de devolver y rep
   - pistas con regiones, tomas, Núcleo y efectos;
   - el dispositivo.
 - Probado en Chromium: interruptor, dos tomas y el informe copiado al portapapeles.
+
+## Primer informe real del iPhone (iOS 18, Safari, 4 núcleos, 390×844 @3)
+
+Datos tal como llegaron (10 min, solo reproducir: 0 aperturas de micrófono, 0 tomas, 19 reproducciones):
+- Audio: 609 s corriendo, **76 atrasos, 9.6 s perdidos (1.6 %), el peor de 332 ms**.
+- Pantalla: 35 826 cuadros (≈59 por segundo), 107 lentos (>50 ms), **5 congelados (>200 ms), el peor de 3244 ms**.
+- Estado del audio: 5 pares suspended → running de 1 a 8 s (el ahorro de energía a los 2.5 s en reposo).
+- Memoria de audio: 3 archivos, 113.8 MB.
+- Sesión: 3 pistas con Núcleo (hardTune, hardTune, classic); una con 11 efectos (eq, compresor, eq, de-esser, delay, reverb, limitador, chorus, exciter, puerta, flanger); otra con 7; Masterizar «peso» activo. Peso estimado 67.5 (≈ 67 % de un núcleo de mi computador): Núcleo ≈ 29, cadenas ≈ 24, Masterizar 11.6.
+
+**Lo que dice** (y lo que no)
+- No es el micrófono ni las tomas: pasa solo reproduciendo.
+- La pantalla va bien casi siempre (59 fps, 0.3 % de cuadros lentos): los 5 congelamientos son eventos puntuales, no un lag continuo. No sé cuáles fueron; el informe no traía la hora ni la acción.
+- Los cortes de audio son frecuentes (uno cada ~8 s de media). Tampoco sé en qué momento: si coinciden con el arranque de cada reproducción, con aplicar un preset, con una medición de Masterizar o con la carga continua.
+- No se puede concluir que el hilo de audio del iPhone esté sobrecargado: el peso es de computador. Safari puede costar más por procesador de audio (los 20+ nodos de worklet de esta sesión: 3 Núcleo, ~14 de dinámica, puerta, Masterizar) y no lo medí.
+
+**Cambios** (verificar con `npm run build` + pruebas; ver la nota de abajo sobre qué se pudo verificar)
+- Medición **dentro del iPhone** de lo que cuesta cada procesador: los worklets (dinámica, puerta, Núcleo) suman lo que tarda cada `process()` (Date.now, pasos de 1 ms, insesgado sobre miles de bloques) y lo reportan una vez por segundo de audio, solo con el interruptor encendido. El informe trae el % de tiempo real ocupado por Núcleo (por pista), por los compresores/limitadores y por las puertas, los bloques ≥ 2 ms y el peor. Los nodos nativos (EQ, reverb, delay…) no se pueden medir así.
+- **Registro de eventos con hora y contexto**: reproducir, pausa, parar, buscar, preset aplicado, cambio de Núcleo, de Masterizar, estado del audio, micrófono, y cada trabajo pesado en segundo plano (decodificar, render offline, render de Masterizar) con su duración. Cada corte de ≥ 60 ms y cada congelamiento de ≥ 200 ms se anota con lo que hacía la app (sonando/parado, trabajos activos, última acción y hace cuánto). Así el próximo informe dice si los cortes siguen a «reproducir», a un preset o a un render.
+- **Aplicar un preset sobre una cadena ya puesta reutiliza los procesadores comunes** (`reuseInsertIds`): ecualizador (con las mismas bandas), compresor, de-esser, limitador, puerta, multibanda y pitch shifter conservan su nodo y solo deslizan sus ajustes, en vez de destruirlos y crearlos de nuevo. La mayoría de los presets comparten la columna eq · compresor · eq · de-esser … limitador. Reverb, delay, chorus, etc. se crean siempre nuevos (cambiar el buffer de una reverb viva haría un chasquido). Crear un `AudioWorkletNode` es lo más caro de aplicar un preset; no medí cuánto en Safari.
+- Pruebas nuevas: `fxPresets.test.ts` (reutilización de ids) y el medidor de CPU en `workletRealtime.test.ts` (callado por defecto, un reporte por segundo, no cambia el audio, se apaga).
+
+**No verificado / pendiente**
+- Nada de esto se ha probado en el iPhone; falta un segundo informe con la medición nueva (10 min con la misma sesión).
+- Si el segundo informe muestra la suma de procesadores cerca o por encima de 80–100 %: el hilo de audio está sobrecargado y lo siguiente es bajar carga de verdad: **congelar pista** (renderizar Núcleo + cadena a audio y apagarlos hasta descongelar, como un DAW de escritorio) y/o recortar Núcleo. Si no, el problema está en otro lado (nodos nativos, arranque de cada reproducción, trabajos en segundo plano).
+- Masterizar mide mientras suena: si el registro muestra «render offline» antes de los cortes, hay que posponer la medición a cuando se pare.

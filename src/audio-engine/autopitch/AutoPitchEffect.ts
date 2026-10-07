@@ -1,6 +1,7 @@
 import type { AutoPitchSettings } from "@/types/autoPitch";
 import { generateImpulseResponseSamples } from "../effects/impulseResponse";
 import { resolveAutoPitch, autoPitchLatencySec, type AutoPitchReverb } from "./resolveAutoPitch";
+import { workletProfiler } from "@/lib/diagnostics/workletProfiler";
 
 /** What the worklet reports for the live view (MIDI numbers, null = none). */
 export interface PitchTelemetry {
@@ -37,7 +38,8 @@ export class AutoPitchEffect {
   private lastSettings: AutoPitchSettings | null = null;
   private written = new Map<string, number>();
 
-  constructor(ctx: BaseAudioContext) {
+  /** `label` names the track in the performance diagnostic. */
+  constructor(ctx: BaseAudioContext, label = "") {
     this.ctx = ctx;
     this.node = new AudioWorkletNode(ctx, "autopitch-processor", {
       numberOfInputs: 1,
@@ -57,6 +59,7 @@ export class AutoPitchEffect {
     this.node.connect(this.convolver);
     this.convolver.connect(this.reverbGain);
     this.reverbGain.connect(this.output);
+    workletProfiler.register(this.node, "nucleo", label);
   }
 
   /** Output delay vs. input, for clip-scheduling compensation. */
@@ -113,11 +116,17 @@ export class AutoPitchEffect {
   /** Live pitch reports (every ~17 ms while sound comes in), or null to
    * stop them - only the open panel's track pays for them. */
   watchPitch(cb: ((p: PitchTelemetry) => void) | null): void {
-    this.node.port.onmessage = cb ? (e: MessageEvent) => cb(e.data as PitchTelemetry) : null;
+    this.node.port.onmessage = cb
+      ? (e: MessageEvent) => {
+          // the performance meter's reports share this port
+          if (e.data && typeof e.data === "object" && !("prof" in e.data)) cb(e.data as PitchTelemetry);
+        }
+      : null;
     this.node.port.postMessage({ type: "telemetry", on: !!cb });
   }
 
   dispose(): void {
+    workletProfiler.unregister(this.node);
     this.node.disconnect();
     this.convolver.disconnect();
     this.reverbGain.disconnect();

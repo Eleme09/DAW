@@ -6,6 +6,7 @@ import { DYNAMICS_WORKLET_URL, DynamicsNode, createOutputGuard } from "./effects
 import { EffectChain, type EffectChainDeps } from "./effects/EffectChain";
 import { isTrackMonitoredLive } from "./monitoring";
 import { scheduleParamAutomation } from "@/lib/automation/automation";
+import { perfJob, perfLog } from "@/lib/diagnostics/perfLog";
 import type { AudioClip, Bus, BusId, LoopRegion, MasteringSettings, Track, TrackId } from "@/types/project";
 import type { EffectInstance } from "@/types/effects";
 
@@ -267,6 +268,7 @@ export class AudioEngine {
       ctx.addEventListener("statechange", () => {
         // iOS reports "interrupted" (a call, Siri, another app's audio)
         this.stats.stateChanges = [...this.stats.stateChanges.slice(-19), `${ctx.state as string}@${Math.round(performance.now() / 1000)}s`];
+        perfLog("estado", `audio ${ctx.state as string}`);
         if (ctx.state !== "running" && this.shouldKeepRunning()) void ctx.resume();
       });
       const master = ctx.createGain();
@@ -516,7 +518,7 @@ export class AudioEngine {
     if (want && settings) {
       if (!graph.autoPitch) {
         const ctx = this.ensureContext();
-        const stage = new AutoPitchEffect(ctx);
+        const stage = new AutoPitchEffect(ctx, track.name);
         stage.setSettings(settings);
         graph.input.disconnect();
         graph.input.connect(stage.input);
@@ -890,6 +892,7 @@ export class AudioEngine {
           },
         });
         this.stats.micOpens++;
+        perfLog("mic", "abierto");
         const source = ctx.createMediaStreamSource(stream);
         const inputGain = ctx.createGain();
         inputGain.gain.value = dbToGain(this.inputGainDb);
@@ -982,9 +985,14 @@ export class AudioEngine {
 
   async decodeAndCache(sampleId: string, arrayBuffer: ArrayBuffer): Promise<AudioBuffer> {
     const ctx = this.ensureContext();
-    const buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-    this.bufferCache.set(sampleId, buffer);
-    return buffer;
+    const done = perfJob("decodificar audio");
+    try {
+      const buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+      this.bufferCache.set(sampleId, buffer);
+      return buffer;
+    } finally {
+      done();
+    }
   }
 
   /** What the performance diagnostic reports about the engine. */
@@ -1032,6 +1040,7 @@ export class AudioEngine {
 
   play(tracks: Track[], fromTime: number, loop: LoopRegion, bpm: number, buses: Bus[] = []): void {
     this.stats.plays++;
+    perfLog("reproducir", `desde ${fromTime.toFixed(1)} s`);
     const ctx = this.wake();
     this.stopSources();
 
@@ -1062,6 +1071,7 @@ export class AudioEngine {
    * ramp left it instead of returning to the track's base value. */
   pause(tracks?: Track[], buses?: Bus[]): void {
     if (!this.playing) return;
+    perfLog("pausa");
     this.playheadAtPlay = this.getCurrentTime();
     this.playing = false;
     this.stopSources();
@@ -1072,6 +1082,7 @@ export class AudioEngine {
   }
 
   stop(tracks?: Track[], buses?: Bus[]): void {
+    perfLog("parar");
     this.playing = false;
     this.playheadAtPlay = 0;
     this.stopSources();
@@ -1084,6 +1095,7 @@ export class AudioEngine {
 
   seek(time: number, tracks: Track[], loop: LoopRegion, bpm: number): void {
     const wasPlaying = this.playing;
+    perfLog("buscar", `${Math.max(0, time).toFixed(1)} s${wasPlaying ? " (sonando)" : ""}`);
     this.stopSources();
     this.stopMetronome();
     this.playheadAtPlay = Math.max(0, time);

@@ -71,6 +71,49 @@ export function serializeChain(effects: EffectInstance[]): string {
   );
 }
 
+/** Effects whose audio processor is costly to create (an AudioWorkletNode
+ * is built on the audio side and, on a busy phone, can stall the screen) or
+ * that change smoothly when only their settings change. The rest (reverb,
+ * delay, chorus...) are cheap to rebuild or would click if their buffer
+ * were swapped in place, so they are always created fresh. */
+const REUSABLE_ON_APPLY: ReadonlySet<EffectInstance["type"]> = new Set<EffectInstance["type"]>([
+  "eq",
+  "compressor",
+  "deesser",
+  "limiter",
+  "noiseGate",
+  "multibandCompressor",
+  "pitchShift",
+]);
+
+/**
+ * Applying a preset over a chain that is already there: each new effect of a
+ * reusable type takes the id of the next unused effect of the same type in
+ * the old chain (in order), so the engine keeps that processor and only
+ * glides its settings instead of destroying and building it again - most
+ * presets share the same eq / compressor / eq / de-esser ... limiter spine.
+ * An EQ is reused only with the same number of bands (a different shape is
+ * rebuilt, with the engine's smooth swap).
+ */
+export function reuseInsertIds(prev: EffectInstance[], next: EffectInstance[]): EffectInstance[] {
+  let from = 0;
+  return next.map((e) => {
+    if (!REUSABLE_ON_APPLY.has(e.type)) return e;
+    for (let j = from; j < prev.length; j++) {
+      const p = prev[j];
+      if (p.type !== e.type) continue;
+      if (e.type === "eq" && p.type === "eq") {
+        if (p.params.bands.length !== e.params.bands.length) continue;
+        from = j + 1;
+        return { ...e, id: p.id, params: { ...e.params, bands: e.params.bands.map((b, i) => ({ ...b, id: p.params.bands[i].id })) } };
+      }
+      from = j + 1;
+      return { ...e, id: p.id } as EffectInstance;
+    }
+    return e;
+  });
+}
+
 /** Fresh copies of a template chain, with new effect (and EQ band) ids. */
 export function instantiateChain(effects: EffectInstance[]): EffectInstance[] {
   return effects.map((e) => {

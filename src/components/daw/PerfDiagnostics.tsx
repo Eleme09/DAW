@@ -5,12 +5,22 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { useProjectStore } from "@/state/projectStore";
 import { perfMonitor, perfMonitorEnabled, setPerfMonitorEnabled, type PerfCounters } from "@/lib/diagnostics/perfMonitor";
 import { sessionWeight } from "@/lib/diagnostics/dspCost";
+import { perfEvents } from "@/lib/diagnostics/perfLog";
+import { workletProfiler } from "@/lib/diagnostics/workletProfiler";
 import type { Project } from "@/types/project";
+
+/** "+3:07" - time since the measuring started. */
+function clock(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `+${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 /** The written report the user copies and sends (what a real phone did). */
 function buildReport(c: PerfCounters, project: Project): string {
   const s = getAudioEngine().getStats();
   const w = sessionWeight(project);
+  const prof = workletProfiler.summary();
+  const events = perfEvents();
   const min = Math.round((performance.now() - c.since) / 60000);
   const lines = [
     `Informe de rendimiento — ${new Date().toLocaleString()}`,
@@ -21,7 +31,18 @@ function buildReport(c: PerfCounters, project: Project): string {
     `Micrófono abierto ${s.micOpens} veces · tomas ${s.takes} · reproducciones ${s.plays}`,
     `Cambios de estado: ${s.stateChanges.join(", ") || "ninguno"}`,
     `Audio en memoria: ${s.buffers} archivos, ${s.bufferMB} MB`,
-    `Peso de la sesión: ${w.total} (${w.parts.map((p) => `${p.label} ${p.cost}`).join(", ")})`,
+    `Peso de la sesión (estimado con medidas de un computador): ${w.total} (${w.parts.map((p) => `${p.label} ${p.cost}`).join(", ")})`,
+    "CPU medida en este dispositivo (% de tiempo real ocupado por cada procesador; 100 = el hilo de audio entero):",
+    ...(prof.groups.length
+      ? [
+          ...prof.groups.map((g) => `  ${g.label}: ${g.busyPct} %${g.nodes > 1 ? ` (${g.nodes} nodos)` : ""} · bloques lentos ${g.slowPct} % · peor ${g.maxMs} ms`),
+          `  Suma de procesadores: ${prof.totalPct} % (EQ, reverb, delay y demás nodos nativos no se pueden medir así)`,
+        ]
+      : ["  sin datos todavía (hace falta audio sonando con la medición encendida)"]),
+    `Eventos (los últimos ${events.length}; el tiempo cuenta desde que se encendió la medición):`,
+    ...(events.length
+      ? events.map((e) => `  ${clock(e.at - c.since)}  ${e.kind}${e.detail ? ` ${e.detail}` : ""}${e.count > 1 ? ` ×${e.count}` : ""}  [${e.note}]`)
+      : ["  ninguno"]),
     "Pistas:",
     ...project.tracks.map((t) => {
       const active = t.clips.filter((c) => !c.muted).length;

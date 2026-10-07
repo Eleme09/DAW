@@ -5,6 +5,8 @@
  * ratio or knee knob moves, and hides an automatic makeup gain).
  */
 
+import { workletProfiler } from "@/lib/diagnostics/workletProfiler";
+
 export const DYNAMICS_WORKLET_URL = `/worklets/dynamics-processor.js?v=${process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"}`;
 
 /** Look-ahead of the limiter mode: the audio comes out this late. */
@@ -49,6 +51,7 @@ export class DynamicsNode {
     this.node.port.onmessage = (e: MessageEvent<number>) => {
       if (typeof e.data === "number") this.reductionDb = e.data;
     };
+    workletProfiler.register(this.node, "dynamics");
   }
 
   /** The worklet glides every value per sample, so a plain write is
@@ -67,6 +70,7 @@ export class DynamicsNode {
   }
 
   disconnect(): void {
+    workletProfiler.unregister(this.node);
     this.node.disconnect();
     this.node.port.onmessage = null;
     this.node.port.close();
