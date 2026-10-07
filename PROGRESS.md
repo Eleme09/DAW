@@ -1262,3 +1262,29 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
 - **Bug arreglado: escala personalizada.** El motor lee la máscara relativa a la clave, pero los botones de notas cambiaban el bit con el mismo número que la nota. Con clave La, tocar "Do" activaba La. Ahora cada botón cambia la nota que dice.
 - Verificado: `tsc`, `eslint`, `vitest` (415), `next build`, Chromium 390×844 y 375×667 sin errores.
 - **No verificado**: en iPhone real (fluidez del canvas, tamaño en pantallas chicas). En iPhone SE el orbe queda de 150 px y las notas se leen chicas.
+
+## Kits por artista con investigación real (pedido del usuario)
+
+- **Dónde**: hoja de preajustes Fx → pestaña **«Por artista»**: Future, Travis Scott, Yeat, Ken Carson y Topboy TGR.
+- **Cada kit muestra**:
+  - **Lo que se sabe**: marcado ✓ si lo dijo el artista o su ingeniero, o ~ si viene de guías de mezcla o es lectura nuestra.
+  - **Cómo grabarlo**: voz principal, dobles y ad-libs, cada capa con su cadena, Núcleo, paneo, nivel y cómo grabarla.
+  - **Fuentes**, con enlace.
+  - Botones «Usar en esta pista», «Crear pista» y «Armar la sesión completa».
+- **Lo documentado de verdad**:
+  - **Future** (Sound On Sound «Draco» y entrevista RBMA a Seth Firkins):
+    - autotune siempre encendido al grabar;
+    - grababan de a dos líneas, con armonías y ad-libs encima;
+    - 6 pistas de voz en «Draco»;
+    - cadena del bus publicada: EQ que quita graves y sube arriba de 5.21 kHz, de-esser 5.5 kHz, compresor, sala 0.75 s / 15 ms / 15 %, flanger mínimo, limitador, más eco a negras al grabar.
+    - «Melodía Oscura» se rehízo con esa cadena (antes era inventada).
+  - **Yeat** (The FADER 2024): improvisa sin escribir y no toca lo grabado; graba, hace de ingeniero y mezcla él solo; convierte ad-libs en líneas de sintetizador.
+  - **Travis Scott**: su ingeniero Jimmy Ca$h dice que a la voz le hace poco («tono… el compresor normal»). Esa cita viene de Billboard, pero el artículo está tras muro de pago: la tomé del extracto del buscador y no pude leerlo entero.
+  - **Ken Carson**: créditos de «A Great Chaos» (mezcla Roark Bailey, master Colin Leonard) y reseñas (autotune en capas, distorsión). Su cadena no es pública.
+  - **Topboy TGR** (Esquire Colombia): trap con base gringa y puertorriqueña, autotune, interpretación centrada en el ritmo, narrativa de Buenaventura. Su cadena tampoco es pública.
+- **Cadenas nuevas**, todas entre −10.1 y −11.3 LUFS con tu voz:
+  - **Pacífico** (Topboy TGR): seca, al frente, eco corto.
+  - **Ad-lib Rage** (Yeat / Ken Carson): saturada, ancha, eco a corcheas.
+  - **Ad-lib Astro** (Travis): eco largo y sala enorme.
+- **Sugerencias de Núcleo** de los preajustes con los nombres nuevos (Imán, Cuántico, Humano).
+- **No verificado**: nadie escuchó las cadenas nuevas. Lo marcado con ~ son guías de terceros o lectura nuestra, no datos de los artistas.
