@@ -35,6 +35,8 @@ export class DelayEffect implements Effect<DelayParams> {
    * same reasoning as ReverbEffect.wetAnalyser: real level of just this
    * instance's echoes, not the dry+wet mix a track/master analyser sees. */
   private wetAnalyser: AnalyserNode;
+  /** Used as a send: only the echoes come out (the voice itself is not in it). */
+  private sendMode = false;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -107,6 +109,12 @@ export class DelayEffect implements Effect<DelayParams> {
     return this.output;
   }
 
+  /** As a send the voice reaches the output through the chain, not through
+   * here: dry off, and `mix` is the send level. */
+  setSendMode(on: boolean): void {
+    this.sendMode = on;
+  }
+
   getWetAnalyser(): AnalyserNode {
     return this.wetAnalyser;
   }
@@ -122,7 +130,7 @@ export class DelayEffect implements Effect<DelayParams> {
     this.lowCut.frequency.setTargetAtTime(Math.max(20, Math.min(2000, params.lowCutHz ?? 20)), t, 0.01);
     this.straightOut.gain.setTargetAtTime(ping ? 0 : 1, t, 0.02);
     this.pingPongOut.gain.setTargetAtTime(ping ? 1 : 0, t, 0.02);
-    this.dryGain.gain.setTargetAtTime(1 - params.mix, t, 0.01);
+    this.dryGain.gain.setTargetAtTime(this.sendMode ? 0 : 1 - params.mix, t, 0.01);
     this.wetGain.gain.setTargetAtTime(params.mix, t, 0.01);
   }
 

@@ -39,7 +39,9 @@ interface BottomSheetProps {
 export function BottomSheet({ open, onClose, title, accent, subtitle, children }: BottomSheetProps) {
   if (!open || typeof document === "undefined") return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    // data-keep-region: a tap inside a sheet is not "outside the selected
+    // region" (it used to close the Armonizar panel when picking a key)
+    <div data-keep-region="" className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative max-h-[80vh] w-full overflow-y-auto rounded-t-[3px] border-t border-line bg-ink pb-[env(safe-area-inset-bottom)]">
         <div className="sticky top-0 z-10 border-b border-line bg-ink">

@@ -59,12 +59,15 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
   // soon as you swipe away from the start, giving the waveforms the room.
   const [viewWidth, setViewWidth] = useState(0);
   const [viewHeight, setViewHeight] = useState(0);
-  const [scrolledAway, setScrolledAway] = useState(false);
   const [scrollTop, setScrollTop] = useState(0);
   const actionTrackId = useProjectStore((s) => s.selectedClip?.trackId ?? s.selectedTrackId);
   const expectedScrollLeft = useRef<number | null>(null);
   const origin = compact ? Math.max(HEADER_WIDTH * 0.75, Math.round(viewWidth / 2)) : HEADER_WIDTH;
-  const headerWidth = focusTrackId ? 0 : rulerOnly ? COLLAPSED_HEADER_WIDTH : compact ? (scrolledAway ? COLLAPSED_HEADER_WIDTH : origin) : HEADER_WIDTH;
+  const headerWidth = focusTrackId ? 0 : rulerOnly ? COLLAPSED_HEADER_WIDTH : compact ? Math.max(COLLAPSED_HEADER_WIDTH, Math.min(origin, Math.round(origin - currentTime * pixelsPerSecond))) : HEADER_WIDTH;
+  // The name column's edge follows where time 0 is on screen: it narrows as
+  // you move away from the start and the first region always touches it (it
+  // used to snap to icon-only after 2 px, leaving a blank gap).
+  const headerCollapsed = headerWidth < 120;
   const rowHeight = focusTrackId ? Math.max(TRACK_HEIGHT, viewHeight - RULER_HEIGHT - 8) : TRACK_HEIGHT;
   const tracks = rulerOnly ? [] : focusTrackId ? project.tracks.filter((t) => t.id === focusTrackId) : project.tracks;
 
@@ -99,7 +102,6 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
     if (!compact) return;
     const el = scrollRef.current;
     if (!el) return;
-    setScrolledAway(el.scrollLeft > 2);
     setScrollTop(el.scrollTop);
     const expected = expectedScrollLeft.current;
     if (expected !== null && Math.abs(el.scrollLeft - expected) < 1.5) {
@@ -268,7 +270,7 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
           {tracks.map((track) => (
             <div key={track.id} className="flex">
               {focusTrackId ? null : compact ? (
-                <CompactTrackHeader track={track} width={headerWidth} collapsed={scrolledAway} selected={track.id === selectedTrackId} />
+                <CompactTrackHeader track={track} width={headerWidth} collapsed={headerCollapsed} selected={track.id === selectedTrackId} />
               ) : (
                 <TrackHeader track={track} selected={track.id === selectedTrackId} flash={track.id === flashTrackId} />
               )}

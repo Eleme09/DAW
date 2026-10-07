@@ -38,8 +38,12 @@ export class BypassWrapper {
   private bypassed = false;
   private dryWired = false;
   private unwireTimer: ReturnType<typeof setTimeout> | null = null;
+  /** A send (reverb, delay): bypassed it goes silent - it must not pass the
+   * input through, the chain already carries the dry voice. */
+  private wetOnly: boolean;
 
-  constructor(ctx: BaseAudioContext, effectInput: AudioNode, effectOutput: AudioNode) {
+  constructor(ctx: BaseAudioContext, effectInput: AudioNode, effectOutput: AudioNode, wetOnly = false) {
+    this.wetOnly = wetOnly;
     this.inputNode = ctx.createGain();
     this.outputNode = ctx.createGain();
     this.dryGain = ctx.createGain();
@@ -76,6 +80,10 @@ export class BypassWrapper {
     const now = ctx.currentTime;
     if (this.unwireTimer !== null) clearTimeout(this.unwireTimer);
     this.unwireTimer = null;
+    if (this.wetOnly) {
+      this.wetGain.gain.setTargetAtTime(bypassed ? 0 : 1, now, RAMP_SEC);
+      return;
+    }
     if (bypassed) {
       if (!this.dryWired) {
         this.inputNode.connect(this.dryGain);
@@ -118,7 +126,7 @@ export class BypassWrapper {
     // processing in the background even though it's inaudible, so its
     // loudness (and therefore the gap being corrected for) can keep
     // drifting as the user tweaks its params with the sheet still open.
-    if (this.bypassed) {
+    if (this.bypassed && !this.wetOnly) {
       this.dryGain.gain.setTargetAtTime(this.compensationGain(), ctx.currentTime, RAMP_SEC);
     }
   }

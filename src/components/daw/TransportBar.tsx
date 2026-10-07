@@ -12,18 +12,18 @@ export function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}.${ms.toString().padStart(3, "0")}`;
 }
 
-/** "Volver al inicio": one tap jumps to 0, a second tap jumps back to where you were. */
+/** "Volver al inicio", como en un DAW: un toque lleva la línea al punto
+ * donde empezó la última reproducción (o grabación); otro toque estando ahí,
+ * al principio de la canción. No cambia si está sonando o parado. */
 export function useReturnToStart() {
-  const currentTime = useProjectStore((s) => s.currentTime);
-  const seek = useProjectStore((s) => s.seek);
-  const lastPositionRef = useRef<number | null>(null);
   return () => {
-    if (currentTime > 0.05) {
-      lastPositionRef.current = currentTime;
-      seek(0);
-    } else if (lastPositionRef.current !== null) {
-      seek(lastPositionRef.current);
-      lastPositionRef.current = null;
+    const st = useProjectStore.getState();
+    const now = st.currentTime;
+    const start = st.playStartTime;
+    if (now > start + 0.05) st.seek(start);
+    else if (now > 0.05) {
+      useProjectStore.setState({ playStartTime: 0 });
+      st.seek(0);
     }
   };
 }

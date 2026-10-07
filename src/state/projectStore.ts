@@ -82,6 +82,8 @@ interface ProjectState {
   past: Project[];
   future: Project[];
   currentTime: number;
+  /** Where the last play/record began: what "volver al inicio" returns to first. */
+  playStartTime: number;
   isPlaying: boolean;
   selectedTrackId: TrackId | null;
   isRecording: boolean;
@@ -430,6 +432,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     past: [],
     future: [],
     currentTime: 0,
+    playStartTime: 0,
     isPlaying: false,
     selectedTrackId: null,
     isRecording: false,
@@ -1116,7 +1119,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
     play: () => {
       const { project, currentTime } = get();
       getAudioEngine().play(project.tracks, currentTime, project.loop, project.bpm, project.buses);
-      set({ isPlaying: true });
+      set({ isPlaying: true, playStartTime: currentTime });
     },
     pause: () => {
       getAudioEngine().pause(get().project.tracks, get().project.buses);
@@ -1180,7 +1183,7 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
         set({ recordingError: result.error });
         return;
       }
-      set({ isRecording: true, isPlaying: true, recordStartTime: recordFrom });
+      set({ isRecording: true, isPlaying: true, recordStartTime: recordFrom, playStartTime: recordFrom });
     },
 
     stopRecording: async () => {

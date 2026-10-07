@@ -264,9 +264,9 @@ export function EffectFace({ effect, target, onParams }: { effect: EffectInstanc
             />
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <Box skin={skin} title="Mezcla">
+            <Box skin={skin} title="Envío">
               <div className="flex justify-center">
-                <FxKnob label="" ariaLabel="Mezcla" value={p.mix} min={0} max={1} onChange={(v) => set({ mix: v })} skin={skin} format={fmt.pct} defaultValue={0.2} size={84} />
+                <FxKnob label="" ariaLabel="Envío" value={p.mix} min={0} max={1} onChange={(v) => set({ mix: v })} skin={skin} format={fmt.pct} defaultValue={0.2} size={84} />
               </div>
             </Box>
             <Box skin={skin} title="Decay">
@@ -510,7 +510,7 @@ function DelayFace({ effect, onParams, skin }: { effect: Extract<EffectInstance,
           </div>
         )}
         <FxKnob label="Repeticiones" value={p.feedback} min={0} max={0.9} onChange={(v) => set({ feedback: v })} skin={skin} format={fmt.pct} defaultValue={0.35} size={72} />
-        <FxKnob label="Mezcla" value={p.mix} min={0} max={1} onChange={(v) => set({ mix: v })} skin={skin} format={fmt.pct} defaultValue={0.25} size={72} />
+        <FxKnob label="Envío" value={p.mix} min={0} max={1} onChange={(v) => set({ mix: v })} skin={skin} format={fmt.pct} defaultValue={0.25} size={72} />
       </div>
       <div className="mt-3 flex justify-center">
         <Pills

@@ -47,6 +47,15 @@ const WORKLET_BACKED_TYPES: Partial<Record<EffectType, { isLoaded: (deps: Effect
   deesser: { isLoaded: (d) => d.isDynamicsWorkletLoaded(), ensure: (d) => d.ensureDynamicsWorklet() },
 };
 
+/** Effects that work as a SEND inside the chain, like BandLab's reverb and
+ * delay sends: the voice goes on through the chain untouched (full level, no
+ * "mix" taking the dry down) and a tap of it - from the point where the
+ * effect sits - feeds the effect; what comes out (only the tail / echoes,
+ * its Mix being the send level) is added after the chain's last effect, so
+ * the limiter and compressors don't pump it and the dry voice is not
+ * smeared. Everything that changes the voice itself stays in series. */
+const SEND_TYPES: ReadonlySet<EffectType> = new Set<EffectType>(["reverb", "delay"]);
+
 /** No-op passthrough, used as a placeholder while the noise-gate worklet loads. */
 class PassthroughEffect implements Effect<unknown> {
   private gain: GainNode;
@@ -285,7 +294,9 @@ export class EffectChain {
       return;
     }
     const instance = createEffectNode(this.ctx, ins.type);
-    const wrapper = new BypassWrapper(this.ctx, instance.inputNode, instance.outputNode);
+    const send = SEND_TYPES.has(ins.type);
+    if (send) (instance as unknown as { setSendMode(on: boolean): void }).setSendMode(true);
+    const wrapper = new BypassWrapper(this.ctx, instance.inputNode, instance.outputNode, send);
     wrapper.setBypassed(ins.bypassed, this.ctx);
     this.effects.set(ins.id, { instance, type: ins.type, wrapper });
   }
@@ -304,6 +315,12 @@ export class EffectChain {
     for (const ins of inserts) {
       const entry = this.effects.get(ins.id);
       if (!entry) continue; // still pending (e.g. worklet loading)
+      if (SEND_TYPES.has(ins.type)) {
+        // a tap of the voice at this point; its return joins at the end
+        node.connect(entry.wrapper.inputNode);
+        entry.wrapper.outputNode.connect(this.wet);
+        continue;
+      }
       node.connect(entry.wrapper.inputNode);
       node = entry.wrapper.outputNode;
       if (!ins.bypassed) latency += effectLatencySec(ins.type, this.ctx.sampleRate);

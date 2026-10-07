@@ -27,6 +27,8 @@ export class ReverbEffect implements Effect<ReverbParams> {
   private dryGain: GainNode;
   private wetGain: GainNode;
   private irKey: string | null = null;
+  /** Used as a send: only the tail comes out (the voice itself is not in it). */
+  private sendMode = false;
   /** In series right after the wet path's own gain, before it rejoins the
    * dry signal - a real level reading of just the reverb tail this
    * instance is producing right now (not the dry+wet mix a track/master
@@ -83,6 +85,12 @@ export class ReverbEffect implements Effect<ReverbParams> {
     return this.output;
   }
 
+  /** As a send the voice reaches the output through the chain, not through
+   * here: dry off, and `mix` is the send level. */
+  setSendMode(on: boolean): void {
+    this.sendMode = on;
+  }
+
   getWetAnalyser(): AnalyserNode {
     return this.wetAnalyser;
   }
@@ -108,7 +116,7 @@ export class ReverbEffect implements Effect<ReverbParams> {
     this.predelay.delayTime.setTargetAtTime(Math.min(0.25, Math.max(0, (params.predelayMs ?? 0) / 1000)), t, 0.01);
     this.lowCut.frequency.setTargetAtTime(Math.max(20, Math.min(2000, params.lowCutHz ?? 20)), t, 0.01);
     this.highCut.frequency.setTargetAtTime(Math.max(1000, Math.min(nyquist, params.highCutHz ?? 20000)), t, 0.01);
-    this.dryGain.gain.setTargetAtTime(1 - params.mix, t, 0.01);
+    this.dryGain.gain.setTargetAtTime(this.sendMode ? 0 : 1 - params.mix, t, 0.01);
     this.wetGain.gain.setTargetAtTime(params.mix, t, 0.01);
   }
 
