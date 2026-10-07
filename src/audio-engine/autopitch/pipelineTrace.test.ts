@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderAutoPitch } from "./workletHarness";
 import { resolveAutoPitch } from "./resolveAutoPitch";
-import { createAutoPitchSettings } from "@/types/autoPitch";
+import { createAutoPitchSettings, type AutoPitchPresetId } from "@/types/autoPitch";
 import { readWavMono, writeFloatWav } from "./auditIo";
 
 /**
@@ -14,7 +14,7 @@ import { readWavMono, writeFloatWav } from "./auditIo";
  * audio it produces is unchanged. Skipped unless AUTOPITCH_TRACE_INPUT is set:
  *
  *   AUTOPITCH_TRACE_INPUT=voz.wav AUTOPITCH_TRACE_OUT=out AUTOPITCH_TRACE_TAG=base \
- *   [AUTOPITCH_WORKLET=variant.js] [AUTOPITCH_TRACE_PARAMS='{"transitionMs":2}'] \
+ *   [AUTOPITCH_WORKLET=variant.js] [AUTOPITCH_TRACE_PRESET=hardTune] [AUTOPITCH_TRACE_PARAMS='{"transitionMs":2}'] \
  *   npx vitest run src/audio-engine/autopitch/pipelineTrace.test.ts
  *
  * Writes <tag>.wav (float stereo), <tag>_trace.json (analysis frames, grains,
@@ -40,7 +40,7 @@ function instrument(src: string): string {
   inject("    this.nextMark[s] = mark + hop;", "\n    this.__tr.gr.push(s, mark, e, per, hop, typeof r === 'number' ? r : ratio, now, k);");
   inject("      this.epochCount++;", "\n      this.__tr.ep.push(e, this.voiced ? 1 : 0);");
   inject(
-    "      const lead = (dry + (tuned - dry) * this.voicedGain * cover) * p.leadGain;",
+    "      const wet = dry + (tuned - dry) * this.voicedGain * cover;",
     "\n      if (2 * n + 1 < this.__tr.mix.length) { this.__tr.mix[2 * n] = this.voicedGain * cover; this.__tr.mix[2 * n + 1] = wsum; }"
   );
   inject(
@@ -73,7 +73,7 @@ describe.skipIf(!INPUT)("AutoPitch trace render (experiments)", () => {
     try {
       const { data, sampleRate } = readWavMono(INPUT!);
       const over = JSON.parse(process.env.AUTOPITCH_TRACE_PARAMS ?? "{}") as Record<string, number>;
-      const params = { ...resolveAutoPitch({ ...createAutoPitchSettings(KEY, "major"), presetId: "classic", level: 1 }).worklet, ...over };
+      const params = { ...resolveAutoPitch({ ...createAutoPitchSettings(KEY, "major"), presetId: (process.env.AUTOPITCH_TRACE_PRESET ?? "classic") as AutoPitchPresetId, level: 1 }).worklet, ...over };
       let node: Record<string, unknown> | null = null;
       const out = renderAutoPitch(data, params, sampleRate, (n) => {
         node = n;

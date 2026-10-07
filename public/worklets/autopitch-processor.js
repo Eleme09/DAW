@@ -1232,13 +1232,21 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
       }
     }
     let hop = Math.max(8, after / r);
-    // Hard Tune: one period of the pitch the stream should sing (detected +
-    // correction + interval), not the input's local period - the voice's own
+    // Hard Tune, and any instant correction (Classic at full level): one
+    // period of the pitch the stream should sing (detected + correction +
+    // interval), not the input's local period - the voice's own
     // cycle-to-cycle wobble, drift and vibrato are gone and the note is
-    // dead flat. That perfectly steady pitch is the hard-tune sound; the
-    // normal path keeps the wobble on purpose (a natural tuned voice).
+    // dead flat. Classic used to keep the local period here, but its output
+    // then inherited every error of the epochs and of the per-frame
+    // correction: on a real fast melodic take (scale at A major, Praat on the
+    // output, 3 runs with the input shifted 0/37/128 samples) held notes sat
+    // within 10 cents of the note 86-87 % of the time and note changes 58 %;
+    // with this grid 99.2-99.5 % and 79-80 %, like Hard Tune. A slow
+    // correction (Retune speed, Humanize, Flex-Tune) keeps the voice's own
+    // period on purpose: that is the natural tuned voice. And so does a voice
+    // already in tune (within a cent): it must come out as the input itself.
     let hardHop = false;
-    const lead = this.p.hard >= 0.5 && this.voiced ? this.wantedAt(mark - this.delay[s]) : 0;
+    const lead = (this.p.hard >= 0.5 || (g > 0 && Math.abs(r - 1) >= 0.0006)) && this.voiced ? this.wantedAt(mark - this.delay[s]) : 0;
     if (lead > 0) {
       let extra = 0;
       if (s !== 0) {

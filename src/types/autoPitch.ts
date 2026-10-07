@@ -183,7 +183,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     id: "classic",
     label: "Imán",
     category: "tune",
-    description: "Lleva cada nota a la escala al instante y deja pasar tu vibrato: afinado y todavía suena a ti.",
+    description: "Lleva cada nota a la escala al instante y la deja quieta. Cambia de nota solo cuando de verdad cambias: el vibrato no la hace saltar.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [],

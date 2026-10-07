@@ -25,3 +25,9 @@ python make_variants.py baseline.js variants/
 AUDIT_DIR=/tmp/ap PY=venv/bin/python ./run_variant.sh look1_s37 variants/look1.js voz_s37.wav
 cd /tmp/ap && python .../multishift.py base look1
 ```
+
+- `where_off.py voz.wav salida.wav traza.json [clave]` — cuántos cuadros de la salida quedan a ±10 cents de
+  la nota, separados en notas sostenidas, cambios de nota (±60 ms) y ataques (60 ms), con el perfil en el
+  tiempo. **Usar una entrada sin silencio digital** (sumar ruido de −120 dB): en silencio el worklet duerme,
+  su contador de muestras se detiene y la traza deja de coincidir con el tiempo del archivo.
+  La traza acepta `AUTOPITCH_TRACE_PRESET=hardTune` (por defecto `classic`).

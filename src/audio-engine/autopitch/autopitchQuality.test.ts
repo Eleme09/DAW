@@ -384,16 +384,18 @@ function pitchCents(x: Float32Array, hz: number, fromSec: number, toSec: number)
 }
 
 describe("Hard Tune", () => {
-  const settings = (presetId: "classic" | "hardTune") => resolveAutoPitch({ ...createAutoPitchSettings(A_MAJOR, "major"), presetId, level: 1 }).worklet;
+  const settings = (presetId: "classic" | "hardTune" | "natural") => resolveAutoPitch({ ...createAutoPitchSettings(A_MAJOR, "major"), presetId, level: 1 }).worklet;
 
-  it("holds the note dead flat: the singer's vibrato is gone (Classic keeps part of it)", () => {
+  it("holds the note dead flat with an instant correction (Hard Tune and Classic); a slow one keeps the vibrato", () => {
     const v = VOICES[2]; // female a, 40 cents off, 25-cent vibrato
     const { data } = sungVowel({ seconds: 3, hz: v.hz, cents: v.cents, vibratoCents: v.vib, jitter: v.jitter, formants: v.formants });
     const target = nearestNoteHz(v.hz * Math.pow(2, v.cents / 1200));
     const hard = pitchSpreadCents(renderAutoPitch(data, settings("hardTune")).left, target, 0.8, 2.7);
     const classicSpread = pitchSpreadCents(renderAutoPitch(data, settings("classic")).left, target, 0.8, 2.7);
+    const naturalSpread = pitchSpreadCents(renderAutoPitch(data, settings("natural")).left, target, 0.8, 2.7);
     expect(hard).toBeLessThan(1.5);
-    expect(hard).toBeLessThan(classicSpread);
+    expect(classicSpread).toBeLessThan(1.5);
+    expect(naturalSpread).toBeGreaterThan(3 * classicSpread);
   });
 
   it("stays on the note when the vowel changes shape mid-note", () => {

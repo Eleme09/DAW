@@ -1479,3 +1479,36 @@ Datos: 182 s de audio, 58 atrasos (14.1 s perdidos, el peor 1415 ms), 11 congela
 - Nada de esto se ha probado en el iPhone; falta un tercer informe con la misma sesión.
 - Memoria: 208 MB de audio decodificado (9 archivos, estéreo en float32). Si iOS recorta la página por memoria, explicaría las suspensiones; no lo sé. Convertir a mono lo que sea mono o liberar lo que no se usa reduciría esto; sin hacer.
 - Renderizar en vivo en el iPhone sigue siendo caro (13–18 s); con esto solo ocurre en reposo.
+
+## Núcleo: Imán pegado a la nota como Cuántico (pedido del usuario: "se siente el efecto pero no convence")
+
+- **Medición nueva** (`scripts/autopitch-audit/experiments/where_off.py`): separa los cuadros con voz de la salida en notas sostenidas, cambios de nota (±60 ms) y ataques (primeros 60 ms), y mide cuántos quedan a ±10 cents de la nota.
+  - En tu toma (VozAudio_3, La mayor) los cambios de nota son el 58 % del tiempo con voz.
+  - **Antes**, Imán quedaba en 87 % en sostenidas, 58 % en cambios y 47 % en ataques. Cuántico ya daba 99 / 80 / 61 %.
+- **Causa**: Imán armaba los granos con el período local de la entrada dividido por la corrección. Heredaba cada error de las épocas y de la corrección por cuadro. Cuántico usa una rejilla con el período exacto de la nota.
+- **Arreglo** (`public/worklets/autopitch-processor.js`): con corrección instantánea (Imán al 100 %) también se usa esa rejilla.
+  - Una voz ya afinada (a menos de 1 cent) sigue saliendo idéntica a la entrada.
+  - Con corrección lenta (Humano, perilla bajo 100 %) se conserva el período propio de la voz y su vibrato.
+- **Resultados** (3 corridas con la entrada corrida 0 / 37 / 128 muestras, Praat sobre la salida):
+  - Imán, total a ±10 c: 64 % → 82–83 %.
+    - Sostenidas: 86–87 % → 97–98 %.
+    - Cambios de nota: 58 % → 81–82 %.
+    - Ataques: 45–47 % → 60–62 %.
+  - Auditoría oficial (`analyze.py`, ventana 5.6–23.7 s):
+    - jitter 1.96 → 1.54 % (original 1.55);
+    - HNR 14.7 → 15.0 dB (original 15.2);
+    - shimmer 6.4 → 6.0 %;
+    - "salta y vuelve" 1.5 → 1.0/s.
+  - **Peor**: ciclos rotos 0.36 → 0.72/s, igual que Cuántico (0.86).
+  - Cuántico no cambia.
+- **Imán ya no deja pasar el vibrato**: con corrección instantánea nunca lo dejaba de verdad. La descripción ahora dice lo que hace. La diferencia con Cuántico es la decisión de nota: Imán cambia de nota solo cuando de verdad cambias; Cuántico salta apenas pasas la mitad.
+- **Descartado (medido)**:
+  - Síntesis por remuestreo con empalmes de ciclo (lo de la patente de Auto-Tune): en deslizamientos las épocas no siguen el período real y la salida no afinaba.
+  - "Peine" de la auditoría: está contaminado por el propio cambio de tono (las armónicas se mueven respecto del original). No sirve para comparar cuánto se afina.
+  - Traspaso seco→afinado más rápido y período fijado al empezar la nota: sin efecto fuera del ruido.
+  - Armar los granos justo a tiempo: transiciones más limpias en Imán, pero Cuántico empeora en las 3 corridas.
+- **Bug de medición encontrado**: en silencio digital el worklet duerme y su contador de muestras se detiene, así que la traza deja de coincidir con el tiempo del archivo. El sonido no se ve afectado. Las mediciones ahora se hacen con la entrada con ruido de −120 dB.
+- **Pendiente, medido**: los primeros 20 ms de cada ataque siguen a ~40 cents de mediana (Praat con las mismas notas acierta 73 %). Dos causas vistas en la traza:
+  - el detector lee la 3.ª armónica 2–4 cuadros al empezar;
+  - las épocas arrancan con el período de la nota anterior.
+- **No verificado**: nadie lo escuchó. Hay A/B de 18 s en el scratchpad (`ab_iman/`): original, Imán antes, Imán ahora y Cuántico. No probado en iPhone.
