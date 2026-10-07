@@ -1350,3 +1350,58 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
   - las voces de Armonizar usan el color de Coros de Núcleo, no el morado de BandLab.
 - Verificado: `tsc`, `eslint`, `vitest` (420), `next build`, Chromium 390×844: barra, cuadrícula y los 7 paneles (Desplazar, Ganancia, Fades, Transponer, Estirar, Loop, Armonizar) abren, se mueven y cierran sin errores.
 - **No verificado**: nadie lo vio en un iPhone; el arrastre de los faders se probó con ratón emulado, no con el dedo.
+
+## Lag al repetir tomas, devolver la canción y aplicar presets pesados (reporte del usuario)
+
+Síntoma (iPhone): después de grabar muchas tomas seguidas, o de devolver y repetir la canción muchas veces, o al aplicar un preset pesado, el sonido se traba y la app también.
+
+**Qué se midió (Chromium, no iPhone)**
+- 30 ciclos de reproducir/devolver y 10 tomas seguidas: memoria, nodos de audio creados, micrófonos abiertos, intervalos, cuadros por segundo. Nada crece de forma anormal en Chromium; no se reprodujo el lag aquí.
+- El código de WebKit (motor de Safari) libera los nodos que se desconectan solos, así que la sospecha de nodos acumulados en Safari no se sostiene con su código fuente.
+- CPU de cada efecto (render offline 48 kHz, % de un núcleo en tiempo real, Xeon 2.8 GHz):
+  - Núcleo: 9–18 % por pista que suena (casi 0 en silencio, ya dormía).
+  - Masterizar: 12 % sonando / 6.8 % en silencio.
+  - Cadenas de preset: 8–15 % (las más pesadas: Adlib astro, Atmósfera, Adlib lejano, Rage brillante, Sala grande).
+  - Reverb 4.3 %, multibanda 6 %, pitch shifter 11 %.
+  - «Afinación» vieja (pitchCorrection): 22 % sonando y 52 % en silencio. Solo existe en proyectos viejos; no se puede agregar desde el catálogo.
+- Conclusión: el problema medible es carga de CPU en el hilo de audio, más trabajo innecesario en pistas en silencio y basura (memoria nueva) creada dentro del hilo de audio. Una sesión con varias capas (kits por artista) suma más de un núcleo entero. El calentamiento del teléfono con carga sostenida podría explicar que empeore con el tiempo, pero **no está verificado**.
+
+**Cambios**
+- `dynamics-processor.js` (compresor, de-esser, limitador, multibanda, Masterizar, protección de salida):
+  - sin memoria nueva por bloque;
+  - en silencio real solo avanza el estado, con la misma cuenta;
+  - sin re-derivar parámetros por muestra cuando no se mueve ninguna perilla;
+  - sin logaritmo bajo el umbral.
+  - Salida comparada con la versión anterior: diferencia ≤ −137 dB re pico (ruido numérico). 1.5–3.2× más rápido en Node.
+- `noise-gate-processor.js`: sin `new Float32Array` por bloque; atajo en silencio con la puerta cerrada. Salida idéntica (diferencia 0).
+- `autopitch-processor.js` (Núcleo): sin cadenas de texto nuevas por bloque (~28 cada 3 ms) ni objetos por análisis o por grano. Salida idéntica bit a bit en 10 variantes, con el azar fijado.
+- Grabación:
+  - `recorder-processor.js` junta lotes de 4096 muestras y los transfiere, en vez de un mensaje con arrays nuevos cada 128 (~375 por segundo).
+  - Al parar, el transporte se detiene al instante y la toma se cierra cuando llega el último lote (espera máxima 600 ms).
+  - El nodo se libera (`process` devuelve false).
+- Tomas en **mono**: se guardaban en estéreo con dos canales iguales. La memoria por toma de 10 s bajó de 3.7 MB a 1.8 MB (medido), igual que el espacio guardado y el tiempo de decodificación.
+- Toma en vivo (`LiveTake.tsx`): redimensionaba su lienzo al largo de toda la toma y repintaba toda la onda en cada cuadro (varios MB por cuadro al final de una toma de 1 min). Ahora pinta solo lo nuevo, sobre lienzos fijos de 1024 px.
+- Motor:
+  - la ganancia de cada región se desconecta al parar o al terminar la región;
+  - el clic del metrónomo se desconecta al sonar.
+- CPU por efecto después (Chromium, mismo banco):
+
+  | | Sonando antes → después | En silencio antes → después |
+  |---|---|---|
+  | Compresor | 1.22 → 1.06 | 0.66 → 0.46 |
+  | Limitador | 1.64 → 1.20 | 0.89 → 0.55 |
+  | Multibanda | 6.06 → 4.61 | 2.36 → 1.77 |
+  | Masterizar | 11.9 → 11.6 | 6.8 → 5.4 |
+  | Puerta | 1.14 → 0.75 | 0.54 → 0.38 |
+
+  En Chromium la mayor parte del costo de un nodo en silencio es la llamada misma, no el cálculo.
+- Pruebas nuevas (`workletRealtime.test.ts`, 7):
+  - el atajo de silencio suena igual que calcular todo (compresor, limitador, puerta);
+  - el techo del limitador se respeta;
+  - el grabador entrega todas las muestras en orden, en lotes, con la cola al parar.
+- Verificado: `tsc`, `eslint`, `vitest` (427), `next build`. En Chromium 390×844: 6 tomas de 10 s en una pista de voz, la toma en vivo se dibuja y cada toma dura lo que debe.
+
+**No verificado / pendiente**
+- Nada de esto se probó en un iPhone. No sé si el lag que ve el usuario era CPU, memoria, calentamiento o el cambio de modo de audio de iOS al abrir y cerrar el micrófono en cada toma (`gum` sube 1 por toma: se abre y cierra en cada una). Esto último es sospecha, sin medir.
+- La carga de Núcleo (9–18 % por pista sonando) y de Masterizar sigue igual en lo que suena; recortarlas cambiaría el algoritmo y queda pendiente.
+- Las pistas sin nada sonando siguen llamando a sus procesadores (ahora casi sin cálculo). Desconectarlas del todo es un cambio de arquitectura pendiente.

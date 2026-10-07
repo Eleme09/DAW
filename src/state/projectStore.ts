@@ -1181,8 +1181,11 @@ export const useProjectStore = create<ProjectState>((set, get, api) => {
 
     stopRecording: async () => {
       if (!get().isRecording) return;
-      const result = getAudioEngine().stopRecording();
+      // transport stops now; the take is ready once the recorder hands over
+      // its last batch (a few ms)
+      const pending = getAudioEngine().stopRecording();
       set({ isRecording: false, isPlaying: false, recordStartTime: null, currentTime: getAudioEngine().getCurrentTime() });
+      const result = await pending;
       if (!result || result.durationSec <= 0) return;
 
       const project = get().project;

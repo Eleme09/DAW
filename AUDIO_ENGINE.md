@@ -79,9 +79,15 @@ is not the timing source itself.
 
 `AudioEngine.startRecording`/`stopRecording` (Phase 2) capture mic input via
 an `AudioWorkletNode` (`public/worklets/recorder-processor.js`), not
-`MediaRecorder` — the worklet posts raw Float32 blocks straight to the main
-thread, which concatenates them and encodes a PCM16 WAV
-(`wavEncoder.ts`) once recording stops. No lossy codec (Opus/AAC) ever
+`MediaRecorder` — the worklet gathers raw Float32 samples in batches of
+4096 frames and transfers each batch to the main thread (it used to post
+every 128-frame block: ~375 messages and new arrays a second for the whole
+take). `stopRecording` stops the transport at once and resolves when the
+worklet has handed over its last partial batch ("done"); the main thread
+concatenates the batches and encodes a PCM16 WAV (`wavEncoder.ts`). The
+recorder takes one channel (`channelCount: 1`, explicit): a phone or earbud
+mic is mono, and recording its two identical channels doubled every take's
+memory, storage and decode time. No lossy codec (Opus/AAC) ever
 touches a take before it reaches the DSP chain — this matters specifically
 because the whole project's premise is compensating for a cheap source, and
 throwing away signal to compression first would work against that.

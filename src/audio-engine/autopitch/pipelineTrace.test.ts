@@ -48,7 +48,7 @@ function instrument(src: string): string {
     `
 {
   const yin0 = AutoPitchProcessor.prototype.yin;
-  AutoPitchProcessor.prototype.yin = function () { const r = yin0.call(this); this.__lastDet = r; return r; };
+  AutoPitchProcessor.prototype.yin = function () { const r = yin0.call(this); this.__lastDet = { hz: r.hz, confidence: r.confidence, rms: r.rms }; return r; };
   const an0 = AutoPitchProcessor.prototype.analyze;
   AutoPitchProcessor.prototype.analyze = function () {
     an0.call(this);

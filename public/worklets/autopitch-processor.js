@@ -299,6 +299,17 @@ for (let i = 0; i < MAX_VOICES; i++) {
   PARAMS.push([`v${i}Detune`, 0, -100, 100]);
   PARAMS.push([`v${i}Delay`, 0, 0, 40]);
 }
+// The voices' parameter names, built once: building them per block made
+// new strings on the audio thread ~28 times every 3 ms.
+const voiceParam = (field) => Array.from({ length: MAX_VOICES }, (_, v) => `v${v}${field}`);
+const V_ACTIVE = voiceParam("Active");
+const V_INTERVAL = voiceParam("Interval");
+const V_DIATONIC = voiceParam("Diatonic");
+const V_GAIN = voiceParam("Gain");
+const V_PAN = voiceParam("Pan");
+const V_FORMANT = voiceParam("Formant");
+const V_DETUNE = voiceParam("Detune");
+const V_DELAY = voiceParam("Delay");
 
 class AutoPitchProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -331,6 +342,9 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     this.dCount = 0;
     this.frame = new Float32Array(this.frameLen);
     this.yinDiff = new Float32Array(this.frameLen);
+    this.det = { hz: 0, confidence: 0, rms: 0 }; // see detection()
+    this.semisOut = 0; // see streamSemis()
+    this.extraOut = 0;
     this.untilHop = HOP;
     // correction at the centre of the last two analysis frames, so each grain
     // gets the correction for ITS input instant (interpolated), not the
@@ -531,7 +545,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const rms = Math.sqrt(energy / FRAME);
     // too quiet to be voiced (decide/analyze reject it on rms alone): skip the
     // difference function, the costliest part of the whole node
-    if (rms < GATE_RMS) return { hz: 0, confidence: 0, rms };
+    if (rms < GATE_RMS) return this.detection(0, 0, rms);
     const maxTau = Math.min(Math.floor(FRAME / 2), Math.floor(sr / MIN_HZ));
     const minTau = Math.max(2, Math.floor(sr / MAX_HZ));
     const w = FRAME - maxTau;
@@ -612,7 +626,17 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     }
     const confidence = clamp(1 - d[tauEstimate], 0, 1);
     const better = tauEstimate > minTau && tauEstimate < maxTau ? refineLag(d, tauEstimate) : tauEstimate;
-    return { hz: sr / better, confidence, rms };
+    return this.detection(sr / better, confidence, rms);
+  }
+
+  /** One reading, in an object reused every hop (read at once by
+   * analyze/decide, never kept): no allocation on the audio thread. */
+  detection(hz, confidence, rms) {
+    const d = this.det;
+    d.hz = hz;
+    d.confidence = confidence;
+    d.rms = rms;
+    return d;
   }
 
   analyze() {
@@ -663,7 +687,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     }
     let hz = H[1];
     if (count >= 2 && hz > 0) hz = Math.exp(L[(count - 1) >> 1]);
-    this.decide({ hz, confidence: C[1], rms: R[1] }, A[1]);
+    this.decide(this.detection(hz, C[1], R[1]), A[1]);
   }
 
   /** Voicing, pitch and correction for the analysis frame read at input
@@ -904,8 +928,8 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const p = this.p;
     const hp = harmonyPcs(scaleIndex, Math.round(p.customMask));
     for (let v = 0; v < MAX_VOICES; v++) {
-      const interval = Math.round(p[`v${v}Interval`]);
-      if (p[`v${v}Diatonic`] >= 0.5) {
+      const interval = Math.round(p[V_INTERVAL[v]]);
+      if (p[V_DIATONIC[v]] >= 0.5) {
         this.voiceOffset[v] = diatonicShift(this.targetNote, interval, key, hp) - this.targetNote;
       } else {
         this.voiceOffset[v] = interval;
@@ -1110,15 +1134,22 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
   streamSemis(s, t) {
     const p = this.p;
     const c = this.correctionAt(t);
-    if (s === 0) return { semis: c + p.shift, extra: p.shift };
+    // results in fields, not a new object per grain (audio thread)
+    if (s === 0) {
+      this.semisOut = c + p.shift;
+      this.extraOut = p.shift;
+      return;
+    }
     const v = s - 1;
     const vib = p.vibCents > 0 ? (p.vibCents / 100) * Math.sin(this.vibPhase) : 0;
     const extra = this.voiceOffset[v] + this.vDetune[v] / 100 + this.voiceDrift[v] * 0.06 + vib;
-    return { semis: c + extra, extra };
+    this.semisOut = c + extra;
+    this.extraOut = extra;
   }
 
   streamRatio(s, t) {
-    const { semis } = this.streamSemis(s, t);
+    this.streamSemis(s, t);
+    const semis = this.semisOut;
     return s === 0 ? clamp(Math.pow(2, semis / 12), 0.5, 2) : clamp(Math.pow(2, semis / 12), 0.25, 4);
   }
 
@@ -1205,7 +1236,12 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     let hardHop = false;
     const lead = this.p.hard >= 0.5 && this.voiced ? this.wantedAt(mark - this.delay[s]) : 0;
     if (lead > 0) {
-      const want = lead + (s === 0 ? 0 : this.streamSemis(s, mark - this.delay[s]).extra);
+      let extra = 0;
+      if (s !== 0) {
+        this.streamSemis(s, mark - this.delay[s]);
+        extra = this.extraOut;
+      }
+      const want = lead + extra;
       const outPer = this.sr / midiToHz(want, this.p.referenceHz);
       if (outPer > 0.4 * after && outPer < 2.5 * after) {
         hop = Math.max(8, outPer);
@@ -1420,7 +1456,7 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     }
 
     for (let s = 1; s < STREAMS; s++) {
-      const on = p[`v${s - 1}Active`] >= 0.5 && p[`v${s - 1}Gain`] > 0.0001 ? 1 : 0;
+      const on = p[V_ACTIVE[s - 1]] >= 0.5 && p[V_GAIN[s - 1]] > 0.0001 ? 1 : 0;
       if (on && !this.streamOn[s]) {
         this.ola[s].fill(0);
         this.olaW[s].fill(0);
@@ -1433,12 +1469,12 @@ class AutoPitchProcessor extends AudioWorkletProcessor {
     const panL = this.panL;
     const panR = this.panR;
     for (let v = 0; v < MAX_VOICES; v++) {
-      this.vDetune[v] = p[`v${v}Detune`];
-      this.vFormant[v] = p[`v${v}Formant`];
-      this.vDelay[v] = p[`v${v}Delay`];
-      const a = ((clamp(p[`v${v}Pan`], -1, 1) + 1) * Math.PI) / 4;
-      panL[v] = Math.cos(a) * p[`v${v}Gain`];
-      panR[v] = Math.sin(a) * p[`v${v}Gain`];
+      this.vDetune[v] = p[V_DETUNE[v]];
+      this.vFormant[v] = p[V_FORMANT[v]];
+      this.vDelay[v] = p[V_DELAY[v]];
+      const a = ((clamp(p[V_PAN[v]], -1, 1) + 1) * Math.PI) / 4;
+      panL[v] = Math.cos(a) * p[V_GAIN[v]];
+      panR[v] = Math.sin(a) * p[V_GAIN[v]];
     }
     const center = Math.SQRT1_2;
     // Panning inside the node is equal-power (a centred voice gets 0.707 per

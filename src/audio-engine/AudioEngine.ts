@@ -53,6 +53,8 @@ interface ScheduledSource {
    * clip or a sampler voice - both are AudioScheduledSourceNode, which is
    * all `stopSources()` needs. */
   source: AudioScheduledSourceNode;
+  /** The clip's own gain (clip gain + fades), between source and track. */
+  envelope: GainNode;
   clipId: string;
 }
 
@@ -93,10 +95,16 @@ interface RecordingSession {
   worklet: AudioWorkletNode;
   analyser: AnalyserNode;
   silentSink: GainNode;
-  chunks: Float32Array[][]; // chunks[channel][block]
+  chunks: Float32Array[][]; // chunks[channel][batch]
   /** Timeline position (seconds) where the resulting clip should start. */
   startTime: number;
+  /** Resolves when the worklet has handed over its last batch ("done"). */
+  flushed: Promise<void>;
 }
+
+/** Longest wait for the recorder's last batch before closing the take with
+ * what arrived (a suspended context may never answer). */
+const RECORDER_FLUSH_TIMEOUT_MS = 600;
 
 export interface RecordingResult {
   blob: Blob;
@@ -1150,9 +1158,11 @@ export class AudioEngine {
     this.applyFades(envelope.gain, clip, when, startsInFuture ? 0 : offsetIntoClip);
 
     source.start(when, sourceOffset, playDuration);
-    this.scheduled.push({ source, clipId: clip.id });
+    this.scheduled.push({ source, envelope, clipId: clip.id });
     source.onended = () => {
       this.scheduled = this.scheduled.filter((s) => s.source !== source);
+      source.disconnect();
+      envelope.disconnect();
     };
   }
 
@@ -1178,11 +1188,14 @@ export class AudioEngine {
   }
 
   private stopSources(): void {
-    for (const { source } of this.scheduled) {
+    for (const { source, envelope } of this.scheduled) {
       try {
         source.onended = null;
         source.stop();
         source.disconnect();
+        // the clip's gain stays wired into its track otherwise, one more per
+        // play/seek until the garbage collector gets to it
+        envelope.disconnect();
       } catch {
         // already stopped
       }
@@ -1254,16 +1267,18 @@ export class AudioEngine {
 
   private playClick(time: number, accent: boolean): void {
     if (!this.ctx || !this.master) return;
+    if (this.metronomeVolume <= 0.001) return;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.frequency.value = accent ? 1500 : 1000;
-    if (this.metronomeVolume <= 0.001) return;
     gain.gain.setValueAtTime((accent ? 0.35 : 0.2) * this.metronomeVolume, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
     osc.connect(gain);
     gain.connect(this.master);
     osc.start(time);
     osc.stop(time + 0.06);
+    // unwired once it has sounded, not left on the master until collected
+    osc.onended = () => gain.disconnect();
   }
 
   private stopMetronome(): void {
@@ -1366,7 +1381,14 @@ export class AudioEngine {
       this.recorderWorkletLoaded = true;
     }
 
-    const worklet = new AudioWorkletNode(ctx, "recorder-processor");
+    // One channel: a phone or earbud mic is mono, and taking the input's two
+    // identical channels stored every take twice (memory, storage, decode).
+    // A real stereo source is summed to mono - this is a vocal booth.
+    const worklet = new AudioWorkletNode(ctx, "recorder-processor", {
+      channelCount: 1,
+      channelCountMode: "explicit",
+      channelInterpretation: "speakers",
+    });
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
     const silentSink = ctx.createGain();
@@ -1379,13 +1401,18 @@ export class AudioEngine {
     silentSink.connect(ctx.destination);
 
     const chunks: Float32Array[][] = [];
-    worklet.port.onmessage = (event: MessageEvent<Float32Array[]>) => {
+    let markFlushed: () => void = () => {};
+    const flushed = new Promise<void>((resolve) => (markFlushed = resolve));
+    // Batches of a few thousand frames (see recorder-processor.js), then
+    // "done" after the "stop" sent by stopRecording().
+    worklet.port.onmessage = (event: MessageEvent<Float32Array[] | "done">) => {
+      if (event.data === "done") return markFlushed();
       for (let ch = 0; ch < event.data.length; ch++) {
         (chunks[ch] ??= []).push(event.data[ch]);
       }
     };
 
-    this.recording = { worklet, analyser, silentSink, chunks, startTime: fromTime };
+    this.recording = { worklet, analyser, silentSink, chunks, startTime: fromTime, flushed };
 
     // Play existing material under the take, same machinery as play().
     this.stopSources();
@@ -1401,21 +1428,23 @@ export class AudioEngine {
     return { ok: true };
   }
 
-  /** Stops capture + playback and returns the encoded take, or null if nothing was recording. */
-  stopRecording(): RecordingResult | null {
-    if (!this.recording || !this.ctx) return null;
-    const { worklet, analyser, silentSink, chunks, startTime } = this.recording;
+  /** Stops capture + playback at once and resolves with the encoded take
+   * (after the recorder hands over its last batch), or null if nothing was
+   * recording. */
+  stopRecording(): Promise<RecordingResult | null> {
+    if (!this.recording || !this.ctx) return Promise.resolve(null);
+    const { worklet, analyser, silentSink, chunks, startTime, flushed } = this.recording;
+    const sampleRate = this.ctx.sampleRate;
 
-    worklet.port.onmessage = null;
     // Only detach this session's own taps - the shared monitor stream and
     // its inputGain stay alive/connected for as long as an armed track
     // still wants to hear it, governed entirely by ensureMonitorStream()/
     // stopMonitorStream(), not by recording start/stop.
     this.monitor?.inputGain.disconnect(worklet);
     this.monitor?.inputGain.disconnect(analyser);
-    worklet.disconnect();
     analyser.disconnect();
-    silentSink.disconnect();
+    // what the worklet still holds comes back as one last batch, then "done"
+    worklet.port.postMessage("stop");
     this.recording = null;
 
     this.playheadAtPlay = this.getCurrentTime();
@@ -1428,23 +1457,30 @@ export class AudioEngine {
     this.refreshMonitoring(this.lastSyncedTracks);
     this.scheduleIdleRelease();
 
-    const numChannels = Math.max(1, chunks.length);
-    const channelArrays: Float32Array[] = [];
-    for (let ch = 0; ch < numChannels; ch++) {
-      const blocks = chunks[ch] ?? [];
-      const totalLength = blocks.reduce((sum, block) => sum + block.length, 0);
-      const merged = new Float32Array(totalLength);
-      let offset = 0;
-      for (const block of blocks) {
-        merged.set(block, offset);
-        offset += block.length;
-      }
-      channelArrays.push(merged);
-    }
+    const timeout = new Promise<void>((resolve) => setTimeout(resolve, RECORDER_FLUSH_TIMEOUT_MS));
+    return Promise.race([flushed, timeout]).then(() => {
+      worklet.port.onmessage = null;
+      worklet.disconnect();
+      silentSink.disconnect();
 
-    const durationSec = channelArrays[0] ? channelArrays[0].length / this.ctx.sampleRate : 0;
-    const blob = encodeWav(channelArrays, this.ctx.sampleRate);
-    return { blob, durationSec, startTime };
+      const numChannels = Math.max(1, chunks.length);
+      const channelArrays: Float32Array[] = [];
+      for (let ch = 0; ch < numChannels; ch++) {
+        const blocks = chunks[ch] ?? [];
+        const totalLength = blocks.reduce((sum, block) => sum + block.length, 0);
+        const merged = new Float32Array(totalLength);
+        let offset = 0;
+        for (const block of blocks) {
+          merged.set(block, offset);
+          offset += block.length;
+        }
+        channelArrays.push(merged);
+      }
+
+      const durationSec = channelArrays[0] ? channelArrays[0].length / sampleRate : 0;
+      const blob = encodeWav(channelArrays, sampleRate);
+      return { blob, durationSec, startTime };
+    });
   }
 
   /** Aborts recording without producing a clip (permission errors, user cancel, etc). */
@@ -1452,6 +1488,7 @@ export class AudioEngine {
     if (!this.recording) return;
     const { worklet, analyser, silentSink } = this.recording;
     worklet.port.onmessage = null;
+    worklet.port.postMessage("stop"); // lets the node go
     this.monitor?.inputGain.disconnect(worklet);
     this.monitor?.inputGain.disconnect(analyser);
     worklet.disconnect();

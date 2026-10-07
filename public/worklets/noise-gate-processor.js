@@ -29,6 +29,19 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     this.thresholdSmoothed = null;
     this.samplesSincePost = 0;
     this.postIntervalSamples = Math.round(sampleRate * 0.05); // ~20 Hz to the main thread
+    // per-sample gain of the current block, reused (no allocation on the
+    // audio thread: its garbage collection is heard as dropouts)
+    this.envelopeAtSample = new Float32Array(128);
+  }
+
+  post(blockSize) {
+    // Real gate gain, not reconstructed on the main thread - throttled so
+    // it doesn't flood the message port at audio-block rate (~375/s).
+    this.samplesSincePost += blockSize;
+    if (this.samplesSincePost >= this.postIntervalSamples) {
+      this.samplesSincePost = 0;
+      this.port.postMessage(this.envelope);
+    }
   }
 
   process(inputs, outputs, parameters) {
@@ -51,11 +64,35 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
     const releaseCoeff = Math.exp(-1 / ((releaseMs / 1000) * sampleRate));
     const holdSamples = (holdMs / 1000) * sampleRate;
 
+    const blockSize = input[0].length;
+    const detector = input[0];
+
+    // Silence in with the gate already shut: silence out. Advance the
+    // detector and the release exactly as the sample loop would.
+    if (!this.isOpen && this.holdSamplesRemaining <= 0 && this.level < closeLinear) {
+      let silent = true;
+      for (let ch = 0; ch < input.length && silent; ch++) {
+        const inCh = input[ch];
+        for (let i = 0; i < inCh.length; i++) {
+          if (inCh[i] !== 0) {
+            silent = false;
+            break;
+          }
+        }
+      }
+      if (silent) {
+        this.level *= Math.pow(this.levelDecay, blockSize);
+        this.envelope *= Math.pow(releaseCoeff, blockSize);
+        for (let ch = 0; ch < output.length; ch++) output[ch].fill(0);
+        this.post(blockSize);
+        return true;
+      }
+    }
+
     // Detect once per sample (channel 0), then apply the same gain to every
     // channel — a stereo/mono signal gates as one linked unit, not per-channel.
-    const blockSize = input[0].length;
-    const envelopeAtSample = new Float32Array(blockSize);
-    const detector = input[0];
+    if (this.envelopeAtSample.length < blockSize) this.envelopeAtSample = new Float32Array(blockSize);
+    const envelopeAtSample = this.envelopeAtSample;
     for (let i = 0; i < blockSize; i++) {
       const a = Math.abs(detector[i]);
       this.level = a > this.level ? a : this.level * this.levelDecay;
@@ -78,13 +115,7 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
       }
     }
 
-    // Real gate gain, not reconstructed on the main thread - throttled so
-    // it doesn't flood the message port at audio-block rate (~375/s).
-    this.samplesSincePost += blockSize;
-    if (this.samplesSincePost >= this.postIntervalSamples) {
-      this.samplesSincePost = 0;
-      this.port.postMessage(this.envelope);
-    }
+    this.post(blockSize);
     return true;
   }
 }
