@@ -1512,3 +1512,10 @@ Datos: 182 s de audio, 58 atrasos (14.1 s perdidos, el peor 1415 ms), 11 congela
   - el detector lee la 3.ª armónica 2–4 cuadros al empezar;
   - las épocas arrancan con el período de la nota anterior.
 - **No verificado**: nadie lo escuchó. Hay A/B de 18 s en el scratchpad (`ab_iman/`): original, Imán antes, Imán ahora y Cuántico. No probado en iPhone.
+
+## Recorrido de prueba en Chromium (errores normales, sin tocar DSP)
+
+- Recorrido en Chromium 390×844 con la build de producción (proyecto nuevo, importar voz, reproducir/pausar, seleccionar/dividir/deshacer/rehacer, Núcleo, Fx, mezcla, letra, ajustes, segunda pista, grabar con micrófono falso, guardar, salir y reabrir): **0 errores de consola**, todo responde.
+- **Bug arreglado (mío)**: la descripción nueva de Imán (133 caracteres) se cortaba con «…» en el panel de Núcleo, que muestra 2 líneas; Humano (113) estaba al borde. Ahora ambas ≤ 100 y hay una prueba (`src/types/autoPitch.test.ts`) que falla si alguna receta pasa de 105.
+- No eran bugs: en `next dev` el indicador «N» de Next tapa el botón de mezcla (solo desarrollo); grabar sobre un clip existente apila la toma y silencia la anterior (es el diseño de tomas).
+- **No verificado**: nada de esto en un iPhone real; el recorrido usa ratón/touch emulado y micrófono falso.

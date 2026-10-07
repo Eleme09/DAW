@@ -144,7 +144,7 @@ export interface AutoPitchRecipe {
   id: AutoPitchPresetId;
   label: string;
   category: AutoPitchCategory;
-  /** What it does, in plain Spanish (ours). */
+  /** What it does, in plain Spanish (ours). The panel shows it in two lines (~108 characters at 390 px): keep it under 105. */
   description: string;
   /** Correction behaviour at full Level - the controls Antares Auto-Tune and
    * Waves Tune Real-Time agree on: `speedMs` pulls the pitch onto the note
@@ -183,7 +183,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     id: "classic",
     label: "Imán",
     category: "tune",
-    description: "Lleva cada nota a la escala al instante y la deja quieta. Cambia de nota solo cuando de verdad cambias: el vibrato no la hace saltar.",
+    description: "Cada nota a la escala al instante, pegada y quieta. Cambia de nota solo cuando de verdad cambias.",
     tune: { speedMs: 0, transitionMs: 0, humanize: 0, flex: 0 },
     lead: { gain: 1 },
     voices: [],
@@ -232,7 +232,7 @@ export const AUTOPITCH_RECIPES: AutoPitchRecipe[] = [
     id: "natural",
     label: "Humano",
     category: "tune",
-    description: "Corrige despacio y solo cerca de la nota: deja pasar deslizamientos y adornos. Con un poco de compresión y sala.",
+    description: "Corrige despacio y solo cerca de la nota: deja pasar deslizamientos y adornos, con compresión y sala.",
     tune: { speedMs: 40, transitionMs: 120, humanize: 0.5, flex: 0.5 },
     lead: { gain: 1 },
     voices: [],
