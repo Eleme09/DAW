@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { UndoIcon, RedoIcon, PlayIcon, PauseIcon, StopIcon, RewindIcon, CloseIcon, FolderIcon, GearIcon } from "./icons";
 import { BpmField, ClickButton, LoopButton, StudioSettingsSheet, TimeSigField, useExportActions } from "./StudioSettingsSheet";
