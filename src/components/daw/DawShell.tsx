@@ -11,6 +11,7 @@ import { EffectsRackPanel } from "./EffectsRack/EffectsRackPanel";
 import { AutomationEditor } from "./Automation/AutomationEditor";
 import { ProjectHomeScreen } from "./ProjectHomeScreen";
 import { MobileStudio } from "./MobileStudio";
+import { perfMonitor, perfMonitorEnabled } from "@/lib/diagnostics/perfMonitor";
 
 const DESKTOP_QUERY = "(min-width: 768px)";
 
@@ -55,6 +56,11 @@ export function DawShell() {
   useEffect(() => {
     getAudioEngine().setMasterVolume(masterVolumeDb);
   }, [masterVolumeDb]);
+
+  // Ajustes > Rendimiento left on: keep measuring from the start, on every screen
+  useEffect(() => {
+    if (perfMonitorEnabled()) perfMonitor.start();
+  }, []);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

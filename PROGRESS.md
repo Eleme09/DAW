@@ -1379,7 +1379,7 @@ Síntoma (iPhone): después de grabar muchas tomas seguidas, o de devolver y rep
   - `recorder-processor.js` junta lotes de 4096 muestras y los transfiere, en vez de un mensaje con arrays nuevos cada 128 (~375 por segundo).
   - Al parar, el transporte se detiene al instante y la toma se cierra cuando llega el último lote (espera máxima 600 ms).
   - El nodo se libera (`process` devuelve false).
-- Tomas en **mono**: se guardaban en estéreo con dos canales iguales. La memoria por toma de 10 s bajó de 3.7 MB a 1.8 MB (medido), igual que el espacio guardado y el tiempo de decodificación.
+- Tomas en **mono**: en Chromium se guardaban en estéreo con dos canales iguales. La memoria por toma de 10 s bajó de 3.7 MB a 1.8 MB (medido en Chromium con micrófono falso), igual que el espacio guardado y el tiempo de decodificación. En el iPhone el micrófono ya se pide en mono (`channelCount: 1`), así que ahí probablemente ya entraba en mono. No verificado.
 - Toma en vivo (`LiveTake.tsx`): redimensionaba su lienzo al largo de toda la toma y repintaba toda la onda en cada cuadro (varios MB por cuadro al final de una toma de 1 min). Ahora pinta solo lo nuevo, sobre lienzos fijos de 1024 px.
 - Motor:
   - la ganancia de cada región se desconecta al parar o al terminar la región;
@@ -1405,3 +1405,19 @@ Síntoma (iPhone): después de grabar muchas tomas seguidas, o de devolver y rep
 - Nada de esto se probó en un iPhone. No sé si el lag que ve el usuario era CPU, memoria, calentamiento o el cambio de modo de audio de iOS al abrir y cerrar el micrófono en cada toma (`gum` sube 1 por toma: se abre y cierra en cada una). Esto último es sospecha, sin medir.
 - La carga de Núcleo (9–18 % por pista sonando) y de Masterizar sigue igual en lo que suena; recortarlas cambiaría el algoritmo y queda pendiente.
 - Las pistas sin nada sonando siguen llamando a sus procesadores (ahora casi sin cálculo). Desconectarlas del todo es un cambio de arquitectura pendiente.
+
+**Diagnóstico de rendimiento (Ajustes > Rendimiento)**, para medir en el iPhone real lo que aquí no se puede:
+- Interruptor «Medir rendimiento» (se recuerda en el dispositivo). Mide desde que abre la app, en cualquier pantalla (`lib/diagnostics/perfMonitor.ts`).
+- Audio atrasado: cada 500 ms compara el reloj de audio con el reloj real mientras el audio corre; un atraso de más de 30 ms cuenta como corte.
+  - Comprobado en Chromium sobrecargando el hilo de audio a propósito: 0 cortes sin carga; 7 cortes y 1532 ms perdidos en 4 s sobrecargado; 0 al quitar la carga.
+  - En Safari no está comprobado que su reloj refleje igual los cortes.
+- Pantalla trabada: cuadros de más de 50 ms y de más de 200 ms.
+- «Peso de la sesión»: suma de lo medido de cada efecto y de Núcleo en las pistas con audio, más el máster y Masterizar (`lib/diagnostics/dspCost.ts`; números de computador, sirven para comparar).
+- «Copiar informe»: un texto que el usuario pega en el chat. Incluye:
+  - cortes, cuadros lentos, frecuencia de muestreo y latencias;
+  - veces que se abrió el micrófono, tomas, reproducciones;
+  - cambios de estado del audio (iOS marca «interrupted»);
+  - MB de audio en memoria;
+  - pistas con regiones, tomas, Núcleo y efectos;
+  - el dispositivo.
+- Probado en Chromium: interruptor, dos tomas y el informe copiado al portapapeles.

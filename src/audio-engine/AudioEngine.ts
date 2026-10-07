@@ -209,6 +209,8 @@ export class AudioEngine {
 
   private monitor: MonitorSession | null = null;
   private monitorPending: Promise<StartRecordingResult> | null = null;
+  /** Counters for the performance diagnostic (Ajustes > Rendimiento). */
+  private stats = { micOpens: 0, takes: 0, plays: 0, stateChanges: [] as string[] };
   private monitorConnected = new Set<TrackId>();
   private monitorConstraints: MonitorInputConstraints = {
     echoCancellation: false,
@@ -263,6 +265,8 @@ export class AudioEngine {
       // audio (iOS interrupts us -> we resume -> their audio pauses),
       // in the background too.
       ctx.addEventListener("statechange", () => {
+        // iOS reports "interrupted" (a call, Siri, another app's audio)
+        this.stats.stateChanges = [...this.stats.stateChanges.slice(-19), `${ctx.state as string}@${Math.round(performance.now() / 1000)}s`];
         if (ctx.state !== "running" && this.shouldKeepRunning()) void ctx.resume();
       });
       const master = ctx.createGain();
@@ -885,6 +889,7 @@ export class AudioEngine {
             ...(this.selectedInputDeviceId ? { deviceId: { exact: this.selectedInputDeviceId } } : {}),
           },
         });
+        this.stats.micOpens++;
         const source = ctx.createMediaStreamSource(stream);
         const inputGain = ctx.createGain();
         inputGain.gain.value = dbToGain(this.inputGainDb);
@@ -982,6 +987,22 @@ export class AudioEngine {
     return buffer;
   }
 
+  /** What the performance diagnostic reports about the engine. */
+  getStats() {
+    let bufferBytes = 0;
+    for (const b of this.bufferCache.values()) bufferBytes += b.length * b.numberOfChannels * 4;
+    const ctx = this.ctx;
+    return {
+      ...this.stats,
+      buffers: this.bufferCache.size,
+      bufferMB: Math.round(bufferBytes / 1e5) / 10,
+      sampleRate: ctx?.sampleRate ?? null,
+      state: ctx?.state ?? "sin contexto",
+      baseLatencyMs: ctx ? Math.round(ctx.baseLatency * 1000) : null,
+      outputLatencyMs: ctx && ctx.outputLatency ? Math.round(ctx.outputLatency * 1000) : null,
+    };
+  }
+
   getBuffer(sampleId: string): AudioBuffer | undefined {
     return this.bufferCache.get(sampleId);
   }
@@ -1010,6 +1031,7 @@ export class AudioEngine {
   }
 
   play(tracks: Track[], fromTime: number, loop: LoopRegion, bpm: number, buses: Bus[] = []): void {
+    this.stats.plays++;
     const ctx = this.wake();
     this.stopSources();
 
@@ -1446,6 +1468,7 @@ export class AudioEngine {
     // what the worklet still holds comes back as one last batch, then "done"
     worklet.port.postMessage("stop");
     this.recording = null;
+    this.stats.takes++;
 
     this.playheadAtPlay = this.getCurrentTime();
     this.playing = false;

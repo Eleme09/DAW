@@ -6,6 +6,7 @@ import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { NOTE_NAMES_ES } from "@/types/autoPitch";
 import { useExportActions } from "./StudioSettingsSheet";
 import { ChevronDownIcon } from "./icons";
+import { PerfDiagnostics } from "./PerfDiagnostics";
 
 const SYSTEM_DEFAULT_DEVICE = "__system_default__";
 const TIME_SIGNATURES: [number, number][] = [
@@ -252,6 +253,10 @@ export function StudioSettingsPage() {
       </Section>
       {exportError && <p className="px-4 pt-2 text-xs text-red-400">{exportError}</p>}
       {!hasAudio && <p className="px-4 pt-2 text-xs text-bone-3">Graba o importa audio para poder exportar.</p>}
+
+      <Section title="Rendimiento">
+        <PerfDiagnostics />
+      </Section>
     </div>
   );
 }
