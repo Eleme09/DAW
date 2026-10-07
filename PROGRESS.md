@@ -1317,3 +1317,25 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
   - No está probado en iPhone, donde medir será más lento.
   - La automatización de volumen y paneo se ignora al medir (solo afecta la medida, no el sonido).
 - Falta, si lo quieres: igualar a una canción de referencia (BandLab lo tiene en beta).
+
+## Iconografía propia y clips estilo consola (pedido del usuario, primera pasada)
+
+- **Iconos nuevos** (`components/daw/icons.tsx`, se aplican en toda la app):
+  - Pestañas de arriba: Estudio (regiones en sus carriles), Letra (renglones y punto de lectura) y Ajustes (tres deslizadores). Antes eran la onda, la pluma y el hexágono de BandLab.
+  - Micrófono: cápsula con un arco de energía.
+  - Deshacer / rehacer circulares, metrónomo con punto orbital.
+  - Exportar: flecha que sale del horizonte, en vez de la nube.
+  - Armonizar: tres voces apiladas, en vez de «AI».
+- **«+Fx» en cursiva (de BandLab) reemplazado** por un icono propio de cadena de efectos (tres nodos enlazados). Aparece en la cabecera de pista, la fila de la pista seleccionada («Efectos»), las tarjetas de Mezcla y el editor de cadena.
+- **Botón de grabar**: núcleo rojo con anillo interior y brillo. Mientras graba, el cuadrado rojo con un anillo que late.
+- **Regiones al estilo de una consola** (Pro Tools), pero para el dedo:
+  - franja de nombre arriba con el nombre, la ganancia del clip si no es 0 dB y la marca de loop;
+  - cuerpo oscuro en el color de la pista con borde definido y esquinas más rectas;
+  - fundidos con la parte atenuada sombreada bajo una curva;
+  - seleccionada: franja blanca y contorno blanco, con las mismas manijas de recorte.
+- «Mezclar con IA» (Voz) pasa a «Mezclar la voz»: es por reglas, no IA.
+- Verificado: `tsc`, `eslint`, `vitest` (420), `next build`, Chromium 390×844 sin errores.
+- **No verificado / pendiente**:
+  - En la captura la región de la voz se ve sin onda en los primeros segundos. No revisé si es silencio real del archivo o un bug de dibujo.
+  - Quedan iconos secundarios del set viejo (menús de región, editor).
+  - Nadie lo vio en un iPhone.

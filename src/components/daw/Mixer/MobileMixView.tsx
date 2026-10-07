@@ -11,7 +11,7 @@ import { BottomSheet } from "../BottomSheet";
 import { AutoMixSheet } from "./AutoMixSheet";
 import { MASTER_STYLES, TARGET_INFO } from "@/lib/mastering/masterChain";
 import { SendSlots } from "./SendSlots";
-import { MicIcon, MoreIcon, ChevronRightIcon, PlusIcon, MixIcon } from "../icons";
+import { MicIcon, MoreIcon, ChevronRightIcon, PlusIcon, MixIcon, FxChainIcon } from "../icons";
 
 
 /**
@@ -90,8 +90,8 @@ export function MobileMixView({ onAddTrack }: { onAddTrack: () => void }) {
           >
             <MicIcon className="h-6 w-6" style={{ color: track.color }} />
             {track.inserts.length > 0 && (
-              <span className="rounded-full px-1.5 text-[11px] font-bold italic text-ink" style={{ background: track.color }}>
-                Fx
+              <span className="flex h-5 w-7 items-center justify-center rounded-full text-ink" style={{ background: track.color }} title="Tiene efectos">
+                <FxChainIcon className="h-3.5 w-3.5" />
               </span>
             )}
           </button>
@@ -177,16 +177,8 @@ function TrackCard({
             firstFx ? "bg-black/25" : "bg-white/20"
           }`}
         >
-          {firstFx ? (
-            <>
-              <span className="font-bold italic">Fx</span>
-              <span className="truncate">{fxChipLabel(track)}</span>
-            </>
-          ) : (
-            <span className="font-semibold">
-              + <span className="italic">Fx</span>
-            </span>
-          )}
+          <FxChainIcon className="h-4 w-4 shrink-0" />
+          {firstFx ? <span className="truncate">{fxChipLabel(track)}</span> : <span className="font-semibold">Efectos</span>}
         </button>
         <div className="flex h-8 shrink-0 items-center rounded-full bg-white/20 text-sm font-semibold">
           <button

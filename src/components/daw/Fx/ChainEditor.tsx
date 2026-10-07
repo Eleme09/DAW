@@ -10,7 +10,7 @@ import { FxArt } from "./scenes";
 import { BlendSlider } from "./BlendSlider";
 import { EffectFace } from "./faces";
 import { KnobDefs } from "./kit";
-import { BackIcon, TrashIcon } from "../icons";
+import { BackIcon, FxChainIcon, TrashIcon } from "../icons";
 
 /**
  * The chain: a strip of the effects in order (tap to open, + to add), the
@@ -128,7 +128,9 @@ export function ChainEditor({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-3">
         {!current ? (
           <div className="flex h-full flex-col items-center justify-center px-8 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surf-2 text-lg font-bold italic text-bone">Fx</div>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surf-2 text-bone">
+              <FxChainIcon className="h-7 w-7" />
+            </div>
             <h3 className="mt-4 text-[17px] font-semibold text-bone">Añade tu primer efecto</h3>
             <p className="mt-1 text-[13px] text-bone-2">Ecualizador, compresión, saturación, reverb y más para darle forma a tu voz.</p>
             <button onClick={onAdd} className="mt-5 h-10 rounded-full bg-bone px-6 text-[14px] font-semibold text-ink">

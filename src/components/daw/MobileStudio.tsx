@@ -35,6 +35,7 @@ import {
   MicIcon,
   WaveformIcon,
   CloudUploadIcon,
+  FxChainIcon,
   RecordIcon,
   HeadphonesIcon,
 } from "./icons";
@@ -247,16 +248,15 @@ export function MobileStudio() {
         <ClipEditPanel />
       ) : (
         <>
-      {/* Fila de la pista seleccionada: [voz · +Fx · Núcleo] … armar · monitor */}
+      {/* Fila de la pista seleccionada: [voz · Efectos · Núcleo] … armar · monitor */}
       <div className={`h-14 shrink-0 items-center gap-2 px-2 ${tab === "studio" ? "flex" : "hidden"}`}>
         <div className="flex h-11 items-center rounded-full bg-surf-2 px-1">
           <button onClick={() => togglePanel("voz")} disabled={!selectedTrack} aria-label="Voz" title="Voz: grabación y entrada de la pista" className={seg(mobileView === "voz")}>
             <MicIcon className="h-5 w-5" />
           </button>
           <button onClick={() => togglePanel("effects")} disabled={!selectedTrack} title="Efectos de la pista" className={seg(mobileView === "effects")}>
-            <span className="text-base font-semibold">
-              +<span className="italic">Fx</span>
-            </span>
+            <FxChainIcon className="h-5 w-5" />
+            <span className="text-sm font-medium">Efectos</span>
           </button>
           <button
             onClick={autoPitchPill}
@@ -309,13 +309,14 @@ export function MobileStudio() {
           disabled={isCountingIn}
           aria-label={isRecording ? "Detener grabación" : isCountingIn ? "Cuenta atrás" : "Grabar"}
           title={isRecording ? "Detener grabación" : "Grabar en la pista armada"}
-          // BandLab: while recording the red circle becomes a dark button with
-          // a red square (stop).
-          className={`flex h-14 w-14 items-center justify-center rounded-full font-mono text-lg font-bold text-bone ${
-            isRecording ? "bg-surf-3" : "bg-rec"
+          // Ours: a red core with an inner orbit ring; while recording it turns
+          // dark with a red stop square and a pulsing red ring around it.
+          className={`relative flex h-14 w-14 items-center justify-center rounded-full font-mono text-lg font-bold text-bone ${
+            isRecording ? "bg-surf-3 ring-2 ring-rec/70" : "bg-rec shadow-[0_0_18px_rgba(229,36,59,.4)]"
           }`}
         >
-          {isCountingIn ? countInBeats : isRecording ? <span className="h-5 w-5 rounded-[4px] bg-rec" /> : null}
+          {isRecording && <span className="pointer-events-none absolute inset-0 animate-ping rounded-full ring-2 ring-rec/50" />}
+          {isCountingIn ? countInBeats : isRecording ? <span className="h-5 w-5 rounded-[4px] bg-rec" /> : <span className="h-7 w-7 rounded-full border-2 border-white/50" />}
         </button>
         <button onClick={() => (isPlaying ? pause() : play())} disabled={busy} aria-label={isPlaying ? "Pausar" : "Reproducir"} title={isPlaying ? "Pausar" : "Reproducir"} className={`${roundBtn} !text-bone`}>
           {isPlaying && !isRecording ? <PauseIcon className="h-6 w-6" /> : <PlayIcon className="h-6 w-6" />}

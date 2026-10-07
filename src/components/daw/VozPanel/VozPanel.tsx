@@ -507,7 +507,7 @@ export function VozPanel() {
         className="mx-3.5 mb-2.5 flex h-13 items-center justify-center gap-2 rounded bg-bone font-display text-base font-bold text-ink hover:opacity-90 disabled:opacity-50"
       >
         <SparkleIcon className="h-4 w-4" />
-        {applyingAI ? "Aplicando…" : "Mezclar con IA"}
+        {applyingAI ? "Aplicando…" : "Mezclar la voz"}
       </button>
 
       <div className="mx-3.5 mb-3 flex overflow-hidden rounded border border-line-2">

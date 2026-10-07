@@ -36,12 +36,17 @@ type DragState =
  * track, or below the last track for a new one - previewed while you drag,
  * applied once on release (one undo step). A quick swipe on an unselected
  * region still moves through the song.
- * Darker body in the track color with the waveform in the full color; a
- * looped region repeats its waveform tile; fades draw as white lines.
+ * Drawn like a pro console's clip (Pro Tools) but sized for a finger: a
+ * name strip on top (name, clip gain, loop mark), a dark body in the
+ * track colour with the waveform in full colour and a defined border; a
+ * looped region repeats its waveform tile; fades shade the faded part
+ * under a curve.
  */
 /** Grey used for regions that can't be heard (muted track, or another track
  * is soloed) - BandLab greys those regions out (user's recording). */
 const SILENT_COLOR = "#5f5f66";
+/** Height of the name strip on top of a region. */
+const STRIP_PX = 14;
 
 export function CompactClipView({
   clip,
@@ -294,7 +299,8 @@ export function CompactClipView({
         width,
         height,
         top: 4,
-        background: preview ? `${color}80` : `${color}4d`,
+        background: preview ? `${color}66` : `${color}2e`,
+        border: `1px solid ${color}b3`,
         touchAction: selected ? "none" : "pan-x pan-y",
         zIndex: preview ? 40 : selected ? 5 : undefined,
         transform: preview ? `translate(${(preview.start - clip.startTime) * pps}px, ${(preview.row - trackIndex) * laneHeight}px) scale(1.02)` : undefined,
@@ -302,19 +308,28 @@ export function CompactClipView({
         transition: preview ? "transform 60ms linear" : undefined,
         WebkitTouchCallout: "none",
       }}
-      className={`select-none rounded-md ${selected ? "outline outline-2 outline-white" : ""}`}
+      className={`select-none rounded-[4px] ${selected ? "outline outline-2 outline-offset-1 outline-white" : ""}`}
     >
-      <div className="absolute inset-0 overflow-hidden rounded-md">
+      <div className="absolute inset-0 overflow-hidden rounded-[3px]">
+        {/* name strip (Pro Tools-style clip header): name, clip gain, loop */}
+        <div
+          className="absolute inset-x-0 top-0 flex items-center gap-1 overflow-hidden px-1.5 text-[10px] font-semibold leading-none"
+          style={{ height: STRIP_PX, background: selected ? "#f4f3ee" : `${color}e6`, color: "#0b0c0f" }}
+        >
+          {width > 34 && <span className="min-w-0 flex-1 truncate">{clip.name}</span>}
+          {width > 70 && clip.gainDb !== 0 && <span className="shrink-0 tabular-nums opacity-75">{`${clip.gainDb > 0 ? "+" : ""}${clip.gainDb.toFixed(1)} dB`}</span>}
+          {width > 50 && loopLength && <span className="shrink-0 opacity-75">⟳</span>}
+        </div>
         {Array.from({ length: tiles }, (_, i) => (
           <div
             key={i}
-            className={`absolute top-0 ${i > 0 ? "border-l border-white/30" : ""}`}
-            style={{ left: i * tileWidth, width: Math.min(tileWidth, width - i * tileWidth), height }}
+            className={`absolute ${i > 0 ? "border-l border-white/30" : ""}`}
+            style={{ top: STRIP_PX, left: i * tileWidth, width: Math.min(tileWidth, width - i * tileWidth), height: height - STRIP_PX }}
           >
             <Waveform
               buffer={buffer}
               width={Math.max(1, tileWidth)}
-              height={height}
+              height={Math.max(4, height - STRIP_PX)}
               color={color}
               startSec={clip.sourceOffset}
               durationSec={loopLength ?? clip.duration}
@@ -322,9 +337,20 @@ export function CompactClipView({
           </div>
         ))}
         {(fadeInPx > 0 || fadeOutPx > 0) && (
-          <svg className="pointer-events-none absolute inset-0" width={width} height={height}>
-            {fadeInPx > 0 && <line x1={0} y1={height} x2={fadeInPx} y2={0} stroke="white" strokeWidth={1.5} />}
-            {fadeOutPx > 0 && <line x1={width - fadeOutPx} y1={0} x2={width} y2={height} stroke="white" strokeWidth={1.5} />}
+          <svg className="pointer-events-none absolute inset-x-0" style={{ top: STRIP_PX }} width={width} height={height - STRIP_PX}>
+            {/* the faded part shaded, the curve on top (like a console's fade) */}
+            {fadeInPx > 0 && (
+              <>
+                <path d={`M0 0 L${fadeInPx} 0 Q${fadeInPx * 0.35} ${(height - STRIP_PX) * 0.15} 0 ${height - STRIP_PX} Z`} fill="rgba(0,0,0,.45)" />
+                <path d={`M0 ${height - STRIP_PX} Q${fadeInPx * 0.35} ${(height - STRIP_PX) * 0.15} ${fadeInPx} 0`} fill="none" stroke="white" strokeWidth={1.5} />
+              </>
+            )}
+            {fadeOutPx > 0 && (
+              <>
+                <path d={`M${width} 0 L${width - fadeOutPx} 0 Q${width - fadeOutPx * 0.35} ${(height - STRIP_PX) * 0.15} ${width} ${height - STRIP_PX} Z`} fill="rgba(0,0,0,.45)" />
+                <path d={`M${width - fadeOutPx} 0 Q${width - fadeOutPx * 0.35} ${(height - STRIP_PX) * 0.15} ${width} ${height - STRIP_PX}`} fill="none" stroke="white" strokeWidth={1.5} />
+              </>
+            )}
           </svg>
         )}
       </div>

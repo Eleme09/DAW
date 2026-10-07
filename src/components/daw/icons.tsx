@@ -16,14 +16,13 @@ const base: SVGProps<SVGSVGElement> = {
   strokeLinejoin: "round",
 };
 
+/** Studio: regions on their lanes. */
 export function WaveformIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <line x1="4" y1="10" x2="4" y2="14" />
-      <line x1="8" y1="6" x2="8" y2="18" />
-      <line x1="12" y1="3" x2="12" y2="21" />
-      <line x1="16" y1="6" x2="16" y2="18" />
-      <line x1="20" y1="10" x2="20" y2="14" />
+      <rect x="3" y="4.5" width="10" height="4" rx="1.3" />
+      <rect x="8" y="10" width="13" height="4" rx="1.3" />
+      <rect x="3" y="15.5" width="7" height="4" rx="1.3" />
     </svg>
   );
 }
@@ -91,8 +90,8 @@ export function NoteIcon(props: SVGProps<SVGSVGElement>) {
 export function UndoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M7 7H15.5C18 7 20 9 20 11.5C20 14 18 16 15.5 16H10" />
-      <path d="M10.5 3.5L7 7L10.5 10.5" />
+      <path d="M5.2 9.5A7.5 7.5 0 1 1 6.8 16.6" />
+      <path d="M4.5 4.5v5h5" />
     </svg>
   );
 }
@@ -100,8 +99,8 @@ export function UndoIcon(props: SVGProps<SVGSVGElement>) {
 export function RedoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M17 7H8.5C6 7 4 9 4 11.5C4 14 6 16 8.5 16H14" />
-      <path d="M13.5 3.5L17 7L13.5 10.5" />
+      <path d="M18.8 9.5A7.5 7.5 0 1 0 17.2 16.6" />
+      <path d="M19.5 4.5v5h-5" />
     </svg>
   );
 }
@@ -116,13 +115,13 @@ export function MoreIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Microphone: capsule, one energy arc, stand. */
 export function MicIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <rect x="9" y="3" width="6" height="11" rx="3" />
-      <path d="M6 11a6 6 0 0 0 12 0" />
-      <line x1="12" y1="17" x2="12" y2="21" />
-      <line x1="8" y1="21" x2="16" y2="21" />
+      <rect x="8" y="3" width="6.5" height="11" rx="3.25" />
+      <path d="M17.6 6.6a4.6 4.6 0 0 1 0 5.8" />
+      <path d="M11.25 14v4.5M7.75 20.5h7" />
     </svg>
   );
 }
@@ -332,8 +331,9 @@ export function PlusIcon(props: SVGProps<SVGSVGElement>) {
 export function MetronomeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M9 3h6l4 18H5L9 3z" />
-      <line x1="12" y1="16" x2="17" y2="7" />
+      <path d="M9.6 3.5h4.8l4.4 17H5.2z" />
+      <path d="M12 16l4.2-7.4" />
+      <circle cx="16.6" cy="7.9" r="1.7" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -347,11 +347,12 @@ export function UploadFileIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Export / publish: rising out of the horizon. */
 export function CloudUploadIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1 0 9.5" />
-      <path d="M12 12v8M9 15l3-3 3 3" />
+      <path d="M12 15.5V3.5M7.5 8 12 3.5 16.5 8" />
+      <path d="M4 13.5a8 8 0 0 0 16 0" />
     </svg>
   );
 }
@@ -391,13 +392,14 @@ export function LoopIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** "Ai" + sparkle - BandLab's harmonize action icon. */
+/** Harmonize: stacked voices (three notes rising). */
 export function HarmonizeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <rect x="3" y="4" width="16" height="16" rx="3" />
-      <path d="M7 16l2.5-7 2.5 7M8 13.5h3M15 11v5" />
-      <path d="M20 2.5v3M18.5 4h3" />
+      <circle cx="7" cy="17" r="2.6" />
+      <circle cx="13" cy="12.5" r="2.6" />
+      <circle cx="19" cy="8" r="2.6" />
+      <path d="M9.6 17V5.5M15.6 12.5V5.5M21.6 8V4" opacity={0.7} />
     </svg>
   );
 }
@@ -479,23 +481,38 @@ export function ChevronUpIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 /** BandLab's "lyrics/notes" tab glyph: a quill. */
+/** Lyrics tab: lines of text and the reading point (teleprompter). */
 export function FeatherIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M20 4c-6 0-11 3.5-12.5 10.5L6.5 20" />
-      <path d="M20 4c0 6-3.5 10.5-10 11.5" />
-      <path d="M9 12.5h5.5M11 9.5h6" />
-      <path d="M4 20h4" />
+      <path d="M4 6h13M4 10.5h16M4 15h8" />
+      <circle cx="17" cy="17" r="3" />
+      <circle cx="17" cy="17" r="0.9" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-/** BandLab's settings tab glyph: a hexagon around a ring. */
+/** Settings tab: three horizontal sliders. */
 export function HexSettingsIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>
-      <path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z" />
-      <circle cx="12" cy="12" r="3" />
+      <path d="M4 7h16M4 12h16M4 17h16" />
+      <circle cx="9" cy="7" r="2.3" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="12" r="2.3" fill="currentColor" stroke="none" />
+      <circle cx="7" cy="17" r="2.3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** An effects chain: three nodes linked like a constellation - the app's
+ * mark for effects (replaces the "+Fx" text badge). */
+export function FxChainIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6.6 13.2 10.4 8.8M13.6 8.8l3.8 4.4" />
+      <circle cx="5" cy="15" r="2.3" />
+      <circle cx="12" cy="7" r="2.3" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="15" r="2.3" />
     </svg>
   );
 }

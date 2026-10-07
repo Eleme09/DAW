@@ -3,7 +3,7 @@
 import { useProjectStore } from "@/state/projectStore";
 import { fxChipLabel } from "@/lib/fx/catalog";
 import type { Track } from "@/types/project";
-import { MicIcon } from "../icons";
+import { FxChainIcon, MicIcon } from "../icons";
 import { TRACK_HEIGHT } from "./constants";
 
 /** Width of the name column once you swipe away from the start - just the
@@ -61,8 +61,8 @@ export function CompactTrackHeader({ track, width, collapsed, selected }: Compac
 
       {collapsed ? (
         track.inserts.length > 0 && (
-          <button onClick={openFx} title="Efectos" className="rounded-full px-1.5 text-[10px] font-bold italic text-ink" style={{ background: track.color }}>
-            Fx
+          <button onClick={openFx} title="Efectos" className="flex h-5 w-7 items-center justify-center rounded-full text-ink" style={{ background: track.color }}>
+            <FxChainIcon className="h-3.5 w-3.5" />
           </button>
         )
       ) : (
@@ -76,16 +76,8 @@ export function CompactTrackHeader({ track, width, collapsed, selected }: Compac
             className="mt-1 flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-bone"
             style={{ background: `${track.color}55` }}
           >
-            {firstFx ? (
-              <>
-                <span className="font-bold italic">Fx</span>
-                <span className="truncate">{fxChipLabel(track)}</span>
-              </>
-            ) : (
-              <span className="font-semibold">
-                + <span className="italic">Fx</span>
-              </span>
-            )}
+            <FxChainIcon className="h-3.5 w-3.5 shrink-0" />
+            {firstFx ? <span className="truncate">{fxChipLabel(track)}</span> : <span className="font-semibold">Efectos</span>}
           </button>
         </div>
       )}
