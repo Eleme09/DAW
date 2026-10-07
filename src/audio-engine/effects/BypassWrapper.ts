@@ -3,6 +3,10 @@ import { computeMeanSquare } from "../loudness";
 const SMOOTHING = 0.95; // same exponential-smoothing constant as Analyzer.tsx/LimiterPanel.tsx's loudness readouts
 const RAMP_SEC = 0.03; // click-free crossfade/compensation transition, inaudible but not instant (avoids zipper noise)
 const MAX_COMPENSATION_DB = 18; // clamp - an effect that goes near-silent (e.g. a closed gate) shouldn't demand an absurd boost to "match" it
+/** The level readings run this often, not every animation frame: with ~25
+ * effects that was ~3000 analyser reads a second on the phone's main thread,
+ * for a compensation gain that only matters at the moment of a bypass. */
+const TICK_MS = 80;
 const MEAN_SQUARE_FLOOR = 1e-9; // ~-90dB-ish; below this, treat as "no real signal yet" rather than computing a wild ratio
 
 /**
@@ -115,13 +119,22 @@ export class BypassWrapper {
     return Math.pow(10, clampedDb / 20);
   }
 
+  private lastTickAt = 0;
+
   tick(ctx: BaseAudioContext): void {
+    if (ctx.state !== "running") return;
+    const at = performance.now();
+    if (at - this.lastTickAt < TICK_MS) return;
+    // SMOOTHING was tuned for one reading per 60 Hz frame: same smoothing in time
+    const frames = this.lastTickAt === 0 ? 1 : Math.min(30, (at - this.lastTickAt) / (1000 / 60));
+    this.lastTickAt = at;
+    const smoothing = Math.pow(SMOOTHING, frames);
     this.dryAnalyser.getFloatTimeDomainData(this.dryTimeData);
     this.wetAnalyser.getFloatTimeDomainData(this.wetTimeData);
     const dryMs = computeMeanSquare(this.dryTimeData);
     const wetMs = computeMeanSquare(this.wetTimeData);
-    this.smoothedDryMs = SMOOTHING * this.smoothedDryMs + (1 - SMOOTHING) * dryMs;
-    this.smoothedWetMs = SMOOTHING * this.smoothedWetMs + (1 - SMOOTHING) * wetMs;
+    this.smoothedDryMs = smoothing * this.smoothedDryMs + (1 - smoothing) * dryMs;
+    this.smoothedWetMs = smoothing * this.smoothedWetMs + (1 - smoothing) * wetMs;
     // Keep the compensation current while bypassed too - the effect keeps
     // processing in the background even though it's inaudible, so its
     // loudness (and therefore the gap being corrected for) can keep

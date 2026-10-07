@@ -71,6 +71,7 @@ class PerfMonitor {
     setPerfLogOn(true);
     workletProfiler.setEnabled(true);
     this.timer = setInterval(() => this.tickAudio(), AUDIO_TICK_MS);
+    this.watchSystem();
     const frame = (t: number) => {
       if (this.lastFrame && document.visibilityState === "visible") {
         const dt = t - this.lastFrame;
@@ -86,6 +87,18 @@ class PerfMonitor {
       this.raf = requestAnimationFrame(frame);
     };
     this.raf = requestAnimationFrame(frame);
+  }
+
+  private systemWatched = false;
+
+  /** iOS's own word on the audio (interrupted by a call, Siri, another app...)
+   * and the page going to the background, in the event log. */
+  private watchSystem(): void {
+    if (this.systemWatched) return;
+    this.systemWatched = true;
+    document.addEventListener("visibilitychange", () => perfLog("estado", `página ${document.visibilityState}`));
+    const session = (navigator as unknown as { audioSession?: EventTarget & { state?: string } }).audioSession;
+    session?.addEventListener("statechange", () => perfLog("estado", `sesión de audio del sistema: ${session.state ?? "?"}`));
   }
 
   stop(): void {

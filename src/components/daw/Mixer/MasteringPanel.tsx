@@ -55,28 +55,42 @@ export function MasteringPanel() {
     [m.enabled, m.style, m.intensity, m.lowDb, m.midDb, m.highDb, m.target, tracks]
   );
 
+  // Never while the music plays or a take runs: on a phone this is a render
+  // of the whole session (13-18 s) and it takes the CPU the live audio needs
+  // (the cuts in a real report began with each style tap during playback).
+  // It waits for the stop and then measures.
+  const transportBusy = useProjectStore((s) => s.isPlaying || s.isRecording || s.isCountingIn);
+  const running = useRef(0);
+
   useEffect(() => {
     if (!m.enabled) return;
-    const id = ++run.current;
+    const id = ++run.current; // also makes any measurement already running stale
+    if (transportBusy) return;
+    const stillWanted = () => {
+      const s = useProjectStore.getState();
+      return run.current === id && !s.isPlaying && !s.isRecording && !s.isCountingIn;
+    };
     const timer = window.setTimeout(async () => {
+      running.current++;
       setMeasuring(true);
       setFailed(false);
       try {
         const project = useProjectStore.getState().project;
         const settings = project.mastering ?? createMasteringSettings();
-        const r = await measureMaster(project, settings, (sid) => getAudioEngine().getBuffer(sid), dryCache);
+        const r = await measureMaster(project, settings, (sid) => getAudioEngine().getBuffer(sid), dryCache, stillWanted);
         if (run.current !== id) return;
         if (r) setMastering(r);
-        else setFailed(true);
+        else if (stillWanted()) setFailed(true);
       } catch {
         if (run.current === id) setFailed(true);
       } finally {
-        if (run.current === id) setMeasuring(false);
+        running.current--;
+        if (running.current === 0) setMeasuring(false);
       }
     }, 700);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, transportBusy]);
 
   useEffect(() => {
     getAudioEngine().setMasteringCompare(comparing);
@@ -111,7 +125,7 @@ export function MasteringPanel() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-6">
-        <EnergyGauge m={m} target={target} color={color} measuring={measuring} failed={failed} />
+        <EnergyGauge m={m} target={target} color={color} measuring={measuring} failed={failed} waiting={transportBusy} />
 
         <div className="mt-2 flex gap-2">
           <button
@@ -213,7 +227,7 @@ export function MasteringPanel() {
 
 /** Loudness as energy: an arc from silence to the target, the mix's level
  * as a dim mark and the master's as the lit arc, with the numbers. */
-function EnergyGauge({ m, target, color, measuring, failed }: { m: MasteringSettings; target: number; color: string; measuring: boolean; failed: boolean }) {
+function EnergyGauge({ m, target, color, measuring, failed, waiting }: { m: MasteringSettings; target: number; color: string; measuring: boolean; failed: boolean; waiting: boolean }) {
   const lo = -30;
   const hi = -5;
   const frac = (l: number) => Math.min(1, Math.max(0, (l - lo) / (hi - lo)));
@@ -255,6 +269,8 @@ function EnergyGauge({ m, target, color, measuring, failed }: { m: MasteringSett
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-bone-3 border-t-transparent" />
             Escuchando la parte más fuerte de tu canción…
           </>
+        ) : waiting ? (
+          "Suena distinto al instante; el volumen se ajusta cuando pares."
         ) : failed ? (
           "No hay audio que medir todavía."
         ) : meas ? (

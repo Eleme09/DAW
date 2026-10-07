@@ -31,7 +31,7 @@ function buildReport(c: PerfCounters, project: Project): string {
     `Micrófono abierto ${s.micOpens} veces · tomas ${s.takes} · reproducciones ${s.plays}`,
     `Cambios de estado: ${s.stateChanges.join(", ") || "ninguno"}`,
     `Audio en memoria: ${s.buffers} archivos, ${s.bufferMB} MB`,
-    `Peso de la sesión (estimado con medidas de un computador): ${w.total} (${w.parts.map((p) => `${p.label} ${p.cost}`).join(", ")})`,
+    `Peso de la sesión (estimado con medidas de un computador; en el teléfono manda la CPU medida de abajo): ${w.total} (${w.parts.map((p) => `${p.label} ${p.cost}`).join(", ")})`,
     "CPU medida en este dispositivo (% de tiempo real ocupado por cada procesador; 100 = el hilo de audio entero):",
     ...(prof.groups.length
       ? [

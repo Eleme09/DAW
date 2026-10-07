@@ -121,7 +121,11 @@ const METRONOME_LOOKAHEAD_SEC = 0.1;
 const METRONOME_INTERVAL_MS = 25;
 /** How long the context stays up after the last sound before it is
  * suspended and the phone's audio handed back. */
-const IDLE_RELEASE_MS = 2500;
+/** How long after the last sound the audio is given back to the phone
+ * (context suspended, mic closed). Each suspend/resume cost ~0.9 s of frozen
+ * screen on a real iPhone with a session of ~20 audio processors (measured),
+ * and stop -> rewind -> play often takes more than a few seconds. */
+const IDLE_RELEASE_MS = 15000;
 const RECORDER_WORKLET_URL = "/worklets/recorder-processor.js";
 const NOISE_GATE_WORKLET_URL = "/worklets/noise-gate-processor.js";
 const PITCH_CORRECTION_WORKLET_URL = "/worklets/realtime-pitch-processor.js";

@@ -102,30 +102,63 @@ export function dryMixKey(project: Project): string {
   return JSON.stringify([project.tracks, project.buses, project.masterInserts]);
 }
 
+/** The dry render being made right now. A phone takes 13-18 s for it, and
+ * every style tap used to start another one before the first was done (six
+ * at once in a real report, starving the live audio): only one runs, the
+ * others wait for it and take its result. */
+let dryInFlight: { key: string; promise: Promise<DryMixCache | null> } | null = null;
+
+async function dryMix(
+  project: Project,
+  getBuffer: (id: string) => AudioBuffer | undefined,
+  cache?: { current: DryMixCache | null }
+): Promise<DryMixCache | null> {
+  const key = dryMixKey(project);
+  for (;;) {
+    if (cache?.current && cache.current.key === key) return cache.current;
+    const flying = dryInFlight;
+    if (!flying) break;
+    if (flying.key === key) return flying.promise;
+    await flying.promise.catch(() => null); // a different session state: after it, never beside it
+  }
+  const promise = (async (): Promise<DryMixCache | null> => {
+    const [w0, w1] = loudestWindow(project, getBuffer);
+    const dry = await bounceProject({ ...cropProject(project, w0, w1), mastering: undefined }, getBuffer);
+    const mixLufs = stereoLufs(dry);
+    if (mixLufs === null || mixLufs < -70) return null;
+    const entry = { key, dry, mixLufs };
+    if (cache) cache.current = entry;
+    return entry;
+  })();
+  const holder = { key, promise };
+  dryInFlight = holder;
+  void promise
+    .finally(() => {
+      if (dryInFlight === holder) dryInFlight = null;
+    })
+    .catch(() => undefined);
+  return promise;
+}
+
 /**
  * Sets the mastering's input gain (so the mix enters at MIX_REF_LUFS) and
  * the limiter push (so the loudest part lands on the target), by rendering
  * the loudest 12 s offline: the session once without mastering (reused from
- * `cache` while the session is the same), then that mix through the master
- * alone: once without push, once with the estimated push, and up to two
- * corrections while it misses by 0.3 LU or more. Null when nothing sounds.
+ * `cache` while the session is the same, and shared between callers while it
+ * renders), then that mix through the master alone: once without push, once
+ * with the estimated push, and up to two corrections while it misses by 0.3
+ * LU or more. Null when nothing sounds, or when `isCurrent()` turns false
+ * (the caller moved on or the music started: no further render is begun).
  */
 export async function measureMaster(
   project: Project,
   settings: MasteringSettings,
   getBuffer: (id: string) => AudioBuffer | undefined,
-  cache?: { current: DryMixCache | null }
+  cache?: { current: DryMixCache | null },
+  isCurrent: () => boolean = () => true
 ): Promise<MasterMeasurement | null> {
-  const key = dryMixKey(project);
-  let entry = cache?.current && cache.current.key === key ? cache.current : null;
-  if (!entry) {
-    const [w0, w1] = loudestWindow(project, getBuffer);
-    const dry = await bounceProject({ ...cropProject(project, w0, w1), mastering: undefined }, getBuffer);
-    const mixLufs = stereoLufs(dry);
-    if (mixLufs === null || mixLufs < -70) return null;
-    entry = { key, dry, mixLufs };
-    if (cache) cache.current = entry;
-  }
+  const entry = await dryMix(project, getBuffer, cache);
+  if (!entry || !isCurrent()) return null;
   const { dry, mixLufs } = entry;
   const inputGainDb = Math.round((MIX_REF_LUFS - mixLufs) * 10) / 10;
   const target = targetLufsOf(settings);
@@ -136,6 +169,7 @@ export async function measureMaster(
   // 1) no push: the loudness the chain itself leaves (styles differ by
   //    several LU - a saturated one comes out louder)
   const pre = await render(0);
+  if (!isCurrent()) return null;
   // 2) push by the gap, plus what the limiter keeps for itself (calibrated
   //    on real songs: ~12 % of the push near the targets)
   let driveDb = Math.min(24, Math.max(0, (target - pre.lufs) * 1.12));
@@ -147,6 +181,7 @@ export async function measureMaster(
   let last = pre;
   let lastDrive = 0;
   for (let i = 0; i < 2; i++) {
+    if (!isCurrent()) return null;
     const err = target - out.lufs;
     if (Math.abs(err) < (i === 0 ? 0.3 : 0.4) || out.lufs - last.lufs < 0.3) break;
     const slope = ((driveDb - lastDrive) / (out.lufs - last.lufs)) * 1.25;
@@ -155,6 +190,7 @@ export async function measureMaster(
     driveDb = Math.min(24, Math.max(0, driveDb + err * Math.min(4, slope)));
     out = await render(driveDb);
   }
+  if (!isCurrent()) return null;
   return {
     inputGainDb,
     driveDb: Math.round(driveDb * 10) / 10,

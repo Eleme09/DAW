@@ -1458,3 +1458,24 @@ Datos tal como llegaron (10 min, solo reproducir: 0 aperturas de micrófono, 0 t
   - Medido (voz sola, reverb 30 %): el nivel de la voz seca no cambia (0.2265 → 0.2280 con la cola), el bypass da exactamente el seco, la cola suena después de que acaba la voz; delay 30 % suma ecos.
   - Los presets se ajustaron con la mezcla en serie: ahora la voz seca queda hasta ≈ 1.5 dB más fuerte en los que tienen mezcla alta. No re-medí los 25 presets.
   - Siguen en serie los que cambian la voz misma: EQ, compresor, de-esser, saturación, limitador, clipper, puerta, pitch shifter, vocoder y Núcleo. Chorus, flanger y exciter también, aunque podrían ser paralelos; no los convertí.
+
+## Segundo informe del iPhone (4 min, con la medición nueva)
+
+Datos: 182 s de audio, 58 atrasos (14.1 s perdidos, el peor 1415 ms), 11 congelamientos (el peor 1236 ms); suma de procesadores **9.8 %** (Núcleo 1–4 % por pista, compresores/limitadores 1.9 % con 13 nodos, puertas 0.1 %); 9 archivos, 208 MB en memoria.
+
+**Lo que dicen**
+- **Mi hipótesis anterior era falsa**: el hilo de audio del iPhone NO está sobrecargado por los procesadores (9.8 %). El «peso de la sesión» (67 %) viene de medidas de un computador y no sirve para predecir el teléfono. Ya no es lo que manda en el informe.
+- **Los cortes largos salen de los renders de Masterizar.** Cada toque a un estilo lanzaba un render de toda la sesión (13–18 s en el iPhone). Como el resultado se guardaba al terminar, tocar un estilo cada ~1.5 s dejaba hasta seis renders a la vez, aun con la música sonando, y los cortes (100–300 ms, uno tras otro) duran mientras hay «render offline» y siguen aunque ya estuviera parado. Los cortes sin ningún trabajo activo fueron pocos y cortos (77–131 ms al arrancar la reproducción).
+- **Los congelamientos de ~0.9 s coinciden con suspender/reanudar el audio** (estado `suspended` → `running` en el mismo segundo, o una pausa seguida de la suspensión). Dos veces con la música sonando y sin acción del usuario (a los 6 s exactos una de otra, patrón que también se ve en el primer informe); no sé qué los provoca: puede ser iOS (su comentario en el código ya anota que suspende por su cuenta) o la presión de memoria. Se anotan ahora el estado de la sesión de audio del sistema y la visibilidad de la página para saberlo.
+
+**Cambios**
+- Masterizar **no mide mientras suena o graba**: el estilo suena al instante y el volumen se ajusta al parar («Suena distinto al instante; el volumen se ajusta cuando pares.»). Si empieza la reproducción durante una medición, no se lanzan más renders (el que ya corre termina).
+- El render de la sesión se hace **una sola vez** aunque se pida muchas veces (`dryMix` en `measureMaster.ts`: los que llegan esperan el resultado; si cambió la sesión, espera a que acabe el anterior, nunca dos a la vez). Probado en Chromium: con la música sonando y 4 toques de estilo, 0 renders; al pausar, la medición corre una vez (3 contextos: sesión + 2 pasadas del máster). Pruebas nuevas en `measureMaster.test.ts` (4).
+- El audio se devuelve al teléfono a los **15 s** de reposo (antes 2.5 s): cada suspender/reanudar costó ~0.9 s de pantalla congelada en el iPhone con esta sesión. Contra: si dejas la app 15 s parada, otras apps siguen sin poder usar el audio durante ese rato. No medido el efecto en el iPhone.
+- Las lecturas de nivel de cada efecto (para compensar el bypass) corrían en **cada cuadro** de pantalla: ~25 efectos × 2 lecturas × 60 por segundo en el hilo principal. Ahora cada ~80 ms (con el mismo suavizado en tiempo) y nada con el audio suspendido.
+- El informe ahora muestra la visibilidad de la página y el estado de la sesión de audio de iOS.
+
+**No verificado / pendiente**
+- Nada de esto se ha probado en el iPhone; falta un tercer informe con la misma sesión.
+- Memoria: 208 MB de audio decodificado (9 archivos, estéreo en float32). Si iOS recorta la página por memoria, explicaría las suspensiones; no lo sé. Convertir a mono lo que sea mono o liberar lo que no se usa reduciría esto; sin hacer.
+- Renderizar en vivo en el iPhone sigue siendo caro (13–18 s); con esto solo ocurre en reposo.
