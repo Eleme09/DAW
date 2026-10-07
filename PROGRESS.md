@@ -1341,7 +1341,12 @@ Material del usuario: canción completa (beat + 2 voces sin efectos, grabadas co
   - «Más» abre una cuadrícula de 4×2 en vez de la lista de BandLab.
   - Iconos propios con el lenguaje de «regiones en carriles»: borrar (región que se desvanece con una ×), copiar (región y su copia en el carril de abajo), dividir (región partida por el cursor), loop (región que se repite), desplazar, ganancia (región y su fader), normalizar (picos hasta el techo), estirar, fades (la misma curva de las regiones), quitar ruido, al revés. El mezclador usa faders con tapa; «más» es una cuadrícula de cuatro puntos.
   - Nombres que eran traducción literal de BandLab: Cambio → Desplazar, Expansión de tiempo → Estirar, Fade → Fades, Eliminación de ruido → Quitar ruido, Revertir → Al revés, «Éxito» → «Listo».
-- Verificado: `tsc`, `eslint`, `vitest` (420), `next build`, Chromium 390×844 (barra, cuadrícula y panel «Desplazar») sin errores.
-- **No verificado / pendiente**:
-  - El panel inferior de edición (deslizador blanco, ▶ · nombre · ✓) sigue con el diseño de BandLab.
-  - Nadie lo vio en un iPhone.
+- **Panel inferior de edición rehecho** (antes: deslizador morado con bolita blanca y fila ▶ · nombre · ✓, igual que BandLab):
+  - arriba el icono de la acción en el color de la región, su nombre y el valor;
+  - deslizadores tipo fader de consola (tapa rectangular, relleno en el color de la región, marcas debajo; Transponer marca cada semitono);
+  - Fades dibuja la región con sus curvas y una tapa en cada extremo, y muestra «Entrada x s · Salida y s»;
+  - Estirar y Loop son selectores segmentados (½ × · 1 × · 2 ×; 4 × · 8 × · 16 × · Sin loop) en vez de la lista desplegable;
+  - abajo «Escuchar» y «Listo» (si se aplica en vivo) o «Aplicar» (si genera audio); mientras procesa, barra de progreso y «Cancelar»;
+  - las voces de Armonizar usan el color de Coros de Núcleo, no el morado de BandLab.
+- Verificado: `tsc`, `eslint`, `vitest` (420), `next build`, Chromium 390×844: barra, cuadrícula y los 7 paneles (Desplazar, Ganancia, Fades, Transponer, Estirar, Loop, Armonizar) abren, se mueven y cierran sin errores.
+- **No verificado**: nadie lo vio en un iPhone; el arrastre de los faders se probó con ratón emulado, no con el dedo.

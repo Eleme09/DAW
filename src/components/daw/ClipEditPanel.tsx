@@ -14,7 +14,7 @@ import { isAbortError } from "@/lib/audio/clipWorkerClient";
 import type { AudioClip } from "@/types/project";
 import type { PitchFrame, ScaleName } from "@/types/pitch";
 import { Picker } from "./ui/Picker";
-import { PlayIcon, PauseIcon, CloseIcon } from "./icons";
+import { PlayIcon, PauseIcon, ShiftIcon, GainIcon, TransposeIcon, StretchIcon, FadeIcon, LoopIcon, HarmonizeIcon } from "./icons";
 
 const SHIFT_MS = 300;
 const GAIN_RANGE_DB = 24;
@@ -46,16 +46,34 @@ const TITLES = {
   harmonize: "Armonizar",
 } as const;
 
+const MODE_ICONS = {
+  shift: ShiftIcon,
+  gain: GainIcon,
+  transpose: TransposeIcon,
+  stretch: StretchIcon,
+  fade: FadeIcon,
+  loop: LoopIcon,
+  harmonize: HarmonizeIcon,
+} as const;
+
+/** These render new audio on "Aplicar"; the rest apply live as you move them. */
+const RENDERED = new Set(["transpose", "stretch", "harmonize"]);
+
+/** Choir colour of Núcleo - the harmony voices share it. */
+const VOICE_COLOR = "#a98bff";
+
 /**
- * BandLab's bottom panel for a valued region action (user's screen
- * recordings): value on top, a slider (purple fill from zero, white thumb),
- * and a row ▶ · name · ✓. It replaces the transport while open. Shift, Gain,
- * Fade and Loop apply live as you move them; Transpose, Time-stretch and
- * Harmonize render audio when you press ✓. Undo reverts any of them.
+ * The bottom panel for a valued region action: the action's icon and name
+ * with its value, the control, and "Escuchar" / "Listo" (or "Aplicar" when
+ * it renders audio). It replaces the transport while open. Desplazar,
+ * Ganancia, Fades and Loop apply live as you move them; Transponer, Estirar
+ * and Armonizar render audio on "Aplicar". Undo reverts any of them.
+ * Sliders are faders in the region's colour (a cap, not a dot); Fades draws
+ * the region's own fade curves.
  *
  * The rendering runs in a Web Worker (clipWorker.ts): the screen never
- * freezes, the ✓ turns into a ✕ that really stops it, and closing the panel
- * stops it too.
+ * freezes, "Aplicar" turns into "Cancelar" that really stops it, and
+ * closing the panel stops it too.
  */
 export function ClipEditPanel() {
   const mode = useProjectStore((s) => s.clipEditMode);
@@ -77,7 +95,6 @@ function PanelBody({ clip }: { clip: AudioClip }) {
   const [baseStart] = useState(clip.startTime);
   const [semitones, setSemitones] = useState(0);
   const [speed, setSpeed] = useState<number>(1);
-  const [speedListOpen, setSpeedListOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -147,16 +164,16 @@ function PanelBody({ clip }: { clip: AudioClip }) {
       if (mode === "transpose" && semitones !== 0) {
         setBusy(true);
         update(await transposeClip(clip, semitones, job));
-        s.showToast("Éxito");
+        s.showToast("Listo");
       } else if (mode === "stretch" && speed !== 1) {
         setBusy(true);
         update(await stretchClip(clip, speed, job));
-        s.showToast("Éxito");
+        s.showToast("Listo");
       } else if (mode === "harmonize") {
         if (!key || voices.length === 0) return;
         setBusy(true);
         await createHarmonyTracks(clip, key, voices, humanize, { ...job, frames: melodyFrames.current });
-        s.showToast(`Éxito: ${voices.length} ${voices.length === 1 ? "voz creada" : "voces creadas"}`);
+        s.showToast(`Listo: ${voices.length} ${voices.length === 1 ? "voz creada" : "voces creadas"}`);
       }
       close();
     } catch (err) {
@@ -180,20 +197,35 @@ function PanelBody({ clip }: { clip: AudioClip }) {
         max={SHIFT_MS}
         value={ms}
         bipolar
+        color={clip.color}
         onChange={(v) => update({ startTime: Math.max(0, baseStart + Math.round(v) / 1000) })}
       />
     );
   } else if (mode === "gain") {
     value = `${clip.gainDb >= 0 ? "+" : ""}${clip.gainDb.toFixed(1)} dB`;
     control = (
-      <EditSlider min={-GAIN_RANGE_DB} max={GAIN_RANGE_DB} value={clip.gainDb} bipolar onChange={(v) => update({ gainDb: Math.round(v * 10) / 10 })} />
+      <EditSlider min={-GAIN_RANGE_DB} max={GAIN_RANGE_DB} value={clip.gainDb} bipolar color={clip.color} onChange={(v) => update({ gainDb: Math.round(v * 10) / 10 })} />
     );
   } else if (mode === "transpose") {
     value = semitones === 0 ? "±0 semitonos" : `${semitones > 0 ? "+" : ""}${semitones} semitonos`;
-    control = <EditSlider min={-TRANSPOSE_RANGE} max={TRANSPOSE_RANGE} value={semitones} bipolar onChange={(v) => setSemitones(Math.round(v))} />;
+    control = (
+      <EditSlider min={-TRANSPOSE_RANGE} max={TRANSPOSE_RANGE} value={semitones} bipolar steps={TRANSPOSE_RANGE * 2} color={clip.color} onChange={(v) => setSemitones(Math.round(v))} />
+    );
+  } else if (mode === "stretch") {
+    value = speed === 1 ? "Velocidad original" : `${speed} × · ${speed < 1 ? "más lento" : "más rápido"}`;
+    control = (
+      <Segmented
+        options={STRETCH_OPTIONS.map((o) => ({ value: o, label: o === 0.5 ? "½ ×" : `${o} ×` }))}
+        value={speed}
+        color={clip.color}
+        onChange={setSpeed}
+      />
+    );
   } else if (mode === "fade") {
+    value = `Entrada ${clip.fadeInSec.toFixed(2)} s · Salida ${clip.fadeOutSec.toFixed(2)} s`;
     control = (
       <FadeSlider
+        color={clip.color}
         duration={clip.duration}
         fadeIn={clip.fadeInSec}
         fadeOut={clip.fadeOutSec}
@@ -205,27 +237,19 @@ function PanelBody({ clip }: { clip: AudioClip }) {
     const count = loopLength ? Math.round(clip.duration / loopLength) : 0;
     value = loopLength ? `${count} veces` : "Sin loop";
     control = (
-      <div className="flex justify-center gap-2 py-2">
-        {LOOP_OPTIONS.map((n) => (
-          <button
-            key={n}
-            onClick={() => {
-              const len = loopLength ?? clip.duration;
-              update({ loopLengthSec: len, duration: len * n, fadeOutSec: 0 });
-            }}
-            className={`h-11 w-16 rounded-full text-sm font-semibold ${count === n ? "bg-bone text-ink" : "bg-surf-2 text-bone"}`}
-          >
-            {n}
-          </button>
-        ))}
-        <button
-          onClick={() => loopLength && update({ duration: loopLength, loopLengthSec: undefined })}
-          disabled={!loopLength}
-          className="h-11 rounded-full bg-surf-2 px-4 text-sm font-semibold text-bone disabled:opacity-30"
-        >
-          Desactivar
-        </button>
-      </div>
+      <Segmented
+        options={[...LOOP_OPTIONS.map((n) => ({ value: n as number, label: `${n} ×` })), { value: 0, label: "Sin loop" }]}
+        value={count}
+        color={clip.color}
+        onChange={(n) => {
+          if (n === 0) {
+            if (loopLength) update({ duration: loopLength, loopLengthSec: undefined });
+            return;
+          }
+          const len = loopLength ?? clip.duration;
+          update({ loopLengthSec: len, duration: len * n, fadeOutSec: 0 });
+        }}
+      />
     );
   } else if (mode === "harmonize") {
     control = (
@@ -256,7 +280,8 @@ function PanelBody({ clip }: { clip: AudioClip }) {
               <button
                 key={v.steps}
                 onClick={() => setVoices((cur) => (on ? cur.filter((x) => x !== v.steps) : [...cur, v.steps]))}
-                className={`h-9 rounded-full px-3 text-xs font-semibold ${on ? "bg-[#a855f7] text-white" : "bg-surf-2 text-bone-2"}`}
+                className={`h-9 rounded-lg border px-3 text-xs font-semibold ${on ? "text-ink" : "border-white/10 bg-white/[0.04] text-bone-2"}`}
+                style={on ? { background: VOICE_COLOR, borderColor: VOICE_COLOR } : undefined}
               >
                 {v.label}
               </button>
@@ -264,60 +289,62 @@ function PanelBody({ clip }: { clip: AudioClip }) {
           })}
         </div>
         <label className="flex items-center gap-2 text-xs text-bone-2">
-          <input type="checkbox" checked={humanize} onChange={(e) => setHumanize(e.target.checked)} className="h-4 w-4 accent-[#a855f7]" />
+          <input type="checkbox" checked={humanize} onChange={(e) => setHumanize(e.target.checked)} className="h-4 w-4" style={{ accentColor: VOICE_COLOR }} />
           Humanizar (cada voz un poco desafinada y retrasada, como un coro real)
         </label>
       </div>
     );
   }
 
+  const ModeIcon = MODE_ICONS[mode];
+  const renders = RENDERED.has(mode);
+  const applyDisabled = mode === "harmonize" && (!key || voices.length === 0);
+
   return (
-    <div data-keep-region="" className="shrink-0 border-t border-line bg-ink px-4 pt-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}>
-      {value && <div className="text-center text-xs tabular-nums text-bone-3">{value}</div>}
+    <div
+      data-keep-region=""
+      className="shrink-0 border-t border-white/10 bg-[#0f1013] px-4 pt-3"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
+    >
+      <div className="mb-1 flex items-center gap-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${clip.color}26`, color: clip.color }}>
+          <ModeIcon className="h-[18px] w-[18px]" />
+        </span>
+        <span className="text-sm font-semibold text-bone">{TITLES[mode]}</span>
+        <span className="ml-auto truncate pl-2 text-right text-xs tabular-nums text-bone-2">{value}</span>
+      </div>
       {control}
       {error && <p className="pb-1 text-xs text-red-400">{error}</p>}
-      <div className="relative flex h-12 items-center justify-between">
-        <button onClick={togglePreview} aria-label={isPlaying ? "Pausar" : "Escuchar"} className="flex h-11 w-11 items-center justify-center text-bone">
-          {isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
+      {busy && (
+        <div className="mb-1 h-1 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full rounded-full transition-[width]" style={{ width: `${Math.round((progress ?? 0.05) * 100)}%`, background: clip.color }} />
+        </div>
+      )}
+      <div className="flex h-14 items-center gap-2">
+        <button
+          onClick={togglePreview}
+          aria-label={isPlaying ? "Pausar" : "Escuchar"}
+          className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-bone"
+        >
+          {isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+          {isPlaying ? "Pausar" : "Escuchar"}
         </button>
-        {mode === "stretch" && (
-          <div className="absolute left-12">
-            <button onClick={() => setSpeedListOpen((o) => !o)} className="h-10 rounded-lg bg-surf-2 px-3 text-xs font-semibold text-bone">
-              {speed.toFixed(2)}x
-            </button>
-            {speedListOpen && (
-              <div className="absolute bottom-12 left-0 overflow-hidden rounded-lg bg-surf-2 shadow-xl">
-                {STRETCH_OPTIONS.map((o) => (
-                  <button
-                    key={o}
-                    onClick={() => {
-                      setSpeed(o);
-                      setSpeedListOpen(false);
-                    }}
-                    className={`block h-10 w-20 text-xs font-semibold ${speed === o ? "bg-surf-3 text-bone" : "text-bone-2"}`}
-                  >
-                    {o.toFixed(2)}x
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <span className="text-sm font-medium tabular-nums text-bone">
-          {busy ? `Procesando…${progress !== null ? ` ${Math.round(progress * 100)} %` : ""}` : TITLES[mode]}
+        <span className="flex-1 text-center text-xs tabular-nums text-bone-3">
+          {busy ? `Procesando…${progress !== null ? ` ${Math.round(progress * 100)} %` : ""}` : ""}
         </span>
         {busy ? (
-          <button onClick={cancelJob} aria-label="Cancelar" title="Cancelar" className="flex h-11 w-11 items-center justify-center text-bone">
-            <CloseIcon className="h-6 w-6" />
+          <button onClick={cancelJob} aria-label="Cancelar" title="Cancelar" className="h-11 rounded-xl border border-white/15 px-5 text-sm font-semibold text-bone">
+            Cancelar
           </button>
         ) : (
           <button
             onClick={() => void confirm()}
-            disabled={mode === "harmonize" && (!key || voices.length === 0)}
+            disabled={applyDisabled}
             aria-label="Aplicar"
-            className="flex h-11 w-11 items-center justify-center text-bone disabled:opacity-30"
+            className="h-11 rounded-xl px-5 text-sm font-semibold text-ink disabled:opacity-30"
+            style={{ background: clip.color }}
           >
-            <CheckIcon className="h-6 w-6" />
+            {renders ? "Aplicar" : "Listo"}
           </button>
         )}
       </div>
@@ -360,32 +387,31 @@ async function createHarmonyTracks(
   });
 }
 
-function CheckIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
-
 function valueFromPointer(e: React.PointerEvent, el: HTMLElement, min: number, max: number) {
   const rect = el.getBoundingClientRect();
   const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
   return min + pct * (max - min);
 }
 
+/** A fader in the region's colour: track, fill from zero (or the left
+ * end), a cap you grab, tick marks; double tap resets. */
 function EditSlider({
   min,
   max,
   value,
   onChange,
+  color,
   bipolar = false,
+  steps = 8,
 }: {
   min: number;
   max: number;
   value: number;
   onChange: (v: number) => void;
+  color: string;
   bipolar?: boolean;
+  /** Number of tick intervals drawn under the track. */
+  steps?: number;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -403,34 +429,83 @@ function EditSlider({
       onPointerUp={() => (dragging.current = false)}
       onDoubleClick={() => onChange(bipolar ? 0 : min)}
       style={{ touchAction: "none" }}
-      className="relative h-11 w-full cursor-pointer select-none"
+      className="relative h-12 w-full cursor-pointer select-none"
     >
-      <div className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 bg-white/20" />
-      <div
-        className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-[#a855f7]"
-        style={{ left: `${Math.min(pct, zeroPct)}%`, width: `${Math.abs(pct - zeroPct)}%` }}
-      />
-      <div className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow" style={{ left: `calc(${pct}% - 12px)` }} />
+      <div className="absolute inset-x-0 top-[18px] h-1.5 rounded-full bg-white/10" />
+      <div className="absolute top-[18px] h-1.5 rounded-full" style={{ left: `${Math.min(pct, zeroPct)}%`, width: `${Math.abs(pct - zeroPct)}%`, background: color }} />
+      <div className="pointer-events-none absolute inset-x-0 top-[32px] flex justify-between">
+        {Array.from({ length: steps + 1 }, (_, i) => (
+          <span key={i} className={`w-px ${bipolar && i === steps / 2 ? "h-2.5 bg-white/50" : "h-1.5 bg-white/20"}`} />
+        ))}
+      </div>
+      <FaderCap pct={pct} />
     </div>
   );
 }
 
-/** Two thumbs: left = fade-in length from the start, right = fade-out from the end. */
+/** The grabbable cap of a fader (a console fader's, not a round dot). */
+function FaderCap({ pct }: { pct: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute top-[9px] h-6 w-3.5 rounded-[4px] border border-black/30 bg-[#f4f3ee] shadow-[0_2px_6px_rgba(0,0,0,.5)]"
+      style={{ left: `calc(${pct}% - 7px)` }}
+    >
+      <span className="absolute inset-x-[3px] top-1/2 h-px -translate-y-1/2 bg-black/40" />
+    </div>
+  );
+}
+
+/** A row of choices in the region's colour. */
+function Segmented<T extends number>({
+  options,
+  value,
+  onChange,
+  color,
+}: {
+  options: { value: T; label: string }[];
+  value: number;
+  onChange: (v: T) => void;
+  color: string;
+}) {
+  return (
+    <div className="my-2 flex gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={`h-10 flex-1 rounded-lg text-sm font-semibold tabular-nums ${on ? "text-ink" : "text-bone-2"}`}
+            style={on ? { background: color } : undefined}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The region's fades drawn as on the region (curve over the body), with a
+ * cap at each end to pull: left = fade-in length, right = fade-out. */
 function FadeSlider({
   duration,
   fadeIn,
   fadeOut,
   onChange,
+  color,
 }: {
   duration: number;
   fadeIn: number;
   fadeOut: number;
   onChange: (fadeIn: number, fadeOut: number) => void;
+  color: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const active = useRef<"in" | "out" | null>(null);
   const inPct = (fadeIn / duration) * 100;
   const outPct = 100 - (fadeOut / duration) * 100;
+  const H = 40;
 
   function move(e: React.PointerEvent) {
     if (!active.current || !ref.current) return;
@@ -450,13 +525,21 @@ function FadeSlider({
       }}
       onPointerMove={move}
       onPointerUp={() => (active.current = null)}
-      style={{ touchAction: "none" }}
-      className="relative mt-2 h-11 w-full select-none"
+      style={{ touchAction: "none", height: H + 8 }}
+      className="relative my-1 w-full select-none"
     >
-      <div className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 bg-white/20" />
-      <div className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-[#a855f7]" style={{ left: `${inPct}%`, width: `${Math.max(0, outPct - inPct)}%` }} />
-      <div className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow" style={{ left: `calc(${inPct}% - 12px)` }} />
-      <div className="absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-white shadow" style={{ left: `calc(${outPct}% - 12px)` }} />
+      <svg className="pointer-events-none absolute inset-x-0 top-1" width="100%" height={H} viewBox={`0 0 100 ${H}`} preserveAspectRatio="none">
+        <rect x={0} y={0} width={100} height={H} fill={`${color}2e`} stroke={`${color}b3`} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        <path
+          d={`M0 ${H} Q${inPct * 0.35} ${H * 0.15} ${inPct} 0 L${outPct} 0 Q${100 - (100 - outPct) * 0.35} ${H * 0.15} 100 ${H}`}
+          fill="none"
+          stroke={color}
+          strokeWidth={2}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <FaderCap pct={inPct} />
+      <FaderCap pct={outPct} />
     </div>
   );
 }
