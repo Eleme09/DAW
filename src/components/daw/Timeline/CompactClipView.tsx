@@ -313,8 +313,14 @@ export function CompactClipView({
       <div className="absolute inset-0 overflow-hidden rounded-[3px]">
         {/* name strip (Pro Tools-style clip header): name, clip gain, loop */}
         <div
-          className="absolute inset-x-0 top-0 flex items-center gap-1 overflow-hidden px-1.5 text-[10px] font-semibold leading-none"
-          style={{ height: STRIP_PX, background: selected ? "#f4f3ee" : `${color}e6`, color: "#0b0c0f" }}
+          className="absolute inset-x-0 top-0 flex items-center gap-1 overflow-hidden pr-1.5 text-[10px] font-semibold leading-none"
+          style={{
+            height: STRIP_PX,
+            background: selected ? "#f4f3ee" : `${color}e6`,
+            color: "#0b0c0f",
+            // a region that starts off-screen keeps its name at the visible edge
+            paddingLeft: `calc(6px + clamp(0px, var(--lane-left, 0px) - ${clip.startTime * pps}px, ${Math.max(0, width - 70)}px))`,
+          }}
         >
           {width > 34 && <span className="min-w-0 flex-1 truncate">{clip.name}</span>}
           {width > 70 && clip.gainDb !== 0 && <span className="shrink-0 tabular-nums opacity-75">{`${clip.gainDb > 0 ? "+" : ""}${clip.gainDb.toFixed(1)} dB`}</span>}

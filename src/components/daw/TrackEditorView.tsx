@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { denoiseClip } from "@/lib/audio/clipProcessing";
+import { isAbortError } from "@/lib/audio/clipWorkerClient";
 import { Timeline } from "./Timeline/Timeline";
 import { BottomSheet } from "./BottomSheet";
 import { VozPanel } from "./VozPanel/VozPanel";
@@ -23,6 +24,9 @@ export function TrackEditorView({ onTuning }: { onTuning: () => void }) {
   const [takesOpen, setTakesOpen] = useState(false);
   const [chainOpen, setChainOpen] = useState(false);
   const [cleaning, setCleaning] = useState(false);
+  const cleanAbort = useRef<AbortController | null>(null);
+  // leaving the editor stops a running clean-up instead of finishing it unseen
+  useEffect(() => () => cleanAbort.current?.abort(), []);
 
   // Take groups on this track: regions recorded on top of each other.
   const takeGroups = useMemo(() => {
@@ -44,21 +48,28 @@ export function TrackEditorView({ onTuning }: { onTuning: () => void }) {
   }
 
   async function cleanVoice() {
-    if (!track || cleaning) return;
+    if (cleaning) {
+      cleanAbort.current?.abort();
+      return;
+    }
+    if (!track) return;
     const clips = track.clips.filter((c) => !c.muted);
     if (clips.length === 0) return useProjectStore.getState().showToast("Esta pista no tiene audio todavía");
+    const controller = new AbortController();
+    cleanAbort.current = controller;
     setCleaning(true);
-    const s = useProjectStore.getState();
-    s.showToast("Limpiando la voz…");
+    useProjectStore.getState().showToast("Limpiando la voz…");
     try {
-      for (const clip of clips) {
-        const patch = await denoiseClip(clip);
-        useProjectStore.getState().updateClip(clip.trackId, clip.id, patch);
-      }
+      // every clip is processed first and applied together: cancelling in the
+      // middle leaves the track exactly as it was
+      const patches: { clip: (typeof clips)[number]; patch: Awaited<ReturnType<typeof denoiseClip>> }[] = [];
+      for (const clip of clips) patches.push({ clip, patch: await denoiseClip(clip, { signal: controller.signal }) });
+      for (const { clip, patch } of patches) useProjectStore.getState().updateClip(clip.trackId, clip.id, patch);
       useProjectStore.getState().showToast("Éxito");
     } catch (err) {
-      useProjectStore.getState().showToast(err instanceof Error ? err.message : "No se pudo limpiar");
+      useProjectStore.getState().showToast(isAbortError(err) ? "Cancelado" : err instanceof Error ? err.message : "No se pudo limpiar");
     } finally {
+      cleanAbort.current = null;
       setCleaning(false);
     }
   }
@@ -96,8 +107,8 @@ export function TrackEditorView({ onTuning }: { onTuning: () => void }) {
         <button onClick={onTuning} className={chip}>
           <TuneIcon className="h-4 w-4" /> Núcleo
         </button>
-        <button onClick={() => void cleanVoice()} disabled={cleaning} className={chip}>
-          <DenoiseIcon className="h-4 w-4" /> {cleaning ? "Limpiando…" : "Limpiador de voz"}
+        <button onClick={() => void cleanVoice()} aria-label={cleaning ? "Cancelar limpieza" : "Limpiador de voz"} className={chip}>
+          <DenoiseIcon className="h-4 w-4" /> {cleaning ? "Cancelar" : "Limpiador de voz"}
         </button>
         <button onClick={() => setChainOpen(true)} className={chip}>
           <KnobIcon className="h-4 w-4" /> Cadena de voz

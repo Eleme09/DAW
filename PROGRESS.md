@@ -1519,3 +1519,13 @@ Datos: 182 s de audio, 58 atrasos (14.1 s perdidos, el peor 1415 ms), 11 congela
 - **Bug arreglado (mío)**: la descripción nueva de Imán (133 caracteres) se cortaba con «…» en el panel de Núcleo, que muestra 2 líneas; Humano (113) estaba al borde. Ahora ambas ≤ 100 y hay una prueba (`src/types/autoPitch.test.ts`) que falla si alguna receta pasa de 105.
 - No eran bugs: en `next dev` el indicador «N» de Next tapa el botón de mezcla (solo desarrollo); grabar sobre un clip existente apila la toma y silencia la anterior (es el diseño de tomas).
 - **No verificado**: nada de esto en un iPhone real; el recorrido usa ratón/touch emulado y micrófono falso.
+
+## Tres arreglos normales (nombre del clip, cancelar la limpieza, menú de escritorio)
+
+- **Nombre del clip pegado al borde visible** (`Timeline.tsx`, `CompactClipView.tsx`): una región que empieza fuera de pantalla mostraba solo el final del nombre ("3.wav"). Ahora el nombre se desliza con el borde visible de los carriles (variable CSS `--lane-left` en el contenedor, calculada una vez por cuadro; los clips no se re-renderizan). Se queda dentro de su región. Medido en Chromium: a los 8 s de reproducción se lee «VozAudio_3.wav» completo.
+- **Limpiador de voz con Cancelar** (`TrackEditorView.tsx`): mientras limpia, el botón pasa a «Cancelar» y detiene el proceso de verdad (el worker se termina). Todas las regiones se procesan primero y se aplican juntas, así que cancelar a la mitad deja la pista tal cual estaba. Salir del editor también lo cancela. Probado en Chromium: aparece Cancelar, vuelve a «Limpiador de voz» y limpiar completo sigue funcionando.
+- **Menú del clip de escritorio** (`ClipContextSheet.tsx`): «Quitar ruido» y «Aplicar transposición» corrían en el hilo principal y congelaban la pantalla. Ahora usan el mismo worker que el teléfono (mismos 0.6 de intensidad, mismo resultado). No tienen botón de cancelar ahí; es la vista de escritorio.
+- **Corrección a lo que anoté antes**: estirar y transponer ya corrían en segundo plano y con «Cancelar» en `ClipEditPanel` (la nota vieja de "sin cancelar" y "congela 1–2.5 s" ya no aplica en el teléfono).
+- **Descartado**: reducir la memoria (208 MB con 9 archivos) no es un arreglo normal: un `AudioBuffer` siempre es float32 y los beats suelen ser estéreo reales; hace falta decidir qué liberar o decodificar bajo demanda. Sin medir en iPhone.
+- `DenoisePanel.tsx` ya no lo usa nadie (código muerto, corre en el hilo principal); se deja.
+- **No verificado**: en iPhone real; la animación del nombre al desplazar con el dedo no se vio, solo reproduciendo.

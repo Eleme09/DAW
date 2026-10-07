@@ -4,12 +4,8 @@ import { useMemo, useState } from "react";
 import { useProjectStore } from "@/state/projectStore";
 import { getAudioEngine } from "@/audio-engine/AudioEngine";
 import { computePeakDb } from "@/audio-engine/loudness";
-import { transposeBuffer, MAX_TRANSPOSE_SEMITONES } from "@/audio-engine/pitch/transpose";
-import { reduceNoiseBuffer } from "@/audio-engine/analysis/spectralNoiseReduction";
-import { encodeWav } from "@/audio-engine/wavEncoder";
-import { ensureSampleLoaded } from "@/lib/audio/sampleLoader";
-import { putSample } from "@/lib/storage/sampleStore";
-import { addSampleAsset } from "@/lib/storage/sampleIndex";
+import { MAX_TRANSPOSE_SEMITONES } from "@/audio-engine/pitch/transpose";
+import { denoiseClip, transposeClip } from "@/lib/audio/clipProcessing";
 import type { AudioClip } from "@/types/project";
 import { FloatingPanel } from "../FloatingPanel";
 import { Picker } from "../ui/Picker";
@@ -18,7 +14,6 @@ import { ParamSlider } from "../EffectsRack/ParamSlider";
 const MIN_GAIN_DB = -24;
 const MAX_GAIN_DB = 12;
 const NORMALIZE_HEADROOM_DB = -0.5; // leaves a hair of room, doesn't ride the ceiling exactly
-const DENOISE_STRENGTH = 0.6; // same default DenoisePanel.tsx uses for a sample before it's on a track
 
 interface ClipContextSheetProps {
   clip: AudioClip;
@@ -99,54 +94,11 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
     onClose();
   }
 
-  /**
-   * Renders just this clip's own audible region (not the whole source
-   * sample it was cut from) through `process`, saves the result as a new
-   * sample, and repoints THIS clip at it - an in-place edit, not a new
-   * track/clip the way DenoisePanel.tsx does it for a browser sample that
-   * isn't on the timeline yet. `sourceOffset` resets to 0 and `duration`
-   * is left untouched: both transpose and denoise change content, not
-   * length, so the clip keeps occupying exactly the timeline span it did
-   * before.
-   */
-  async function renderClipRegion(suffix: string, process: (channels: Float32Array[], sampleRate: number) => Float32Array[]) {
-    const buffer = getAudioEngine().getBuffer(clip.sampleId) ?? (await ensureSampleLoaded(clip.sampleId));
-    if (!buffer) return;
-    const startSample = Math.round(clip.sourceOffset * buffer.sampleRate);
-    const endSample = Math.min(buffer.length, Math.round((clip.sourceOffset + clip.duration) * buffer.sampleRate));
-    if (endSample <= startSample) return;
-
-    const channels: Float32Array[] = [];
-    for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
-      channels.push(buffer.getChannelData(ch).slice(startSample, endSample));
-    }
-    const processed = process(channels, buffer.sampleRate);
-    const blob = encodeWav(processed, buffer.sampleRate);
-
-    const newSampleId = crypto.randomUUID();
-    await getAudioEngine().decodeAndCache(newSampleId, await blob.arrayBuffer());
-    const name = `${clip.name} ${suffix}`;
-    await putSample(newSampleId, name, blob);
-    await addSampleAsset({
-      id: newSampleId,
-      name,
-      durationSec: clip.duration,
-      sampleRate: buffer.sampleRate,
-      channels: buffer.numberOfChannels,
-      createdAt: new Date().toISOString(),
-      origin: "processed",
-    });
-    updateClip(clip.trackId, clip.id, { sampleId: newSampleId, sourceOffset: 0 });
-  }
-
   async function handleTranspose() {
     if (semitones === 0) return;
     setTransposing(true);
     try {
-      await renderClipRegion(
-        semitones > 0 ? `+${semitones}` : `${semitones}`,
-        (channels, sampleRate) => transposeBuffer(channels, sampleRate, semitones)
-      );
+      updateClip(clip.trackId, clip.id, await transposeClip(clip, semitones));
     } finally {
       setTransposing(false);
     }
@@ -155,7 +107,7 @@ export function ClipContextSheet({ clip, onClose }: ClipContextSheetProps) {
   async function handleDenoise() {
     setDenoising(true);
     try {
-      await renderClipRegion("(sin ruido)", (channels) => reduceNoiseBuffer(channels, { strength: DENOISE_STRENGTH }));
+      updateClip(clip.trackId, clip.id, await denoiseClip(clip));
     } finally {
       setDenoising(false);
     }

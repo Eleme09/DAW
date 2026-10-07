@@ -198,6 +198,10 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
   const totalWidth = origin + contentWidth + (compact ? Math.max(0, viewWidth - origin) : 0);
   // Lanes keep time 0 at `origin` whatever the header column's width is.
   const laneOffset = origin - headerWidth;
+  // Where the visible part of the lanes starts, in lane pixels (time 0 = 0).
+  // Regions that begin off-screen to the left slide their name along this
+  // edge (CompactClipView) so it stays readable instead of showing a tail.
+  const laneViewLeft = Math.max(0, Math.round(currentTime * pixelsPerSecond + headerWidth - origin));
 
   const actionRowIndex = tracks.findIndex((t) => t.id === actionTrackId);
   const clipDrag = useClipDrag((s) => s.drag);
@@ -240,7 +244,7 @@ export function Timeline({ compact = false, onAddTrack, focusTrackId, rulerOnly 
             </div>
           </div>
         )}
-        <div className="relative" style={{ width: totalWidth }}>
+        <div className="relative" style={{ width: totalWidth, ...(compact ? ({ "--lane-left": `${laneViewLeft}px` } as React.CSSProperties) : null) }}>
           <div className="sticky top-0 z-20 flex">
             <div
               className="sticky left-0 z-30 flex shrink-0 items-center border-b border-r border-line bg-ink px-2"
